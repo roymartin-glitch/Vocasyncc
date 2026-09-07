@@ -1,5 +1,5 @@
 {
-  "name": "temp-app",
+  "name": "vokasync",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,9 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
+    "lucide-react": "^1.42.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
