@@ -19,12 +19,22 @@ interface StudioModalProps {
   isOpen: boolean;
   onClose: () => void;
   productName?: string;
+  initialImage?: string;
+  price?: number;
+  unit?: string;
+  storeName?: string;
+  phone?: string;
 }
 
 export function StudioModal({
   isOpen,
   onClose,
   productName = 'Bawang Merah Brebes',
+  initialImage,
+  price = 40000,
+  unit = 'kg',
+  storeName = 'Kios Berkah Sayur',
+  phone = '0812-3456-7890',
 }: StudioModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya'>('pasar');
@@ -32,31 +42,59 @@ export function StudioModal({
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const formattedPrice = `Rp${price.toLocaleString('id-ID')}/${unit}`;
 
   const [promoText, setPromoText] = useState(
-    `PROMO SPESIAL KIOS BERKAH\n\n${productName} pilihan kualitas super, kering, wangi, dan segar langsung dari petani!\n\nHarga promo spesial hari ini: Rp42.000/kg (Beli 3kg gratis antar area Pasar Minggu).\n\nPesan sekarang via WhatsApp sebelum kehabisan stok!`
+    `🔥 *PROMO SPESIAL ${storeName.toUpperCase()}* 🔥\n\n` +
+    `Segar langsung dari petani: *${productName}* kualitas super, wangi, dan pilihan!\n\n` +
+    `🏷️ *Harga Promo Spesial:* ${formattedPrice}\n` +
+    `🛵 *Pesan antar cepat:* Siap kirim langsung ke rumah / warung Anda.\n\n` +
+    `Pesan sekarang via WhatsApp sebelum stok habis! 🙏`
   );
+
+  // Update image if initialImage changes
+  React.useEffect(() => {
+    if (initialImage) {
+      setUploadedImage(initialImage);
+    }
+  }, [initialImage]);
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
       setUploadedImage(url);
-      simulateBackgroundRemoval();
+      processBackgroundRemoval(file, url);
     }
   };
 
-  const simulateBackgroundRemoval = () => {
+  // Client-side background removal processing
+  const processBackgroundRemoval = async (file: File, fallbackUrl: string) => {
     setIsRemovingBg(true);
-    setTimeout(() => {
+    try {
+      // Attempt client-side background removal if library loads
+      const imgly = await import('@imgly/background-removal');
+      const blob = await imgly.removeBackground(file);
+      const cleanUrl = URL.createObjectURL(blob);
+      setUploadedImage(cleanUrl);
+    } catch (err) {
+      console.info('Client-side background removal fallback to original photo:', err);
+      setUploadedImage(fallbackUrl);
+    } finally {
       setIsRemovingBg(false);
       setStep(2);
-    }, 1200);
+    }
   };
 
   const handleCopyStyleChange = async (style: 'pasar' | 'fomo' | 'elegan') => {
@@ -68,8 +106,8 @@ export function StudioModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productName,
-          storeName: 'Kios Berkah Sayur',
+          productName: `${productName} (${formattedPrice})`,
+          storeName,
           style,
         }),
       });
@@ -90,8 +128,197 @@ export function StudioModal({
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleSendWA = () => {
-    const encoded = encodeURIComponent(promoText);
+  // Render high-definition 1080x1080 flyer to HTML5 Canvas
+  const drawFlyerToCanvas = (): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = canvasRef.current || document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve('');
+
+      // 1. Draw Background Gradient
+      const bgGradient = ctx.createLinearGradient(0, 0, 1080, 1080);
+      if (selectedFrame === 'pasar') {
+        bgGradient.addColorStop(0, '#064e3b'); // Emerald-900
+        bgGradient.addColorStop(0.6, '#0f172a'); // Slate-900
+        bgGradient.addColorStop(1, '#022c22'); // Emerald-950
+      } else if (selectedFrame === 'minimalis') {
+        bgGradient.addColorStop(0, '#f8fafc'); // Slate-50
+        bgGradient.addColorStop(1, '#e2e8f0'); // Slate-200
+      } else {
+        bgGradient.addColorStop(0, '#7c2d12'); // Orange-900
+        bgGradient.addColorStop(0.7, '#1c1917'); // Stone-900
+        bgGradient.addColorStop(1, '#451a03'); // Amber-950
+      }
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, 1080, 1080);
+
+      // 2. Decorative Outer Border
+      ctx.strokeStyle = selectedFrame === 'minimalis' ? '#cbd5e1' : 'rgba(52, 211, 153, 0.35)';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(36, 36, 1008, 1008);
+
+      // Inner subtle border
+      ctx.strokeStyle = selectedFrame === 'minimalis' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(48, 48, 984, 984);
+
+      // 3. Header Store Banner
+      ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#10b981';
+      ctx.beginPath();
+      ctx.roundRect(70, 70, 520, 64, 16);
+      ctx.fill();
+
+      ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : '#022c22';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText(`🛒 ${storeName.toUpperCase()}`, 90, 112);
+
+      // Guarantee badge on top right
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.roundRect(740, 70, 270, 64, 16);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('⭐ GARANSI SEGAR', 760, 112);
+
+      // 4. Draw Product Image in Center
+      const renderProductImage = () => {
+        if (uploadedImage) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            // Draw card background behind image
+            ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.roundRect(290, 190, 500, 500, 36);
+            ctx.fill();
+
+            // Clip image rounded
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(300, 200, 480, 480, 32);
+            ctx.clip();
+            ctx.drawImage(img, 300, 200, 480, 480);
+            ctx.restore();
+
+            finishDrawingTypography();
+          };
+          img.onerror = () => finishDrawingTypography();
+          img.src = uploadedImage;
+        } else {
+          // Placeholder box
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.beginPath();
+          ctx.roundRect(290, 190, 500, 500, 36);
+          ctx.fill();
+
+          ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#94a3b8';
+          ctx.font = 'bold 36px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('📦 Foto Produk', 540, 450);
+          ctx.textAlign = 'left';
+
+          finishDrawingTypography();
+        }
+      };
+
+      const finishDrawingTypography = () => {
+        // 5. Product Title
+        ctx.textAlign = 'center';
+        ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#ffffff';
+        ctx.font = 'bold 54px sans-serif';
+        ctx.fillText(productName, 540, 760);
+
+        // Subtitle
+        ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#cbd5e1';
+        ctx.font = '30px sans-serif';
+        ctx.fillText('Kualitas Super • Segar Langsung dari Petani', 540, 810);
+
+        // 6. Price Badge Banner
+        ctx.fillStyle = selectedFrame === 'minimalis' ? '#059669' : '#10b981';
+        ctx.beginPath();
+        ctx.roundRect(310, 850, 460, 80, 24);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillText(`Harga: ${formattedPrice}`, 540, 905);
+
+        // 7. Footer Contact WhatsApp
+        ctx.fillStyle = selectedFrame === 'minimalis' ? '#334155' : 'rgba(255, 255, 255, 0.9)';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText(`💬 Pesan Langsung WA: ${phone}`, 540, 990);
+        ctx.textAlign = 'left';
+
+        resolve(canvas.toDataURL('image/png'));
+      };
+
+      renderProductImage();
+    });
+  };
+
+  // Real Download handler: downloads flyer as high-res PNG
+  const handleDownloadImage = async () => {
+    setIsDownloading(true);
+    try {
+      const dataUrl = await drawFlyerToCanvas();
+      if (!dataUrl) throw new Error('Gagal merender gambar.');
+
+      const link = document.createElement('a');
+      link.download = `Promo-${productName.replace(/\s+/g, '-')}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3500);
+    } catch (e: any) {
+      alert('Gagal mengunduh gambar: ' + e.message);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Real WhatsApp Direct sender with Cloudinary integration
+  const handleSendWA = async () => {
+    setIsUploadingToCloud(true);
+    let finalUrl = cloudinaryUrl;
+
+    try {
+      // 1. Generate flyer and upload to Cloudinary
+      const flyerDataUrl = await drawFlyerToCanvas();
+      if (flyerDataUrl) {
+        const res = await fetch('/api/upload-studio-flyer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: flyerDataUrl,
+            productName,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.url) {
+          finalUrl = data.url;
+          setCloudinaryUrl(data.url);
+        }
+      }
+    } catch (err) {
+      console.warn('Upload to Cloudinary optional fallback:', err);
+    } finally {
+      setIsUploadingToCloud(false);
+    }
+
+    // 2. Append link if available and open WhatsApp
+    let fullMessage = promoText;
+    if (finalUrl) {
+      fullMessage += `\n\n📸 *Brosur Promo:* ${finalUrl}`;
+    }
+
+    const encoded = encodeURIComponent(fullMessage);
     window.open(`https://wa.me/?text=${encoded}`, '_blank');
   };
 
@@ -321,33 +548,73 @@ export function StudioModal({
           </div>
         </div>
 
+        {/* Hidden Canvas for High-Res 1080x1080 Flyer Generation */}
+        <canvas ref={canvasRef} className="hidden" />
+
         {/* Modal Footer */}
         <div className="p-4 px-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between rounded-b-3xl">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-4 py-2 cursor-pointer"
-          >
-            Tutup
-          </button>
-
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => alert('Foto studio disimpan ke galeri perangkat Anda.')}
-              className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+              onClick={onClose}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-2 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Simpan Foto</span>
+              Tutup
             </button>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-100/70 border border-emerald-300/60 font-bold px-2 py-0.5 rounded-full">
+              <Sparkles className="w-3 h-3" />
+              <span>Cloudinary AI Studio</span>
+            </span>
+          </div>
 
+          <div className="flex items-center gap-2">
+            {/* Real Download Button */}
             <button
               type="button"
-              onClick={handleSendWA}
-              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer"
+              disabled={isDownloading}
+              onClick={handleDownloadImage}
+              className={`flex items-center gap-1.5 border text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                downloadSuccess
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-2xs'
+              }`}
             >
-              <MessageCircle className="w-4 h-4" />
-              <span>Kirim via WhatsApp Direct</span>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                  <span>Merender Brosur...</span>
+                </>
+              ) : downloadSuccess ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Brosur Terunduh!</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Simpan Foto Brosur</span>
+                </>
+              )}
+            </button>
+
+            {/* Real WhatsApp Direct Sender */}
+            <button
+              type="button"
+              disabled={isUploadingToCloud}
+              onClick={handleSendWA}
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+            >
+              {isUploadingToCloud ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menyiapkan Cloud...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Kirim via WhatsApp Direct</span>
+                </>
+              )}
             </button>
           </div>
         </div>

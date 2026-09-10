@@ -361,6 +361,9 @@ export default function ProdukPage() {
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
         productName={selectedProduct?.name || 'Bawang Merah'}
+        initialImage={selectedProduct?.image_url || undefined}
+        price={selectedProduct?.selling_price || 40000}
+        unit={selectedProduct?.unit || 'kg'}
       />
 
       {/* Modal Tambah Produk Baru */}
