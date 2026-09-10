@@ -206,7 +206,7 @@ export default function LaporanPage() {
 
         <div className="flex flex-wrap gap-2">
           {[
-            { id: 'today', label: 'Hari Ini (Sama dengan Beranda)' },
+            { id: 'today', label: 'Hari Ini' },
             { id: 'week', label: '7 Hari Terakhir' },
             { id: 'month', label: 'Bulan Ini' },
             { id: 'all', label: 'Semua Catatan' },
@@ -215,11 +215,10 @@ export default function LaporanPage() {
               key={tab.id}
               type="button"
               onClick={() => setPeriod(tab.id as ReportPeriod)}
-              className={`text-sm font-bold px-4 py-2 rounded-2xl transition-all cursor-pointer ${
-                period === tab.id
+              className={`text-sm font-bold px-4 py-2 rounded-2xl transition-all cursor-pointer ${period === tab.id
                   ? 'bg-[#00875A] text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+                }`}
             >
               {tab.label}
             </button>

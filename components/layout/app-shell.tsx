@@ -18,17 +18,31 @@ export function AppShell({ children }: AppShellProps) {
   const [businessName, setBusinessName] = useState(mockProfile.business_name);
   const [ownerName, setOwnerName] = useState(mockProfile.owner_name);
 
-  // Apply text size to root documentElement and sync profile
+  // Apply text size and theme to root documentElement
   useEffect(() => {
     const applyTextSize = (size: string) => {
       if (typeof document === 'undefined') return;
-      document.documentElement.classList.remove('text-size-normal', 'text-size-besar', 'text-size-sangat-besar');
+      document.documentElement.classList.remove(
+        'text-size-kecil',
+        'text-size-normal',
+        'text-size-besar',
+        'text-size-sangat-besar'
+      );
       document.documentElement.classList.add(`text-size-${size || 'normal'}`);
     };
 
-    // 1. Initial text size from localStorage
+    const applyTheme = (theme: string) => {
+      if (typeof document === 'undefined') return;
+      document.documentElement.classList.remove('theme-terang', 'theme-gelap', 'theme-3d');
+      document.documentElement.classList.add(`theme-${theme || 'terang'}`);
+    };
+
+    // 1. Initial values from localStorage
     const cachedSize = localStorage.getItem('vokasync_text_size') || 'normal';
     applyTextSize(cachedSize);
+
+    const cachedTheme = localStorage.getItem('vokasync_theme') || 'terang';
+    applyTheme(cachedTheme);
 
     // 2. Fetch profile & settings
     fetch('/api/settings')
@@ -41,6 +55,10 @@ export function AppShell({ children }: AppShellProps) {
             applyTextSize(data.data.text_size);
             localStorage.setItem('vokasync_text_size', data.data.text_size);
           }
+          if (data.data.theme) {
+            applyTheme(data.data.theme);
+            localStorage.setItem('vokasync_theme', data.data.theme);
+          }
         }
       })
       .catch(() => {});
@@ -51,6 +69,10 @@ export function AppShell({ children }: AppShellProps) {
       if (detail?.text_size) {
         applyTextSize(detail.text_size);
         localStorage.setItem('vokasync_text_size', detail.text_size);
+      }
+      if (detail?.theme) {
+        applyTheme(detail.theme);
+        localStorage.setItem('vokasync_theme', detail.theme);
       }
       if (detail?.business_name) setBusinessName(detail.business_name);
       if (detail?.owner_name) setOwnerName(detail.owner_name);

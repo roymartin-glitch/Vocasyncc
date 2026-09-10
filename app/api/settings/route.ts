@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       sound_alert_enabled: profile?.sound_alert_enabled ?? appSettings.sound_alert_enabled ?? false,
       sound_alert_volume: profile?.sound_alert_volume ?? appSettings.sound_alert_volume ?? 80,
       text_size: profile?.text_size ?? appSettings.text_size ?? 'normal',
+      theme: profile?.theme ?? appSettings.theme ?? 'terang',
       default_unit: profile?.default_unit ?? appSettings.default_unit ?? 'kg',
       analysis_period: profile?.analysis_period ?? appSettings.analysis_period ?? '7d',
     };
@@ -42,6 +43,7 @@ export async function PATCH(req: NextRequest) {
       sound_alert_enabled,
       sound_alert_volume,
       text_size,
+      theme,
       default_unit,
       analysis_period,
     } = body;
@@ -66,6 +68,7 @@ export async function PATCH(req: NextRequest) {
     if (sound_alert_enabled !== undefined) updates.sound_alert_enabled = Boolean(sound_alert_enabled);
     if (sound_alert_volume !== undefined) updates.sound_alert_volume = parseFloat(sound_alert_volume) || 80;
     if (text_size !== undefined) updates.text_size = text_size;
+    if (theme !== undefined) updates.theme = theme;
     if (default_unit !== undefined) updates.default_unit = default_unit;
     if (analysis_period !== undefined) updates.analysis_period = analysis_period;
 
@@ -96,6 +99,7 @@ export async function PATCH(req: NextRequest) {
           sound_alert_enabled: updates.sound_alert_enabled,
           sound_alert_volume: updates.sound_alert_volume,
           text_size: updates.text_size,
+          theme: updates.theme,
           default_unit: updates.default_unit,
           analysis_period: updates.analysis_period,
         },

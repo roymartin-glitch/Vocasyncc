@@ -7,7 +7,8 @@ export type BusinessType =
   | 'Lainnya'
   | string;
 
-export type TextSizeSetting = 'normal' | 'besar' | 'sangat-besar';
+export type TextSizeSetting = 'kecil' | 'normal' | 'besar' | 'sangat-besar';
+export type AppThemeSetting = 'terang' | 'gelap' | '3d';
 export type AnalysisPeriodSetting = '7d' | '30d' | '3m';
 
 export interface AppSettings {
@@ -16,6 +17,7 @@ export interface AppSettings {
   sound_alert_enabled: boolean; // default false
   sound_alert_volume: number; // default 80% (0-100)
   text_size: TextSizeSetting; // default 'normal'
+  theme?: AppThemeSetting; // default 'terang'
   default_unit: string; // default 'kg'
   analysis_period: AnalysisPeriodSetting; // default '7d'
 }

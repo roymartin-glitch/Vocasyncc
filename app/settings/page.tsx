@@ -23,7 +23,7 @@ import {
   Play,
 } from 'lucide-react';
 import { mockProfile } from '@/lib/mock-data';
-import { TextSizeSetting, AnalysisPeriodSetting } from '@/types';
+import { TextSizeSetting, AnalysisPeriodSetting, AppThemeSetting } from '@/types';
 
 export default function SettingsPage() {
   // 1. Profil Toko
@@ -45,6 +45,7 @@ export default function SettingsPage() {
 
   // 4. Tampilan
   const [textSize, setTextSize] = useState<TextSizeSetting>('normal');
+  const [theme, setTheme] = useState<AppThemeSetting>('terang');
   const [defaultUnit, setDefaultUnit] = useState('kg');
 
   // 5. Analisis
@@ -64,6 +65,10 @@ export default function SettingsPage() {
 
   // Load existing settings
   useEffect(() => {
+    // 1. Check local storage for instant sync
+    const cachedTheme = localStorage.getItem('vokasync_theme') as AppThemeSetting;
+    if (cachedTheme) setTheme(cachedTheme);
+
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
@@ -84,6 +89,7 @@ export default function SettingsPage() {
           if (p.sound_alert_enabled !== undefined) setSoundAlertEnabled(Boolean(p.sound_alert_enabled));
           if (p.sound_alert_volume !== undefined) setSoundAlertVolume(Number(p.sound_alert_volume));
           if (p.text_size) setTextSize(p.text_size as TextSizeSetting);
+          if (p.theme) setTheme(p.theme as AppThemeSetting);
           if (p.default_unit) setDefaultUnit(p.default_unit);
           if (p.analysis_period) setAnalysisPeriod(p.analysis_period as AnalysisPeriodSetting);
         }
@@ -96,10 +102,26 @@ export default function SettingsPage() {
   const handleTextSizeChange = (size: TextSizeSetting) => {
     setTextSize(size);
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.remove('text-size-normal', 'text-size-besar', 'text-size-sangat-besar');
+      document.documentElement.classList.remove(
+        'text-size-kecil',
+        'text-size-normal',
+        'text-size-besar',
+        'text-size-sangat-besar'
+      );
       document.documentElement.classList.add(`text-size-${size}`);
       localStorage.setItem('vokasync_text_size', size);
       window.dispatchEvent(new CustomEvent('vokasync-settings-changed', { detail: { text_size: size } }));
+    }
+  };
+
+  // Real-time Theme application on change
+  const handleThemeChange = (newTheme: AppThemeSetting) => {
+    setTheme(newTheme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('theme-terang', 'theme-gelap', 'theme-3d');
+      document.documentElement.classList.add(`theme-${newTheme}`);
+      localStorage.setItem('vokasync_theme', newTheme);
+      window.dispatchEvent(new CustomEvent('vokasync-settings-changed', { detail: { theme: newTheme } }));
     }
   };
 
@@ -141,7 +163,8 @@ export default function SettingsPage() {
         sound_alert_enabled: soundAlertEnabled,
         sound_alert_volume: soundAlertVolume,
         text_size: textSize,
-        default_unit: defaultUnit.trim() || 'kg',
+        theme: theme,
+        default_unit: defaultUnit,
         analysis_period: analysisPeriod,
       };
 
@@ -160,6 +183,7 @@ export default function SettingsPage() {
               business_name: businessName,
               owner_name: ownerName,
               text_size: textSize,
+              theme: theme,
             },
           })
         );
@@ -466,32 +490,91 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-5">
-            {/* Ukuran Teks */}
+            {/* Pilihan Tema Web */}
+            <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-900 block">Tema Tampilan Web</label>
+                <p className="text-xs text-slate-500">
+                  Pilih suasana warna yang paling nyaman di mata Anda.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    id: 'terang',
+                    label: 'Terang (Standar)',
+                    note: 'Bersih, kontras tinggi ramah lansia',
+                    badge: '☀️ Siang',
+                  },
+                  {
+                    id: 'gelap',
+                    label: 'Gelap (Malam)',
+                    note: 'Latar hitam emerald, tidak silau',
+                    badge: '🌙 Malam',
+                  },
+                  {
+                    id: '3d',
+                    label: 'Tampilan 3D',
+                    note: 'Tombol timbul nyata membal disentuh',
+                    badge: '✨ Timbul',
+                  },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleThemeChange(item.id as AppThemeSetting)}
+                    className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                      theme === item.id
+                        ? 'bg-[#00875A] text-white border-[#00744D] shadow-sm font-bold'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-black">{item.label}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        theme === item.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    </div>
+                    <p className={`text-[11px] leading-snug ${
+                      theme === item.id ? 'text-emerald-100' : 'text-slate-500'
+                    }`}>
+                      {item.note}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ukuran Teks (Termasuk Pilihan Kecil) */}
             <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-2.5">
               <div>
                 <label className="text-xs font-bold text-slate-900 block">Ukuran Teks</label>
                 <p className="text-xs text-slate-500">
-                  Perbesar teks jika kurang jelas terbaca di bawah cahaya pasar.
+                  Sesuaikan ukuran tulisan di seluruh aplikasi dari kecil hingga ekstra besar.
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'normal', label: 'Normal', note: '16px (Standar)' },
-                  { id: 'besar', label: 'Besar', note: '18px (Mudah Dibaca)' },
-                  { id: 'sangat-besar', label: 'Sangat Besar', note: '20px (Ekstra Jelas)' },
+                  { id: 'kecil', label: 'Kecil', note: '15px (Ringkas)' },
+                  { id: 'normal', label: 'Normal', note: '18px (Standar)' },
+                  { id: 'besar', label: 'Besar', note: '20px (Mudah Dibaca)' },
+                  { id: 'sangat-besar', label: 'Sangat Besar', note: '22px (Ekstra Jelas)' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => handleTextSizeChange(item.id as TextSizeSetting)}
-                    className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                    className={`p-3 rounded-2xl border-2 text-center transition-all cursor-pointer ${
                       textSize === item.id
-                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-bold'
+                        ? 'bg-[#00875A] text-white border-[#00744D] shadow-xs font-bold'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 font-medium'
                     }`}
                   >
-                    <div className="text-xs font-extrabold">{item.label}</div>
+                    <div className="text-xs font-black">{item.label}</div>
                     <div className={`text-[10px] mt-0.5 ${textSize === item.id ? 'text-emerald-100' : 'text-slate-400'}`}>
                       {item.note}
                     </div>
