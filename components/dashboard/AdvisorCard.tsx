@@ -14,7 +14,7 @@ export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
     switch (sev) {
       case 'red':
         return {
-          label: 'Peringatan Margin Kritis',
+          label: '⚠️ Hati-hati, Untung Menipis!',
           bg: 'bg-rose-50 border-rose-200 text-rose-700',
           icon: AlertCircle,
           dotColor: 'bg-rose-500',
@@ -51,7 +51,7 @@ export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
           <div className="p-1.5 bg-emerald-700 rounded-lg text-white shadow-xs">
             <Sparkles className="w-4 h-4" />
           </div>
-          <span className="font-bold text-sm text-slate-800 tracking-tight">AI Business Advisor</span>
+          <span className="font-bold text-sm text-slate-800 tracking-tight">Asisten Bisnis VokaSync</span>
         </div>
 
         <span

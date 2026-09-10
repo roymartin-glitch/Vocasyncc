@@ -6,9 +6,9 @@ import { Home, Plus, BarChart3, FlaskConical, Clock } from 'lucide-react';
 
 const navItems = [
   { name: 'Beranda', href: '/dashboard', icon: Home },
-  { name: 'Produk', href: '/produk', icon: BarChart3 },
+  { name: 'Produk Saya', href: '/produk', icon: BarChart3 },
   { name: 'Catat', href: '/catat', icon: Plus, isAction: true },
-  { name: 'Eksperimen', href: '/eksperimen', icon: FlaskConical },
+  { name: 'Coba & Pantau', href: '/eksperimen', icon: FlaskConical },
   { name: 'Riwayat', href: '/riwayat', icon: Clock },
 ];
 

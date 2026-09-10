@@ -133,7 +133,7 @@ export default function LoginPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">VokaSync</h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            AI Business Advisor & Visual Marketing Pedagang Pasar & UMKM
+            Asisten Bisnis VokaSync & Visual Marketing Pedagang Pasar & UMKM
           </p>
         </div>
       </div>

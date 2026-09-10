@@ -107,7 +107,7 @@ export default function EksperimenPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <FlaskConical className="w-6 h-6 text-emerald-700" />
-            <span>Eksperimen Bisnis & Tracking</span>
+            <span>Coba & Pantau Hasilnya</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Loop advisory tertutup: AI beri rekomendasi → Anda uji di lapangan → Gemini 3.6 Flash mengevaluasi hasilnya.
@@ -120,7 +120,7 @@ export default function EksperimenPage() {
           className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all active:scale-95 self-start cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>Uji Eksperimen Baru</span>
+          <span>+ Coba Tindakan Baru</span>
         </button>
       </div>
 
@@ -130,7 +130,7 @@ export default function EksperimenPage() {
           { id: 'all', label: `Semua (${experiments.length})` },
           {
             id: 'running',
-            label: `Sedang Berjalan (${experiments.filter((e) => e.status === 'running').length})`,
+            label: `Sedang Dicoba (${experiments.filter((e) => e.status === 'running').length})`,
           },
           {
             id: 'completed',
@@ -186,11 +186,11 @@ export default function EksperimenPage() {
                       >
                         {isCompleted ? (
                           <>
-                            <CheckCircle2 className="w-3 h-3" /> Selesai & Terevaluasi AI
+                            <CheckCircle2 className="w-3 h-3" /> ✅ Sudah Dievaluasi
                           </>
                         ) : (
                           <>
-                            <Clock className="w-3 h-3" /> Sedang Berjalan (Hari 3/7)
+                            <Clock className="w-3 h-3" /> Sedang Dicoba (Hari 3/7)
                           </>
                         )}
                       </span>
@@ -231,13 +231,13 @@ export default function EksperimenPage() {
                     {/* Baseline */}
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        {isCompleted ? 'Kondisi Sebelum Eksperimen' : 'Baseline (Sebelum Diubah)'}
+                        {isCompleted ? 'Kondisi Sebelum' : 'Kondisi Awal'}
                       </span>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black text-slate-800">
                           {exp.baseline_metric.margin}%
                         </span>
-                        <span className="text-xs text-slate-500">Margin Keuntungan</span>
+                        <span className="text-xs text-slate-500">Persentase Untung</span>
                       </div>
                       {exp.baseline_metric.daily_profit ? (
                         <p className="text-xs text-slate-500">
@@ -255,7 +255,7 @@ export default function EksperimenPage() {
                       }`}
                     >
                       <span className="text-[11px] font-bold uppercase tracking-wider opacity-75">
-                        {isCompleted ? 'Kondisi Sesudah Eksperimen' : 'Target yang Diharapkan'}
+                        {isCompleted ? 'Kondisi Sesudah' : 'Target yang Diharapkan'}
                       </span>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black">
@@ -301,7 +301,7 @@ export default function EksperimenPage() {
             <Lightbulb className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-base text-slate-900">Rekomendasi Eksperimen Baru dari AI</h3>
+            <h3 className="font-bold text-base text-slate-900">Rekomendasi Tindakan Baru dari AI</h3>
             <p className="text-xs text-slate-500">Ide tindakan bisnis teruji yang disesuaikan dengan data dagangan Anda</p>
           </div>
         </div>
@@ -324,7 +324,7 @@ export default function EksperimenPage() {
               }}
               className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
             >
-              <span>Uji Eksperimen Ini</span>
+              <span>Coba Tindakan Ini</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -346,7 +346,7 @@ export default function EksperimenPage() {
               }}
               className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
             >
-              <span>Uji Eksperimen Ini</span>
+              <span>Coba Tindakan Ini</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -360,7 +360,7 @@ export default function EksperimenPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-emerald-700" />
-                <h3 className="font-bold text-base text-slate-900">Mulai Eksperimen Bisnis</h3>
+                <h3 className="font-bold text-base text-slate-900">Mulai Coba Tindakan Baru</h3>
               </div>
               <button
                 type="button"

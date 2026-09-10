@@ -118,21 +118,21 @@ export default function ProdukPage() {
     switch (category) {
       case 'dorong':
         return {
-          label: 'Dorong Penjualan',
+          label: 'Perbanyak Jual',
           icon: Flame,
           color: 'bg-emerald-50 text-emerald-800 border-emerald-200',
           desc: 'Margin sangat tinggi (>35%). Sangat menguntungkan untuk dipromosikan lebih giat ke pembeli.',
         };
       case 'pertahankan':
         return {
-          label: 'Pertahankan',
+          label: 'Sudah Bagus',
           icon: ShieldCheck,
           color: 'bg-blue-50 text-blue-800 border-blue-200',
           desc: 'Margin sehat dan perputaran stabil. Jaga ketersediaan pasokan dari agen.',
         };
       case 'perbaiki':
         return {
-          label: 'Perbaiki Margin',
+          label: 'Perlu Diperbaiki',
           icon: AlertTriangle,
           color: 'bg-amber-50 text-amber-900 border-amber-200',
           desc: `Margin tergerus di bawah target ${threshold}%. Perlu penyesuaian harga atau bundling produk.`,
@@ -159,7 +159,7 @@ export default function ProdukPage() {
     const selling = parseFloat(newProductSelling) || 0;
 
     if (cost <= 0 || selling <= 0) {
-      setAddError('Harga modal dan harga jual harus lebih dari 0.');
+      setAddError('Harga beli dari supplier dan harga jual harus lebih dari 0.');
       return;
     }
 
@@ -308,7 +308,7 @@ export default function ProdukPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Harga Modal (Beli) <span className="text-rose-500">*</span>
+                    Harga Beli dari Supplier <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">
@@ -355,7 +355,7 @@ export default function ProdukPage() {
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Estimasi Margin Keuntungan:</span>
+                    <span>Estimasi Persentase Untung:</span>
                     <span
                       className={`font-black px-2 py-0.5 rounded-md ${
                         modalMargin >= threshold
@@ -405,7 +405,7 @@ export default function ProdukPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <BarChart3 className="w-6 h-6 text-emerald-700" />
-            <span>Analisis Profitabilitas Produk</span>
+            <span>Produk Saya</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Mengetahui produk yang paling <strong>menguntungkan</strong> — didukung diagnosis taktis AI Gemini.
@@ -416,7 +416,7 @@ export default function ProdukPage() {
           <div className="flex items-center gap-2 bg-white border border-slate-200/80 px-4 py-2 rounded-2xl shadow-2xs">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <span className="text-xs text-slate-600 font-medium">
-              Ambang Peringatan:{' '}
+              Batas Untung Minimum:{' '}
               <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200/60 font-black">
                 {threshold}%
               </span>
@@ -439,9 +439,9 @@ export default function ProdukPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           {[
             { id: 'all', label: 'Semua Produk' },
-            { id: 'dorong', label: 'Dorong Penjualan' },
-            { id: 'pertahankan', label: 'Pertahankan' },
-            { id: 'perbaiki', label: 'Perbaiki Margin' },
+            { id: 'dorong', label: 'Perbanyak Jual' },
+            { id: 'pertahankan', label: 'Sudah Bagus' },
+            { id: 'perbaiki', label: 'Perlu Diperbaiki' },
             { id: 'kurangi', label: 'Kurangi Stok' },
           ].map((tab) => (
             <button
@@ -518,7 +518,7 @@ export default function ProdukPage() {
                     <div>
                       <h3 className="font-bold text-base text-slate-900 tracking-tight">{p.name}</h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Rata-rata {p.avg_daily_volume} {p.unit}/hari • Omset 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
+                        Rata-rata {p.avg_daily_volume} {p.unit}/hari • Total Penjualan 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
                       </p>
                     </div>
 
@@ -533,7 +533,7 @@ export default function ProdukPage() {
                   {/* Margin Visual Bar */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Margin Keuntungan:</span>
+                      <span className="text-slate-500 font-medium">Persentase Untung:</span>
                       <span className="font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                         {p.margin_percentage}%
                       </span>
@@ -558,7 +558,7 @@ export default function ProdukPage() {
                   {/* Pricing Details */}
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                     <div>
-                      <span className="text-slate-400">Harga Modal: </span>
+                      <span className="text-slate-400">Harga Beli dari Supplier: </span>
                       <span className="font-semibold bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
                         Rp{p.cost_price.toLocaleString('id-ID')}/{p.unit}
                       </span>
@@ -597,25 +597,25 @@ export default function ProdukPage() {
               {/* Financial Breakdown Table */}
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Harga Beli Modal Terkini:</span>
+                  <span className="text-slate-500">Harga Beli dari Supplier:</span>
                   <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
                     Rp{selectedProduct.cost_price.toLocaleString('id-ID')} / {selectedProduct.unit}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Harga Jual Eceran Terkini:</span>
+                  <span className="text-slate-500">Harga Jual ke Pembeli:</span>
                   <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
                     Rp{selectedProduct.selling_price.toLocaleString('id-ID')} / {selectedProduct.unit}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Untung Bersih per Satuan:</span>
+                  <span className="text-slate-500">Untung per Kg/Pcs:</span>
                   <span className="font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
                     Rp{(selectedProduct.selling_price - selectedProduct.cost_price).toLocaleString('id-ID')} / {selectedProduct.unit}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Margin Keuntungan:</span>
+                  <span className="text-slate-500">Persentase Untung:</span>
                   <span
                     className={`font-black px-2.5 py-0.5 rounded-md border ${
                       selectedProduct.margin_percentage >= threshold
@@ -627,7 +627,7 @@ export default function ProdukPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-slate-500">Rekomendasi Aksi:</span>
+                  <span className="text-slate-500">Saran VokaSync:</span>
                   <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase border border-slate-200/70">
                     {getActionBadge(selectedProduct.action_category).label}
                   </span>
@@ -653,7 +653,7 @@ export default function ProdukPage() {
                     className="text-[11px] flex items-center gap-1 text-emerald-700 hover:text-emerald-900 bg-white/80 hover:bg-white px-2 py-0.5 rounded-lg border border-emerald-200/60 font-semibold transition-all cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isLoadingAiNote ? 'animate-spin' : ''}`} />
-                    <span>{isLoadingAiNote ? 'Menganalisis...' : 'Analisis Ulang'}</span>
+                    <span>{isLoadingAiNote ? 'Menganalisis...' : 'Cek Ulang'}</span>
                   </button>
                 </div>
 
@@ -687,7 +687,7 @@ export default function ProdukPage() {
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all active:scale-98"
                 >
                   <FlaskConical className="w-4 h-4 text-slate-600" />
-                  <span>Uji Eksperimen Perubahan Harga</span>
+                  <span>Coba & Pantau Perubahan Harga</span>
                 </a>
               </div>
             </div>

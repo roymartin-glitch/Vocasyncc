@@ -81,14 +81,14 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-3.5">
             <MetricCard
-              title="Pemasukan Hari Ini"
+              title="Uang Masuk Hari Ini"
               value={`Rp${(metrics.today_income || 0).toLocaleString('id-ID')}`}
               changePercent={metrics.today_income_change}
               icon={<Wallet className="w-4 h-4 text-emerald-600" />}
             />
 
             <MetricCard
-              title="Pengeluaran Hari Ini"
+              title="Uang Keluar Hari Ini"
               value={`Rp${(metrics.today_expense || 0).toLocaleString('id-ID')}`}
               changePercent={metrics.today_expense_change}
               isExpense={true}
@@ -96,14 +96,14 @@ export default function DashboardPage() {
             />
 
             <MetricCard
-              title="Keuntungan Bersih"
+              title="Untung Bersih"
               value={`Rp${(metrics.today_profit || 0).toLocaleString('id-ID')}`}
               changePercent={metrics.today_profit_change}
               icon={<PiggyBank className="w-4 h-4 text-emerald-600" />}
             />
 
             <MetricCard
-              title="Margin Hari Ini"
+              title="Untung Hari Ini (%)"
               value={`${metrics.today_margin || 0}%`}
               changePercent={metrics.today_margin_change}
               icon={<Percent className="w-4 h-4 text-indigo-600" />}

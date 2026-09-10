@@ -28,7 +28,7 @@ export function SignalFeed({ signals }: SignalFeedProps) {
           <div className="p-1 bg-slate-100 rounded-md text-slate-600">
             <Radio className="w-4 h-4 text-emerald-700 animate-pulse" />
           </div>
-          <h3 className="font-bold text-sm text-slate-800">Sinyal Bisnis Terbaru</h3>
+          <h3 className="font-bold text-sm text-slate-800">Info Terbaru</h3>
         </div>
         <span className="text-xs text-slate-400 font-medium">{signals.length} Sinyal</span>
       </div>

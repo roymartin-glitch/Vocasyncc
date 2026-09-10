@@ -67,7 +67,7 @@ export function Header({ ownerName = 'Pak Budi', businessName = 'Kios Berkah Say
           <Link
             href="/riwayat"
             className="p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-            title="Riwayat Transaksi"
+            title="Catatan Transaksi"
           >
             <Clock className="w-5 h-5" />
           </Link>

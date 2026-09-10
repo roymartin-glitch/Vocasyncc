@@ -67,7 +67,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showSuccess('Pengaturan profil dan ambang batas margin tersimpan ke Supabase!');
+        showSuccess('Pengaturan profil dan batas untung minimum tersimpan ke Supabase!');
       } else {
         alert(data.error || 'Gagal menyimpan profil.');
       }
@@ -106,7 +106,7 @@ export default function SettingsPage() {
           <span>Pengaturan & Profil Toko</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Kelola identitas usaha, nama pemilik, dan konfigurasi ambang batas peringatan margin AI.
+          Kelola identitas usaha, nama pemilik, dan konfigurasi batas untung minimum.
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export default function SettingsPage() {
         <div className="border-b border-slate-100 pb-4">
           <h2 className="text-base font-bold text-slate-900">Informasi Usaha & Pemilik</h2>
           <p className="text-xs text-slate-500">
-            Nama ini tersimpan di Supabase dan digunakan untuk sapaan ramah AI Advisor di Beranda.
+            Nama ini tersimpan di Supabase dan digunakan untuk sapaan ramah Asisten Bisnis VokaSync di Beranda.
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default function SettingsPage() {
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
             <label className="block text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <Percent className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Ambang Batas Peringatan Margin (%)</span>
+              <span>Batas Untung Minimum (%)</span>
             </label>
             <div className="flex items-center gap-3">
               <input
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                 className="w-28 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
               />
               <span className="text-xs text-slate-500">
-                Default: 20%. Jika margin produk turun di bawah angka ini, sistem otomatis memicu peringatan kritis (merah) & tombol Quick-Action promosi WA.
+                Default: 20%. Jika persentase untung produk turun di bawah angka ini, sistem otomatis memicu peringatan untung menipis & tombol Quick-Action promosi WA.
               </span>
             </div>
           </div>

@@ -21,8 +21,8 @@ interface SidebarProps {
 const navItems = [
   { name: 'Beranda', href: '/dashboard', icon: Home },
   { name: 'Catat', href: '/catat', icon: PlusCircle },
-  { name: 'Produk', href: '/produk', icon: BarChart3 },
-  { name: 'Eksperimen', href: '/eksperimen', icon: FlaskConical },
+  { name: 'Produk Saya', href: '/produk', icon: BarChart3 },
+  { name: 'Coba & Pantau', href: '/eksperimen', icon: FlaskConical },
   { name: 'Riwayat', href: '/riwayat', icon: Clock },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

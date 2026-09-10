@@ -95,7 +95,7 @@ export default function RiwayatPage() {
       const data = await res.json();
       if (data.success) {
         setIsEditModalOpen(false);
-        showToast('Transaksi berhasil dikoreksi di database!');
+        showToast('Transaksi berhasil diedit di database!');
         fetchTransactions();
       } else {
         alert(data.error || 'Gagal mengubah transaksi.');
@@ -145,10 +145,10 @@ export default function RiwayatPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <Clock className="w-6 h-6 text-emerald-700" />
-            <span>Riwayat Transaksi</span>
+            <span>Catatan Transaksi</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Pantau, audit, dan koreksi seluruh pencatatan transaksi dari database Supabase Anda.
+            Pantau, audit, dan edit seluruh pencatatan transaksi dari database Supabase Anda.
           </p>
         </div>
 
@@ -216,7 +216,7 @@ export default function RiwayatPage() {
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
-            <span>Memuat riwayat transaksi dari database...</span>
+            <span>Memuat catatan transaksi dari database...</span>
           </div>
         ) : (
           <>
@@ -305,7 +305,7 @@ export default function RiwayatPage() {
                                 type="button"
                                 onClick={() => openEdit(tx)}
                                 className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-                                title="Koreksi Transaksi"
+                                title="Edit Transaksi"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
@@ -376,10 +376,10 @@ export default function RiwayatPage() {
                         <div>
                           {tx.source === 'voice' ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700">
-                              <Mic className="w-3 h-3" /> Input Suara
+                              <Mic className="w-3 h-3" /> Rekam Suara
                             </span>
                           ) : (
-                            <span className="text-[10px] text-slate-400">Input Manual</span>
+                            <span className="text-[10px] text-slate-400">Ketik Manual</span>
                           )}
                         </div>
 
@@ -389,7 +389,7 @@ export default function RiwayatPage() {
                             onClick={() => openEdit(tx)}
                             className="text-xs text-slate-600 font-semibold hover:text-slate-900 cursor-pointer"
                           >
-                            Koreksi
+                            Edit
                           </button>
                           <span className="text-slate-300">•</span>
                           <button
@@ -415,7 +415,7 @@ export default function RiwayatPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-base text-slate-900">Koreksi Transaksi</h3>
+              <h3 className="font-bold text-base text-slate-900">Edit Transaksi</h3>
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
@@ -472,7 +472,7 @@ export default function RiwayatPage() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                 >
-                  Simpan Koreksi
+                  Simpan Perubahan
                 </button>
               </div>
             </form>
