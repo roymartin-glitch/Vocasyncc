@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { calculateMargin, determineActionCategory, isStockLow } from '@/lib/calculations/financial';
+import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
+
+    let productsQuery = supabase.from('products').select('id, name, default_unit, image_url').order('name');
+    if (userId) {
+      productsQuery = productsQuery.eq('user_id', userId);
+    }
 
     // Parallelize all database queries concurrently for maximum speed
-    const [profilesRes, productsRes, itemsRes, batchesRes] = await Promise.all([
-      supabase.from('profiles').select('margin_alert_threshold').limit(1),
-      supabase.from('products').select('id, name, default_unit, image_url').order('name'),
+    const [productsRes, itemsRes, batchesRes] = await Promise.all([
+      productsQuery,
       supabase.from('transaction_items').select(`
         product_id,
         quantity,
@@ -22,7 +29,7 @@ export async function GET(req: NextRequest) {
       supabase.from('stock_batches').select('*'),
     ]);
 
-    const threshold = Number(profilesRes.data?.[0]?.margin_alert_threshold) || 20;
+    const threshold = Number(profile?.margin_alert_threshold) || 20;
     const products = productsRes.data || [];
     const items = itemsRes.data || [];
     const stockBatches = batchesRes.data || [];
@@ -133,8 +140,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-    const userId = profiles?.[0]?.id;
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Profil pemilik tidak ditemukan.' },
@@ -263,8 +270,8 @@ export async function PATCH(req: NextRequest) {
 
     // If sellingPrice supplied, insert a new income transaction item to update selling price
     if (sellingPrice !== undefined && Number(sellingPrice) > 0) {
-      const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-      const userId = profiles?.[0]?.id;
+      const { profile } = await getActiveUserProfile();
+      const userId = profile?.id;
       if (userId) {
         const { data: incTx } = await supabase
           .from('transactions')

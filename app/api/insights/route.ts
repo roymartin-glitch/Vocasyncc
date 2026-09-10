@@ -3,33 +3,48 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { calculateMargin, determineSeverity, build7DayTrend, isStockLow } from '@/lib/calculations/financial';
 import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
+import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
+
+    let txQuery = supabase
+      .from('transactions')
+      .select(`
+        id,
+        type,
+        transaction_date,
+        source,
+        raw_voice_text,
+        transaction_items (
+          quantity,
+          unit_price,
+          product_id,
+          products (
+            id,
+            name
+          )
+        )
+      `)
+      .order('transaction_date', { ascending: false });
+
+    let insightsQuery = supabase
+      .from('ai_insights')
+      .select('*, products(name)')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (userId) {
+      txQuery = txQuery.eq('user_id', userId);
+      insightsQuery = insightsQuery.eq('user_id', userId);
+    }
 
     // 1. Run all database queries in parallel for maximum speed & lowest latency
-    const [profilesRes, txRes, batchesRes, insightsRes] = await Promise.all([
-      supabase.from('profiles').select('*').limit(1),
-      supabase
-        .from('transactions')
-        .select(`
-          id,
-          type,
-          transaction_date,
-          source,
-          raw_voice_text,
-          transaction_items (
-            quantity,
-            unit_price,
-            product_id,
-            products (
-              id,
-              name
-            )
-          )
-        `)
-        .order('transaction_date', { ascending: false }),
+    const [txRes, batchesRes, insightsRes] = await Promise.all([
+      txQuery,
       supabase
         .from('stock_batches')
         .select(`
@@ -43,19 +58,15 @@ export async function GET(req: NextRequest) {
             name
           )
         `),
-      supabase
-        .from('ai_insights')
-        .select('*, products(name)')
-        .order('created_at', { ascending: false })
-        .limit(5),
+      insightsQuery,
     ]);
 
-    const profile = profilesRes.data?.[0] || {
+    const activeProfile = profile || {
       owner_name: 'Pak Budi',
       business_name: 'Kios Berkah Sayur',
       margin_alert_threshold: 20,
     };
-    const threshold = Number(profile.margin_alert_threshold) || 20;
+    const threshold = Number(activeProfile.margin_alert_threshold) || 20;
     const allTx = txRes.data || [];
     const batches = batchesRes.data || [];
     const insights = insightsRes.data || [];

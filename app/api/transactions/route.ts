@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getFIFOCostPrice } from '@/lib/calculations/financial';
+import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
+    const { profile } = await getActiveUserProfile();
+
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
     const search = searchParams.get('search');
@@ -35,6 +38,10 @@ export async function GET(req: NextRequest) {
       `)
       .order('transaction_date', { ascending: false });
 
+    if (profile?.id) {
+      query = query.eq('user_id', profile.id);
+    }
+
     if (type && (type === 'income' || type === 'expense')) {
       query = query.eq('type', type);
     }
@@ -54,7 +61,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform into standard frontend interface
-    const formatted = data.map((tx: any) => {
+    const formatted = (data || []).map((tx: any) => {
       let total = 0;
       const items = (tx.transaction_items || []).map((item: any) => {
         const subtotal = Number(item.quantity) * Number(item.unit_price);
@@ -110,9 +117,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Get primary user profile
-    const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-    const userId = profiles?.[0]?.id;
+    // 1. Get active user profile
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
     if (!userId) {
       return NextResponse.json(
         { success: false, error: 'Pengguna tidak ditemukan.' },
@@ -120,12 +127,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Check or create product
+    // 2. Check or create product scoped to this user
     let productId = '';
     let isNewProduct = false;
     const { data: existingProduct } = await supabase
       .from('products')
       .select('id, name')
+      .eq('user_id', userId)
       .ilike('name', productName.trim())
       .limit(1);
 
@@ -140,10 +148,12 @@ export async function POST(req: NextRequest) {
           name: productName.trim(),
           default_unit: unit,
         })
-        .select('id')
+        .select()
         .single();
 
-      if (prodErr) throw prodErr;
+      if (prodErr || !newProd) {
+        throw new Error(`Gagal membuat produk baru: ${prodErr?.message}`);
+      }
       productId = newProd.id;
     }
 

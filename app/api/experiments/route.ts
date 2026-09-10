@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { callGemini } from '@/lib/ai/gemini';
 import { getExperimentVerdictPrompt } from '@/lib/ai/prompts';
+import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
+    const { profile } = await getActiveUserProfile();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('experiments')
       .select(`
         id,
@@ -23,15 +25,21 @@ export async function GET(req: NextRequest) {
           id,
           name
         ),
-        experiment_results (
+        experiment_logs (
           id,
-          recorded_at,
-          current_metric,
-          evaluation_status,
-          ai_verdict_text
+          day_number,
+          recorded_date,
+          metric_value,
+          notes
         )
       `)
       .order('started_at', { ascending: false });
+
+    if (profile?.id) {
+      query = query.eq('user_id', profile.id);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -64,8 +72,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { title, productName, targetMargin = 20 } = body;
 
-    const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-    const userId = profiles?.[0]?.id;
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
     if (!userId) {
       return NextResponse.json({ success: false, error: 'User tidak ditemukan.' }, { status: 404 });
     }

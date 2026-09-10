@@ -84,6 +84,9 @@ export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
               } catch (e) {
                 console.warn('SignOut info:', e);
               }
+              if (typeof window !== 'undefined') {
+                localStorage.clear();
+              }
               window.location.href = '/login';
             }
           }}

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
-    const { data: profile, error } = await supabase.from('profiles').select('*').limit(1).single();
+    const { profile } = await getActiveUserProfile();
 
-    if (error) throw error;
+    if (!profile) {
+      return NextResponse.json({ success: false, error: 'Profil tidak ditemukan.' }, { status: 404 });
+    }
 
     // Merge app_settings JSONB if present
     const appSettings = profile?.app_settings || {};
@@ -48,9 +50,8 @@ export async function PATCH(req: NextRequest) {
       analysis_period,
     } = body;
 
-    const { data: profiles } = await supabase.from('profiles').select('id, app_settings').limit(1);
-    const userProfile = profiles?.[0];
-    const userId = userProfile?.id;
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: 'Profil tidak ditemukan.' }, { status: 404 });
@@ -84,7 +85,6 @@ export async function PATCH(req: NextRequest) {
       if (error) throw error;
       updatedData = data;
     } catch (updateErr) {
-      // Fallback: update baseline columns + store extended settings in app_settings JSONB or return merged
       console.warn('Extended columns update fallback:', updateErr);
       const fallbackUpdates: any = {
         updated_at: new Date().toISOString(),
@@ -93,7 +93,7 @@ export async function PATCH(req: NextRequest) {
         business_type: updates.business_type,
         margin_alert_threshold: updates.margin_alert_threshold,
         app_settings: {
-          ...(userProfile?.app_settings || {}),
+          ...(profile?.app_settings || {}),
           low_stock_threshold: updates.low_stock_threshold,
           supplier_cost_increase_threshold: updates.supplier_cost_increase_threshold,
           sound_alert_enabled: updates.sound_alert_enabled,
@@ -111,8 +111,7 @@ export async function PATCH(req: NextRequest) {
         .eq('id', userId)
         .select()
         .single();
-
-      updatedData = fbData || { ...userProfile, ...updates };
+      updatedData = fbData || { ...profile, ...updates };
     }
 
     return NextResponse.json({ success: true, data: updatedData });

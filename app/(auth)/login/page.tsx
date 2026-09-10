@@ -46,10 +46,11 @@ export default function LoginPage() {
     setSuccessMessage('Masuk sebagai akun demo Pak Budi (Kios Berkah Sayur)...');
 
     try {
-      // Direct redirect to dashboard with active demo credentials
+      // Clear any prior active session so demo doesn't conflict
+      await supabase.auth.signOut();
       setTimeout(() => {
-        router.push('/dashboard');
-      }, 800);
+        window.location.href = '/dashboard';
+      }, 600);
     } catch (e: any) {
       setErrorMessage(e.message || 'Gagal masuk akun demo.');
       setIsLoading(false);
@@ -64,7 +65,7 @@ export default function LoginPage() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
@@ -74,8 +75,8 @@ export default function LoginPage() {
 
       setSuccessMessage('Login berhasil! Mengalihkan ke Beranda...');
       setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+        window.location.href = '/dashboard';
+      }, 700);
     } catch (err: any) {
       setErrorMessage(err.message || 'Email atau kata sandi tidak valid.');
     } finally {
@@ -89,7 +90,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    if (!ownerName || !businessName) {
+    if (!ownerName.trim() || !businessName.trim()) {
       setErrorMessage('Harap lengkapi nama pemilik dan nama toko.');
       setIsLoading(false);
       return;
@@ -97,12 +98,12 @@ export default function LoginPage() {
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
-            owner_name: ownerName,
-            business_name: businessName,
+            owner_name: ownerName.trim(),
+            business_name: businessName.trim(),
             business_type: businessType,
           },
         },
@@ -112,10 +113,47 @@ export default function LoginPage() {
         throw error;
       }
 
-      setSuccessMessage('Pendaftaran berhasil! Mengalihkan ke Beranda...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1200);
+      // Upsert profile record explicitly to guarantee immediate availability
+      if (data.user) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            owner_name: ownerName.trim(),
+            business_name: businessName.trim(),
+            business_type: businessType,
+            margin_alert_threshold: 20,
+          });
+        } catch (_) {}
+      }
+
+      // If session is already created (email confirmation disabled in Supabase), proceed directly
+      if (data.session) {
+        setSuccessMessage(`Selamat datang, ${ownerName}! Pendaftaran berhasil.`);
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 800);
+        return;
+      }
+
+      // If auto-confirm is enabled, try automatic sign in
+      try {
+        const loginAttempt = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (loginAttempt.data?.session) {
+          setSuccessMessage(`Selamat datang, ${ownerName}! Pendaftaran berhasil.`);
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 800);
+          return;
+        }
+      } catch (_) {}
+
+      // If email confirmation is required by Supabase settings
+      setSuccessMessage('Pendaftaran berhasil! Jika diperlukan konfirmasi email, silakan periksa kotak masuk Anda, lalu masuk.');
+      setMode('login');
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal mendaftar akun baru.');
     } finally {
