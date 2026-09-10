@@ -260,6 +260,17 @@ export default function ProdukPage() {
               </button>
             </div>
 
+            {/* Catatan Jalur Opsional */}
+            <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs text-emerald-900 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Jalur Opsional (Sebelum Transaksi)</span>
+              </div>
+              <p className="text-[11px] text-emerald-700 leading-relaxed">
+                Anda tidak wajib mendaftarkan produk di sini. Produk akan <strong>otomatis dibuatkan dan aktif</strong> saat Pak Roy menyebutkan transaksi di menu <strong>Catat Transaksi</strong>.
+              </p>
+            </div>
+
             {addError && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
                 {addError}
@@ -426,10 +437,14 @@ export default function ProdukPage() {
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xs transition-all cursor-pointer active:scale-95"
+            title="Jalur opsional: Produk biasanya otomatis terbentuk saat Anda mencatat transaksi suara"
+            className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold px-3.5 py-2.5 rounded-2xl border border-slate-200/90 shadow-2xs transition-all cursor-pointer active:scale-95"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-slate-500" />
             <span>Tambah Produk</span>
+            <span className="text-[10px] bg-slate-200/80 text-slate-600 px-1.5 py-0.5 rounded-md font-semibold">
+              Opsional
+            </span>
           </button>
         </div>
       </div>

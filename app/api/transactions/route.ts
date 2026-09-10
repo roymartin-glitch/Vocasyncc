@@ -112,15 +112,17 @@ export async function POST(req: NextRequest) {
 
     // 2. Check or create product
     let productId = '';
+    let isNewProduct = false;
     const { data: existingProduct } = await supabase
       .from('products')
-      .select('id')
+      .select('id, name')
       .ilike('name', productName.trim())
       .limit(1);
 
     if (existingProduct && existingProduct.length > 0) {
       productId = existingProduct[0].id;
     } else {
+      isNewProduct = true;
       const { data: newProd, error: prodErr } = await supabase
         .from('products')
         .insert({
@@ -210,11 +212,13 @@ export async function POST(req: NextRequest) {
       success: true,
       data: {
         id: newTx.id,
-        type,
+        productId,
         productName,
+        type,
         quantity: qty,
         unit,
         totalAmount: total,
+        isNewProduct,
         fifoCostPrice: fifoResult?.weightedCostPrice || null,
       },
     });

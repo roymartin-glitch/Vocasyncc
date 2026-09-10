@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
+import { findSimilarProduct } from '@/lib/calculations/financial';
 
 export default function CatatPage() {
   const router = useRouter();
@@ -41,8 +42,18 @@ export default function CatatPage() {
     unit: string;
     totalAmount: number;
     type: string;
+    isNewProduct?: boolean;
   } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // 1-Tap Similar Product Confirmation Modal
+  const [similarityPrompt, setSimilarityPrompt] = useState<{
+    isOpen: boolean;
+    candidateName: string;
+    existingProduct: { id: string; name: string };
+    parsedData: any;
+    rawVoiceText: string;
+  } | null>(null);
 
   // Autocomplete suggestions
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
@@ -82,7 +93,68 @@ export default function CatatPage() {
     setTotalAmount((qty * price).toString());
   };
 
-  // HANDS-FREE VOICE PIPELINE: Parse via Gemini -> AUTO-SAVE IMMEDIATELY TO SUPABASE
+  // Save transaction executor (supports auto-creating products & opening stock batches)
+  const executeSaveTransaction = async (
+    finalProductName: string,
+    d: any,
+    transcript: string,
+    forceNew: boolean = false
+  ) => {
+    setIsAutoSaving(true);
+    try {
+      const saveRes = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: d.type || 'income',
+          productName: finalProductName,
+          quantity: d.quantity || 1,
+          unit: d.unit || 'kg',
+          totalAmount: d.total_price || 0,
+          source: 'voice',
+          rawVoiceText: transcript,
+        }),
+      });
+
+      const saveResult = await saveRes.json();
+      if (saveResult.success) {
+        const isNew = Boolean(saveResult.data?.isNewProduct || forceNew);
+        setAutoSavedInfo({
+          productName: finalProductName,
+          quantity: d.quantity || 1,
+          unit: d.unit || 'kg',
+          totalAmount: d.total_price || 0,
+          type: d.type || 'income',
+          isNewProduct: isNew,
+        });
+        setShowSuccessToast(true);
+
+        // Background update product list so next transactions recognize it
+        fetch('/api/product-analysis')
+          .then((r) => r.json())
+          .then((pData) => {
+            if (pData.success && pData.data?.length > 0) {
+              setProductsList(pData.data);
+            }
+          })
+          .catch(() => {});
+
+        // Redirect after brief confirmation
+        setTimeout(() => {
+          router.push(isNew ? '/produk' : '/dashboard');
+        }, 1900);
+      } else {
+        alert(saveResult.error || 'Gagal menyimpan transaksi.');
+      }
+    } catch (saveErr) {
+      console.error('Error executing save transaction:', saveErr);
+      alert('Terjadi kesalahan saat menyimpan transaksi ke database.');
+    } finally {
+      setIsAutoSaving(false);
+    }
+  };
+
+  // HANDS-FREE VOICE PIPELINE: Parse via Gemini -> Similarity Check -> Auto-Save
   const processVoiceWithGeminiAndAutoSave = async (transcript: string) => {
     setIsProcessingVoice(true);
     setRawVoiceText(`"${transcript}"`);
@@ -105,49 +177,42 @@ export default function CatatPage() {
         setTotalAmount(d.total_price?.toString() || '0');
         setSource('voice');
 
-        // Step 2: Auto-save immediately to Supabase without manual button click!
         setIsProcessingVoice(false);
-        setIsAutoSaving(true);
 
-        const saveRes = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: d.type || 'income',
-            productName: d.product_name,
-            quantity: d.quantity || 1,
-            unit: d.unit || 'kg',
-            totalAmount: d.total_price || 0,
-            source: 'voice',
+        // Step 2: Cek kemiripan produk dengan master data yang sudah ada
+        const simCheck = findSimilarProduct(d.product_name, productsList);
+
+        // KASUS A: Nama mirip tetapi tidak persis sama -> Tampilkan konfirmasi 1 ketukan!
+        if (simCheck.isSimilar && simCheck.matchedProduct) {
+          setSimilarityPrompt({
+            isOpen: true,
+            candidateName: d.product_name,
+            existingProduct: simCheck.matchedProduct,
+            parsedData: d,
             rawVoiceText: transcript,
-          }),
-        });
-
-        const saveResult = await saveRes.json();
-        if (saveResult.success) {
-          setAutoSavedInfo({
-            productName: d.product_name,
-            quantity: d.quantity || 1,
-            unit: d.unit || 'kg',
-            totalAmount: d.total_price || 0,
-            type: d.type || 'income',
           });
-          setShowSuccessToast(true);
-
-          // Redirect to dashboard after brief confirmation
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1800);
-        } else {
-          alert(saveResult.error || 'Gagal menyimpan transaksi otomatis.');
+          return;
         }
+
+        // KASUS B: Nama persis sama (sudah ada) -> Simpan otomatis langsung
+        if (simCheck.isExact && simCheck.matchedProduct) {
+          await executeSaveTransaction(
+            simCheck.matchedProduct.name,
+            d,
+            transcript,
+            false
+          );
+          return;
+        }
+
+        // KASUS C: Produk baru (belum pernah ada sama sekali) -> Otomatis buat produk & simpan instan!
+        await executeSaveTransaction(d.product_name, d, transcript, true);
       }
     } catch (err) {
       console.error('Error in voice auto-save flow:', err);
       alert('Gagal memproses suara. Silakan coba kembali.');
     } finally {
       setIsProcessingVoice(false);
-      setIsAutoSaving(false);
     }
   };
 
@@ -256,13 +321,26 @@ export default function CatatPage() {
 
       {/* Hands-free Auto-Saved Notification */}
       {showSuccessToast && autoSavedInfo && (
-        <div className="bg-emerald-800 text-white p-5 rounded-3xl shadow-xl space-y-2 animate-in fade-in slide-in-from-top-4 duration-300 border border-emerald-600">
+        <div className="bg-emerald-800 text-white p-5 rounded-3xl shadow-xl space-y-2.5 animate-in fade-in slide-in-from-top-4 duration-300 border border-emerald-600">
           <div className="flex items-center gap-2.5">
-            <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
+            {autoSavedInfo.isNewProduct ? (
+              <Sparkles className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
+            ) : (
+              <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
+            )}
             <h4 className="font-extrabold text-sm tracking-tight">
-              Otomatis Tersimpan ke Supabase Tanpa Klik!
+              {autoSavedInfo.isNewProduct
+                ? 'Produk Baru Otomatis Terbentuk & Tersimpan!'
+                : 'Otomatis Tersimpan ke Supabase Tanpa Klik!'}
             </h4>
           </div>
+
+          {autoSavedInfo.isNewProduct && (
+            <p className="text-xs text-emerald-100 bg-emerald-900/60 p-2.5 rounded-xl border border-emerald-700/60 leading-relaxed">
+              Pak Roy tidak perlu repot setup tabel produk. Produk <strong>{autoSavedInfo.productName}</strong> langsung masuk ke <strong>Produk Saya</strong> dan batch stoknya telah otomatis aktif!
+            </p>
+          )}
+
           <div className="bg-emerald-950/50 p-3 rounded-xl text-xs flex items-center justify-between">
             <div>
               <span className="font-bold text-white text-sm">{autoSavedInfo.productName}</span>
@@ -277,8 +355,95 @@ export default function CatatPage() {
           </div>
           <p className="text-[11px] text-emerald-200 flex items-center gap-1.5">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Mengalihkan kembali ke Beranda untuk melihat pembaruan margin...</span>
+            <span>
+              {autoSavedInfo.isNewProduct
+                ? 'Mengalihkan ke halaman Produk Saya...'
+                : 'Mengalihkan kembali ke Beranda untuk melihat pembaruan margin...'}
+            </span>
           </p>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI SATU KETUKAN: APAKAH INI PRODUK YANG SAMA? */}
+      {similarityPrompt?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="space-y-2 text-center">
+              <div className="inline-flex p-3 bg-amber-100 text-amber-800 rounded-2xl">
+                <HelpCircle className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                Apakah ini produk yang sama?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Anda menyebutkan <strong className="text-slate-900">&quot;{similarityPrompt.candidateName}&quot;</strong>. Sistem mendeteksi nama ini mirip dengan produk yang sudah ada di toko Anda:
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              {/* Opsi 1: Pakai produk yang sudah ada (Satu Ketukan) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const { existingProduct, parsedData, rawVoiceText } = similarityPrompt;
+                  setSimilarityPrompt(null);
+                  executeSaveTransaction(existingProduct.name, parsedData, rawVoiceText, false);
+                }}
+                className="w-full p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border-2 border-emerald-500/80 text-left transition-all group cursor-pointer shadow-xs active:scale-98 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">✅</span>
+                  <div>
+                    <div className="text-xs font-black text-emerald-900 group-hover:text-emerald-950">
+                      {similarityPrompt.existingProduct.name}
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-medium">
+                      Gunakan produk yang sudah ada di toko
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-200/70 px-2.5 py-1 rounded-xl">
+                  Sudah Ada
+                </span>
+              </button>
+
+              {/* Opsi 2: Buat produk baru terpisah (Satu Ketukan) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const { candidateName, parsedData, rawVoiceText } = similarityPrompt;
+                  setSimilarityPrompt(null);
+                  executeSaveTransaction(candidateName, parsedData, rawVoiceText, true);
+                }}
+                className="w-full p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-300/80 text-left transition-all group cursor-pointer shadow-2xs active:scale-98 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">➕</span>
+                  <div>
+                    <div className="text-xs font-black text-slate-800 group-hover:text-slate-900">
+                      {similarityPrompt.candidateName}
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-medium">
+                      Simpan sebagai produk baru terpisah
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-600 bg-slate-200/80 px-2.5 py-1 rounded-xl">
+                  Produk Baru
+                </span>
+              </button>
+            </div>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => setSimilarityPrompt(null)}
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+              >
+                Batal & ulangi bicara
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -343,6 +508,33 @@ export default function CatatPage() {
               Contoh Percakapan Transaksi Cepat:
             </span>
             <div className="flex flex-wrap justify-center gap-2">
+              {/* Preset 1: Beli Kangkung (Produk Baru Otomatis) */}
+              <button
+                type="button"
+                disabled={isProcessingVoice || isAutoSaving}
+                onClick={() =>
+                  processVoiceWithGeminiAndAutoSave('Beli kangkung 10 kg bayar 100 ribu')
+                }
+                className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>&quot;Beli kangkung 10 kg bayar 100 ribu&quot; (Produk Baru)</span>
+              </button>
+
+              {/* Preset 2: Beli Bawang Merah Brebes (Nama Mirip -> Konfirmasi 1 Ketukan) */}
+              <button
+                type="button"
+                disabled={isProcessingVoice || isAutoSaving}
+                onClick={() =>
+                  processVoiceWithGeminiAndAutoSave('Beli bawang merah brebes 5 kg bayar 150 ribu')
+                }
+                className="text-[11px] bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold border border-amber-300/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
+              >
+                <HelpCircle className="w-3 h-3 text-amber-600" />
+                <span>&quot;Beli bawang merah brebes 5 kg bayar 150 ribu&quot; (Uji Nama Mirip)</span>
+              </button>
+
+              {/* Preset 3: Jual Bawang Merah (Transaksi Normal) */}
               <button
                 type="button"
                 disabled={isProcessingVoice || isAutoSaving}
@@ -353,6 +545,8 @@ export default function CatatPage() {
               >
                 &quot;Jual bawang merah 5 kg dapat 200 ribu&quot;
               </button>
+
+              {/* Preset 4: Kulakan Cabai Rawit */}
               <button
                 type="button"
                 disabled={isProcessingVoice || isAutoSaving}

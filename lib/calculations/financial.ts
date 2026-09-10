@@ -168,3 +168,138 @@ export function isStockLow(
   const percentage = (remainingQty / initialOrReferenceQty) * 100;
   return percentage <= thresholdPercent;
 }
+
+/**
+ * Normalisasi nama produk untuk perbandingan ramah pedagang pasar
+ */
+export function normalizeProductName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\b(cabe|cabee)\b/g, 'cabai')
+    .replace(/\b(bwg|bwang)\b/g, 'bawang')
+    .replace(/\b(klo|kilo|kilogram)\b/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Menghitung skor kemiripan antara dua nama produk (0.0 sampai 1.0)
+ * Menggunakan kombinasi token overlap (Jaccard) dan Levenshtein distance
+ */
+export function calculateProductSimilarity(nameA: string, nameB: string): number {
+  const normA = normalizeProductName(nameA);
+  const normB = normalizeProductName(nameB);
+
+  if (!normA || !normB) return 0;
+  if (normA === normB) return 1.0;
+
+  // Substring inclusion check (misal "bawang merah" di dalam "bawang merah brebes")
+  if (normA.includes(normB) || normB.includes(normA)) {
+    const minLen = Math.min(normA.length, normB.length);
+    const maxLen = Math.max(normA.length, normB.length);
+    const substringScore = minLen / maxLen;
+    return Math.max(0.75, substringScore);
+  }
+
+  // Token Jaccard similarity
+  const tokensA = normA.split(' ').filter(Boolean);
+  const tokensB = normB.split(' ').filter(Boolean);
+  const setB = new Set(tokensB);
+
+  const intersection = tokensA.filter((t) => setB.has(t));
+  const union = new Set([...tokensA, ...tokensB]);
+  const jaccard = union.size > 0 ? intersection.length / union.size : 0;
+
+  if (jaccard >= 0.5) {
+    return jaccard;
+  }
+
+  // Levenshtein distance untuk typo
+  const m = normA.length;
+  const n = normB.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (normA[i - 1] === normB[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+
+  const levDistance = dp[m][n];
+  const maxLen = Math.max(m, n);
+  const levSimilarity = maxLen > 0 ? (maxLen - levDistance) / maxLen : 0;
+
+  return Math.max(jaccard, levSimilarity);
+}
+
+export interface SimilarProductResult {
+  isExact: boolean;
+  isSimilar: boolean;
+  matchedProduct?: { id: string; name: string };
+  similarityScore: number;
+}
+
+/**
+ * Mencari apakah nama produk yang diucapkan memiliki padanan persis atau mirip
+ * di daftar produk yang sudah dimiliki pedagang.
+ */
+export function findSimilarProduct(
+  candidateName: string,
+  existingProducts: Array<{ id: string; name: string }>
+): SimilarProductResult {
+  const normCandidate = normalizeProductName(candidateName);
+  if (!normCandidate || !existingProducts || existingProducts.length === 0) {
+    return { isExact: false, isSimilar: false, similarityScore: 0 };
+  }
+
+  // 1. Cek Exact Match (Persis sama setelah normalisasi)
+  for (const prod of existingProducts) {
+    if (normalizeProductName(prod.name) === normCandidate) {
+      return {
+        isExact: true,
+        isSimilar: false,
+        matchedProduct: prod,
+        similarityScore: 1.0,
+      };
+    }
+  }
+
+  // 2. Cek Kemiripan Tertinggi (Fuzzy / Substring / Token overlap)
+  let bestMatch: { id: string; name: string } | undefined;
+  let highestScore = 0;
+
+  for (const prod of existingProducts) {
+    const score = calculateProductSimilarity(candidateName, prod.name);
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = prod;
+    }
+  }
+
+  // Ambang batas kemiripan ramah pedagang (>= 0.60)
+  if (highestScore >= 0.60 && bestMatch) {
+    return {
+      isExact: false,
+      isSimilar: true,
+      matchedProduct: bestMatch,
+      similarityScore: Math.round(highestScore * 100) / 100,
+    };
+  }
+
+  return {
+    isExact: false,
+    isSimilar: false,
+    similarityScore: Math.round(highestScore * 100) / 100,
+  };
+}
+
