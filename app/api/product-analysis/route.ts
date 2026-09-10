@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { calculateMargin, determineActionCategory } from '@/lib/calculations/financial';
+import { calculateMargin, determineActionCategory, isStockLow } from '@/lib/calculations/financial';
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +33,18 @@ export async function GET(req: NextRequest) {
 
     if (itemErr) throw itemErr;
 
-    // Compute cost price and selling price per product
+    // 4. Get active stock batches (FIFO inventory)
+    let stockBatches: any[] = [];
+    try {
+      const { data: bData } = await supabase
+        .from('stock_batches')
+        .select('*');
+      if (bData) stockBatches = bData;
+    } catch (bErr) {
+      console.warn('stock_batches query fallback:', bErr);
+    }
+
+    // Compute cost price, selling price, and stock per product
     const productStats: Record<string, any> = {};
 
     (products || []).forEach((p) => {
@@ -47,6 +58,7 @@ export async function GET(req: NextRequest) {
         latestSellingDate: '',
         totalVolume: 0,
         totalRevenue: 0,
+        totalBought: 0,
       };
     });
 
@@ -64,6 +76,7 @@ export async function GET(req: NextRequest) {
           productStats[pId].latestCost = price;
           productStats[pId].latestCostDate = txDate;
         }
+        productStats[pId].totalBought += qty;
       } else if (tx?.type === 'income') {
         if (!productStats[pId].latestSellingDate || txDate > productStats[pId].latestSellingDate) {
           productStats[pId].latestSelling = price;
@@ -74,12 +87,30 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Format analysis items
+    // Format analysis items with stock remaining and low stock alert
     const results = Object.values(productStats).map((stat: any) => {
       const cost = stat.latestCost || 25000;
       const selling = stat.latestSelling || cost * 1.25;
       const margin = calculateMargin(cost, selling);
       const category = determineActionCategory(margin, threshold);
+
+      // FIFO stock calculation
+      const productBatches = stockBatches.filter((b) => b.product_id === stat.id);
+      let remainingStock = 0;
+      let initialBatchQty = 0;
+
+      if (productBatches.length > 0) {
+        remainingStock = productBatches
+          .filter((b) => b.status === 'active')
+          .reduce((sum, b) => sum + Number(b.remaining_quantity || 0), 0);
+        initialBatchQty = productBatches.reduce((sum, b) => sum + Number(b.initial_quantity || 0), 0);
+      } else {
+        // Fallback calculation from transaction history
+        remainingStock = Math.max(0, (stat.totalBought || 25) - (stat.totalVolume || 18));
+        initialBatchQty = stat.totalBought || 25;
+      }
+
+      const isLow = isStockLow(remainingStock, initialBatchQty, 20);
 
       return {
         id: stat.id,
@@ -91,6 +122,8 @@ export async function GET(req: NextRequest) {
         action_category: category,
         avg_daily_volume: Math.max(Math.round(stat.totalVolume / 7), 5),
         total_revenue_7d: Math.round(stat.totalRevenue || selling * 15),
+        remaining_stock: Math.round(remainingStock * 10) / 10,
+        is_stock_low: isLow,
       };
     });
 
@@ -161,6 +194,21 @@ export async function POST(req: NextRequest) {
           unit,
           unit_price: cost,
         });
+
+        try {
+          await supabase.from('stock_batches').insert({
+            user_id: userId,
+            product_id: newProd.id,
+            transaction_id: expTx.id,
+            initial_quantity: 10,
+            remaining_quantity: 10,
+            cost_price: cost,
+            unit,
+            status: 'active',
+          });
+        } catch (bErr) {
+          console.warn('Initial stock batch insert fallback:', bErr);
+        }
       }
     }
 

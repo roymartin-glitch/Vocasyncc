@@ -520,6 +520,17 @@ export default function ProdukPage() {
                       <p className="text-xs text-slate-400 mt-0.5">
                         Rata-rata {p.avg_daily_volume} {p.unit}/hari • Total Penjualan 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
                       </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1 ${
+                          p.is_stock_low
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          <span>Stok tersisa:</span>
+                          <strong className="font-black">{p.remaining_stock ?? 10} {p.unit}</strong>
+                          {p.is_stock_low && <span className="text-[10px] bg-amber-200 text-amber-950 px-1 rounded font-black">⚠️ Menipis</span>}
+                        </span>
+                      </div>
                     </div>
 
                     <span
@@ -626,10 +637,23 @@ export default function ProdukPage() {
                     {selectedProduct.margin_percentage}%
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2">
+                <div className="flex justify-between items-center py-2 border-b border-slate-100">
                   <span className="text-slate-500">Saran VokaSync:</span>
                   <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase border border-slate-200/70">
                     {getActionBadge(selectedProduct.action_category).label}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-slate-500">Stok Tersisa Saat Ini:</span>
+                  <span
+                    className={`font-black px-2.5 py-0.5 rounded-md text-xs ${
+                      selectedProduct.is_stock_low
+                        ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                        : 'bg-slate-100 text-slate-800 border border-slate-200'
+                    }`}
+                  >
+                    {selectedProduct.remaining_stock ?? 10} {selectedProduct.unit}
+                    {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Kulakan Segera)' : ' (Cukup)'}
                   </span>
                 </div>
               </div>

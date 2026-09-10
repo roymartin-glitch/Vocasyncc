@@ -238,3 +238,28 @@ DROP POLICY IF EXISTS "Users can delete own experiment results" ON public.experi
 CREATE POLICY "Users can delete own experiment results" ON public.experiment_results FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.experiments WHERE public.experiments.id = public.experiment_results.experiment_id AND public.experiments.user_id = auth.uid())
 );
+
+-- ------------------------------------------------------------------------------
+-- 8. TABEL STOCK_BATCHES (FIFO Inventory Tracking)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.stock_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
+  initial_quantity NUMERIC NOT NULL CHECK (initial_quantity > 0),
+  remaining_quantity NUMERIC NOT NULL CHECK (remaining_quantity >= 0),
+  cost_price NUMERIC NOT NULL CHECK (cost_price >= 0),
+  unit TEXT NOT NULL DEFAULT 'kg',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'depleted')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_batches_fifo ON public.stock_batches(product_id, status, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_stock_batches_user ON public.stock_batches(user_id, status);
+
+ALTER TABLE public.stock_batches ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own stock batches" ON public.stock_batches;
+CREATE POLICY "Users can manage own stock batches" ON public.stock_batches FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+

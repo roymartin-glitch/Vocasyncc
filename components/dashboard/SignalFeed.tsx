@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Radio } from 'lucide-react';
 import { AIInsight } from '@/types';
 
@@ -9,6 +9,19 @@ interface SignalFeedProps {
 }
 
 export function SignalFeed({ signals }: SignalFeedProps) {
+  useEffect(() => {
+    const hasLowStockWarning = signals.some(
+      (sig) => sig.severity === 'yellow' && sig.message.toLowerCase().includes('stok')
+    );
+    if (hasLowStockWarning && typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate?.([200, 100, 200]);
+      } catch {
+        // Ignore devices that block vibration without user gesture
+      }
+    }
+  }, [signals]);
+
   const getSeverityDot = (sev: string) => {
     switch (sev) {
       case 'red':

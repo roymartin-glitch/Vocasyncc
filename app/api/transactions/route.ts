@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getFIFOCostPrice } from '@/lib/calculations/financial';
 
 export async function GET(req: NextRequest) {
   try {
@@ -164,6 +165,47 @@ export async function POST(req: NextRequest) {
 
     if (itemErr) throw itemErr;
 
+    // 5. FIFO Stock Batch Tracking
+    let fifoResult = null;
+    try {
+      if (type === 'expense') {
+        // Transaksi Beli (Kulakan): Buka batch stok baru
+        await supabase.from('stock_batches').insert({
+          user_id: userId,
+          product_id: productId,
+          transaction_id: newTx.id,
+          initial_quantity: qty,
+          remaining_quantity: qty,
+          cost_price: Math.round(unitPrice),
+          unit,
+          status: 'active',
+        });
+      } else if (type === 'income') {
+        // Transaksi Jual (Penjualan): Kurangi sisa stok dari batch terlama (FIFO)
+        const { data: activeBatches } = await supabase
+          .from('stock_batches')
+          .select('*')
+          .eq('product_id', productId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: true });
+
+        if (activeBatches && activeBatches.length > 0) {
+          fifoResult = getFIFOCostPrice(productId, qty, activeBatches);
+          for (const d of fifoResult.batchDeductions) {
+            await supabase
+              .from('stock_batches')
+              .update({
+                remaining_quantity: d.newRemainingQty,
+                status: d.status,
+              })
+              .eq('id', d.batchId);
+          }
+        }
+      }
+    } catch (batchErr) {
+      console.warn('Stock batch operation fallback:', batchErr);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -173,6 +215,7 @@ export async function POST(req: NextRequest) {
         quantity: qty,
         unit,
         totalAmount: total,
+        fifoCostPrice: fifoResult?.weightedCostPrice || null,
       },
     });
   } catch (err: any) {

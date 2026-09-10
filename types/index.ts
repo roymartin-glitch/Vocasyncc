@@ -102,6 +102,21 @@ export interface ExperimentResult {
 
 export type ProductActionCategory = 'dorong' | 'pertahankan' | 'perbaiki' | 'kurangi';
 
+export type StockBatchStatus = 'active' | 'depleted';
+
+export interface StockBatch {
+  id: string;
+  user_id: string;
+  product_id: string;
+  transaction_id?: string | null;
+  initial_quantity: number;
+  remaining_quantity: number;
+  cost_price: number;
+  unit: string;
+  status: StockBatchStatus;
+  created_at: string;
+}
+
 export interface ProductAnalysisItem {
   id: string;
   name: string;
@@ -112,6 +127,8 @@ export interface ProductAnalysisItem {
   action_category: ProductActionCategory;
   avg_daily_volume: number;
   total_revenue_7d: number;
+  remaining_stock?: number;
+  is_stock_low?: boolean;
 }
 
 export interface DashboardMetrics {

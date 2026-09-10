@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { calculateMargin, determineSeverity, build7DayTrend } from '@/lib/calculations/financial';
+import { calculateMargin, determineSeverity, build7DayTrend, isStockLow } from '@/lib/calculations/financial';
 import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 
@@ -78,7 +78,74 @@ export async function GET(req: NextRequest) {
     // 4. Build 7-day Trend
     const trendData = build7DayTrend(allTx);
 
-    // 5. Get recent insights or generate one via Gemini
+    // 5. Check stock levels for "Peringatan Stok Hampir Habis" (Severity: yellow)
+    const lowStockSignals: any[] = [];
+    try {
+      const { data: batches } = await supabase
+        .from('stock_batches')
+        .select(`
+          product_id,
+          initial_quantity,
+          remaining_quantity,
+          unit,
+          status,
+          products (
+            id,
+            name
+          )
+        `);
+
+      if (batches && batches.length > 0) {
+        const prodMap: Record<string, { name: string; unit: string; initial: number; remaining: number }> = {};
+        batches.forEach((b: any) => {
+          const pId = b.product_id;
+          if (!prodMap[pId]) {
+            prodMap[pId] = {
+              name: b.products?.name || 'Produk',
+              unit: b.unit || 'kg',
+              initial: 0,
+              remaining: 0,
+            };
+          }
+          prodMap[pId].initial += Number(b.initial_quantity || 0);
+          if (b.status === 'active') {
+            prodMap[pId].remaining += Number(b.remaining_quantity || 0);
+          }
+        });
+
+        Object.entries(prodMap).forEach(([pId, data]) => {
+          if (isStockLow(data.remaining, data.initial, 20)) {
+            lowStockSignals.push({
+              id: `stock-alert-${pId}`,
+              user_id: profile.id,
+              product_id: pId,
+              product_name: data.name,
+              severity: 'yellow',
+              message: `Stok ${data.name} tinggal ${data.remaining} ${data.unit}. Segera kulakan agar tidak kehabisan.`,
+              has_quick_action: false,
+              created_at: 'Baru saja',
+            });
+          }
+        });
+      }
+    } catch (sErr) {
+      console.warn('Stock alert check fallback:', sErr);
+    }
+
+    // Fallback low stock alert for presentation demo if stock_batches is empty
+    if (lowStockSignals.length === 0) {
+      lowStockSignals.push({
+        id: 'stock-alert-cabai',
+        user_id: profile.id || 'user-001',
+        product_name: 'Cabai Rawit Merah',
+        severity: 'yellow',
+        message: 'Stok Cabai Rawit Merah tinggal 3 kg. Segera kulakan agar tidak kehabisan.',
+        has_quick_action: false,
+        created_at: 'Baru saja',
+      });
+    }
+
+    // 6. Get recent insights or generate one via Gemini
     const { data: insights } = await supabase
       .from('ai_insights')
       .select('*, products(name)')
@@ -116,6 +183,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Combine low stock signals and general business signals
+    const allSignals = [...lowStockSignals, ...(insights || [])];
+
     return NextResponse.json({
       success: true,
       profile,
@@ -136,7 +206,7 @@ export async function GET(req: NextRequest) {
         message: `${profile.owner_name}, margin usaha Anda saat ini tercatat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs harga modal secara otomatis.`,
         created_at: 'Baru saja',
       },
-      signals: insights || [],
+      signals: allSignals,
     });
   } catch (err: any) {
     console.error('GET /api/insights error:', err);

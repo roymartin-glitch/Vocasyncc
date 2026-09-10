@@ -95,6 +95,8 @@ export const mockProducts: ProductAnalysisItem[] = [
     action_category: 'perbaiki',
     avg_daily_volume: 24,
     total_revenue_7d: 6720000,
+    remaining_stock: 12,
+    is_stock_low: false,
   },
   {
     id: 'prod-2',
@@ -106,6 +108,8 @@ export const mockProducts: ProductAnalysisItem[] = [
     action_category: 'dorong',
     avg_daily_volume: 18,
     total_revenue_7d: 6174000,
+    remaining_stock: 18,
+    is_stock_low: false,
   },
   {
     id: 'prod-3',
@@ -117,6 +121,8 @@ export const mockProducts: ProductAnalysisItem[] = [
     action_category: 'pertahankan',
     avg_daily_volume: 12,
     total_revenue_7d: 5040000,
+    remaining_stock: 3,
+    is_stock_low: true,
   },
   {
     id: 'prod-4',
@@ -128,6 +134,8 @@ export const mockProducts: ProductAnalysisItem[] = [
     action_category: 'pertahankan',
     avg_daily_volume: 8,
     total_revenue_7d: 1792000,
+    remaining_stock: 8,
+    is_stock_low: false,
   },
   {
     id: 'prod-5',
@@ -139,6 +147,8 @@ export const mockProducts: ProductAnalysisItem[] = [
     action_category: 'kurangi',
     avg_daily_volume: 3,
     total_revenue_7d: 588000,
+    remaining_stock: 2,
+    is_stock_low: true,
   },
 ];
 
