@@ -9,7 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import { TrendDayData } from '@/types';
 
@@ -26,10 +25,11 @@ export function TrendChart({ data }: TrendChartProps) {
 
   const formatCurrency = (val: number) => {
     if (val >= 1000000) {
-      return `${(val / 1000000).toFixed(1)}jt`;
+      const jt = (val / 1000000).toFixed(1).replace('.0', '').replace('.', ',');
+      return `${jt}jt`;
     }
     if (val >= 1000) {
-      return `${(val / 1000).toFixed(0)}rb`;
+      return `${Math.round(val / 1000)}rb`;
     }
     return val.toString();
   };
@@ -37,23 +37,15 @@ export function TrendChart({ data }: TrendChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 backdrop-blur-sm p-3 rounded-xl border border-slate-200 shadow-md text-xs">
-          <p className="font-semibold text-slate-800 mb-1.5">{label}</p>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-4 text-emerald-700">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                Pemasukan:
-              </span>
-              <span className="font-bold">Rp{payload[0]?.value?.toLocaleString('id-ID')}</span>
-            </div>
-            <div className="flex items-center justify-between gap-4 text-slate-600">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                Pengeluaran:
-              </span>
-              <span className="font-bold">Rp{payload[1]?.value?.toLocaleString('id-ID')}</span>
-            </div>
+        <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-200 shadow-lg text-xs space-y-1.5 font-bold">
+          <p className="text-slate-900 font-black">{label}</p>
+          <div className="flex items-center justify-between gap-4 text-[#00875A]">
+            <span>Uang Masuk:</span>
+            <span>Rp{(payload[0]?.value || 0).toLocaleString('id-ID')}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4 text-slate-600">
+            <span>Uang Keluar:</span>
+            <span>Rp{(payload[1]?.value || 0).toLocaleString('id-ID')}</span>
           </div>
         </div>
       );
@@ -63,58 +55,61 @@ export function TrendChart({ data }: TrendChartProps) {
 
   if (!isMounted) {
     return (
-      <div className="h-64 bg-slate-50/50 rounded-xl flex items-center justify-center text-xs text-slate-400 animate-pulse">
-        Memuat data grafik tren...
+      <div className="h-64 bg-slate-50/50 rounded-2xl flex items-center justify-center text-xs font-semibold text-slate-400 animate-pulse">
+        Memuat data grafik...
       </div>
     );
   }
 
   return (
-    <div className="w-full h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-          <XAxis
-            dataKey="dayName"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#64748B', fontSize: 12 }}
-            dy={8}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#94A3B8', fontSize: 11 }}
-            tickFormatter={formatCurrency}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            verticalAlign="top"
-            align="right"
-            iconType="circle"
-            wrapperStyle={{ paddingBottom: '12px', fontSize: '12px' }}
-            formatter={(value) => (
-              <span className="text-xs font-medium text-slate-600 mr-2">
-                {value === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-              </span>
-            )}
-          />
-          <Bar
-            dataKey="income"
-            name="income"
-            fill="#1A7A4A"
-            radius={[6, 6, 0, 0]}
-            maxBarSize={28}
-          />
-          <Bar
-            dataKey="expense"
-            name="expense"
-            fill="#94A3B8"
-            radius={[6, 6, 0, 0]}
-            maxBarSize={28}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="w-full">
+      {/* Custom Header & Legend matching screenshot 2 */}
+      <div className="flex items-center gap-5 mb-4 text-xs font-bold text-slate-700">
+        <div className="flex items-center gap-2">
+          <span className="w-3.5 h-3.5 rounded-full bg-[#00875A]" />
+          <span>Uang Masuk</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3.5 h-3.5 rounded-full bg-[#99D5B3]" />
+          <span>Uang Keluar</span>
+        </div>
+      </div>
+
+      <div className="h-64 sm:h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <XAxis
+              dataKey="dayName"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#334155', fontSize: 13, fontWeight: 700 }}
+              dy={10}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }}
+              tickFormatter={formatCurrency}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar
+              dataKey="income"
+              name="Uang Masuk"
+              fill="#00875A"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={28}
+            />
+            <Bar
+              dataKey="expense"
+              name="Uang Keluar"
+              fill="#99D5B3"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={28}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

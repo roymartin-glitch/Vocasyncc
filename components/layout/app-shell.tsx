@@ -65,7 +65,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col antialiased selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#F4F6F4] flex flex-col antialiased selection:bg-emerald-100 selection:text-emerald-900">
       {/* Sidebar for Desktop & Tablet */}
       <Sidebar
         businessName={businessName}
@@ -73,13 +73,13 @@ export function AppShell({ children }: AppShellProps) {
       />
 
       {/* Main Content Area (offset by sidebar width on desktop/tablet) */}
-      <div className="flex-1 flex flex-col md:pl-16 lg:pl-60 transition-all duration-300">
+      <div className="flex-1 flex flex-col md:pl-20 lg:pl-64 transition-all duration-300">
         <Header
           ownerName={ownerName}
           businessName={businessName}
         />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 pb-28 md:pb-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 px-4 md:px-8 pb-28 md:pb-12 max-w-7xl w-full">
           {children}
         </main>
       </div>

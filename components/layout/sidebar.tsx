@@ -1,13 +1,13 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Home,
+  LayoutGrid,
   PlusCircle,
-  BarChart3,
-  FlaskConical,
-  Clock,
+  Package,
+  History,
   Settings,
   LogOut,
   TrendingUp,
@@ -19,32 +19,31 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { name: 'Beranda', href: '/dashboard', icon: Home },
+  { name: 'Beranda', href: '/dashboard', icon: LayoutGrid },
   { name: 'Catat', href: '/catat', icon: PlusCircle },
-  { name: 'Produk Saya', href: '/produk', icon: BarChart3 },
-  { name: 'Coba & Pantau', href: '/eksperimen', icon: FlaskConical },
-  { name: 'Riwayat', href: '/riwayat', icon: Clock },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Barang', href: '/produk', icon: Package },
+  { name: 'Riwayat', href: '/riwayat', icon: History },
+  { name: 'Pengaturan', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:flex-col fixed top-0 left-0 h-screen z-30 bg-white border-r border-slate-200 transition-all duration-300 md:w-16 lg:w-60">
+    <aside className="hidden md:flex md:flex-col fixed top-0 left-0 h-screen z-30 bg-[#0A2619] border-r border-[#123825] transition-all duration-300 md:w-20 lg:w-64 select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-4 lg:px-6 border-b border-slate-100 justify-center lg:justify-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center text-white shadow-sm flex-shrink-0">
-          <TrendingUp className="w-5 h-5 text-emerald-100" />
+      <div className="h-20 flex items-center px-4 lg:px-6 border-b border-[#123825] justify-center lg:justify-start gap-3.5">
+        <div className="w-11 h-11 rounded-2xl bg-[#22C55E] flex items-center justify-center text-[#0A2619] shadow-md flex-shrink-0">
+          <TrendingUp className="w-6 h-6 stroke-[2.5]" />
         </div>
         <div className="hidden lg:block overflow-hidden">
-          <h1 className="font-bold text-slate-800 text-base tracking-tight leading-tight">VokaSync</h1>
-          <p className="text-xs text-slate-400 truncate max-w-[130px]">{businessName}</p>
+          <h1 className="font-extrabold text-white text-lg tracking-tight leading-tight">VokaSync</h1>
+          <p className="text-xs text-emerald-200/70 truncate max-w-[150px] font-medium">{businessName}</p>
         </div>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 py-4 px-2 lg:px-3 space-y-1.5 overflow-y-auto">
+      <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
@@ -53,16 +52,16 @@ export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 justify-center lg:justify-start ${
+              className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl font-bold text-base transition-all duration-150 justify-center lg:justify-start ${
                 isActive
-                  ? 'bg-emerald-50 text-emerald-800 font-semibold shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-[#22C55E] text-[#0A2619] shadow-md'
+                  : 'text-emerald-100/80 hover:bg-[#123825] hover:text-white'
               }`}
               title={item.name}
             >
               <Icon
-                className={`w-5 h-5 flex-shrink-0 ${
-                  isActive ? 'text-emerald-700' : 'text-slate-400 group-hover:text-slate-600'
+                className={`w-6 h-6 flex-shrink-0 ${
+                  isActive ? 'text-[#0A2619] stroke-[2.5]' : 'text-emerald-200/70'
                 }`}
               />
               <span className="hidden lg:inline truncate">{item.name}</span>
@@ -72,7 +71,7 @@ export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
       </nav>
 
       {/* Bottom Action / Logout */}
-      <div className="p-3 border-t border-slate-100">
+      <div className="p-4 border-t border-[#123825]">
         <button
           type="button"
           onClick={async () => {
@@ -86,10 +85,10 @@ export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
               window.location.href = '/login';
             }
           }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors justify-center lg:justify-start cursor-pointer"
-          title="Keluar Akun"
+          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-base font-bold text-emerald-100/70 hover:bg-rose-950/40 hover:text-rose-400 transition-colors justify-center lg:justify-start cursor-pointer"
+          title="Keluar"
         >
-          <LogOut className="w-5 h-5 flex-shrink-0 text-slate-400" />
+          <LogOut className="w-6 h-6 flex-shrink-0" />
           <span className="hidden lg:inline">Keluar</span>
         </button>
       </div>

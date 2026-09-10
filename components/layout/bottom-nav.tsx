@@ -1,62 +1,47 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Plus, BarChart3, FlaskConical, Clock } from 'lucide-react';
+import { LayoutGrid, PlusCircle, Package, FlaskConical, History } from 'lucide-react';
 
 const navItems = [
-  { name: 'Beranda', href: '/dashboard', icon: Home },
-  { name: 'Produk Saya', href: '/produk', icon: BarChart3 },
-  { name: 'Catat', href: '/catat', icon: Plus, isAction: true },
+  { name: 'Beranda', href: '/dashboard', icon: LayoutGrid },
+  { name: 'Catat', href: '/catat', icon: PlusCircle },
+  { name: 'Produk Saya', href: '/produk', icon: Package },
   { name: 'Coba & Pantau', href: '/eksperimen', icon: FlaskConical },
-  { name: 'Riwayat', href: '/riwayat', icon: Clock },
+  { name: 'Riwayat', href: '/riwayat', icon: History },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 pb-safe">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0A2619] border-t border-[#123825] shadow-[0_-4px_25px_rgba(0,0,0,0.35)] px-2 py-2 pb-safe">
+      <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
             pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
 
-          if (item.isAction) {
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex flex-col items-center -mt-5 relative group"
-                title="Catat Transaksi Baru"
-              >
-                <div className="w-12 h-12 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white flex items-center justify-center shadow-lg shadow-emerald-700/30 ring-4 ring-white transition-all transform active:scale-90">
-                  <Icon className="w-6 h-6 stroke-[2.5]" />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-800 mt-0.5">Catat</span>
-              </Link>
-            );
-          }
-
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-xs font-medium transition-all ${
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all ${
                 isActive
-                  ? 'text-emerald-700 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'text-[#22C55E]'
+                  : 'text-emerald-100/70 hover:text-white'
               }`}
             >
               <div
-                className={`p-1 rounded-xl transition-all ${
-                  isActive ? 'bg-emerald-50 text-emerald-700 scale-105' : 'text-slate-400'
+                className={`p-1.5 rounded-xl transition-transform ${
+                  isActive ? 'scale-110 bg-[#123825]' : ''
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className={`w-6 h-6 stroke-[2.2] ${isActive ? 'text-[#22C55E]' : ''}`} />
               </div>
-              <span className={`text-[10px] leading-tight mt-0.5 ${isActive ? 'font-black text-emerald-800' : 'font-medium'}`}>
+              <span className={`text-[11px] mt-1 font-bold ${isActive ? 'text-[#22C55E]' : 'text-emerald-200/70'}`}>
                 {item.name}
               </span>
             </Link>
@@ -66,4 +51,3 @@ export function BottomNav() {
     </nav>
   );
 }
-

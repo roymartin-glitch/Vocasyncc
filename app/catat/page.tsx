@@ -7,13 +7,13 @@ import {
   Mic,
   MicOff,
   ArrowLeft,
-  CheckCircle2,
-  Sparkles,
   ArrowDownLeft,
   ArrowUpRight,
   HelpCircle,
   Loader2,
-  Zap,
+  CheckCircle2,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
@@ -24,27 +24,25 @@ export default function CatatPage() {
 
   // Form states (for manual fallback)
   const [type, setType] = useState<TransactionType>('income');
-  const [productName, setProductName] = useState('');
-  const [quantity, setQuantity] = useState<string>('5');
-  const [unit, setUnit] = useState('kg');
-  const [totalAmount, setTotalAmount] = useState<string>('200000');
-  const [rawVoiceText, setRawVoiceText] = useState<string | null>(null);
-  const [source, setSource] = useState<'manual' | 'voice'>('manual');
+  const [productName, setProductName] = useState('Bawang Merah');
+  const [quantity, setQuantity] = useState<number>(5);
+  const [unit, setUnit] = useState('Kilogram (kg)');
+  const [totalAmount, setTotalAmount] = useState<number>(200000);
 
-  // Voice recording & hands-free auto-save states
+  // Voice recording & auto-save states
   const [isListening, setIsListening] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [directTextInput, setDirectTextInput] = useState('');
+  const [rawVoiceText, setRawVoiceText] = useState<string | null>(null);
   const recognitionRef = React.useRef<any>(null);
+
   const [autoSavedInfo, setAutoSavedInfo] = useState<{
     productName: string;
     quantity: number;
     unit: string;
     totalAmount: number;
     type: string;
-    isNewProduct?: boolean;
   } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -57,12 +55,9 @@ export default function CatatPage() {
     rawVoiceText: string;
   } | null>(null);
 
-  // Autocomplete suggestions
+  // Products list for fuzzy matching
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Fetch products and default unit from database
   useEffect(() => {
     fetch('/api/product-analysis')
       .then((res) => res.json())
@@ -72,39 +67,9 @@ export default function CatatPage() {
         }
       })
       .catch((err) => console.warn('Product list fallback:', err));
-
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((sData) => {
-        if (sData.success && sData.data?.default_unit) {
-          setUnit(sData.data.default_unit);
-        }
-      })
-      .catch(() => {});
   }, []);
 
-  const handleProductChange = (val: string) => {
-    setProductName(val);
-    if (val.trim()) {
-      const matches = productsList.filter((p) =>
-        p.name.toLowerCase().includes(val.toLowerCase())
-      );
-      setFilteredProducts(matches);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleSelectProduct = (name: string, defaultUnit: string, price: number) => {
-    setProductName(name);
-    setUnit(defaultUnit || 'kg');
-    setShowSuggestions(false);
-    const qty = parseFloat(quantity) || 1;
-    setTotalAmount((qty * price).toString());
-  };
-
-  // Save transaction executor (supports auto-creating products & opening stock batches)
+  // Save transaction executor
   const executeSaveTransaction = async (
     finalProductName: string,
     d: any,
@@ -129,49 +94,35 @@ export default function CatatPage() {
 
       const saveResult = await saveRes.json();
       if (saveResult.success) {
-        const isNew = Boolean(saveResult.data?.isNewProduct || forceNew);
         setAutoSavedInfo({
           productName: finalProductName,
           quantity: d.quantity || 1,
           unit: d.unit || 'kg',
           totalAmount: d.total_price || 0,
           type: d.type || 'income',
-          isNewProduct: isNew,
         });
         setShowSuccessToast(true);
 
-        // Background update product list so next transactions recognize it
-        fetch('/api/product-analysis')
-          .then((r) => r.json())
-          .then((pData) => {
-            if (pData.success && pData.data?.length > 0) {
-              setProductsList(pData.data);
-            }
-          })
-          .catch(() => {});
-
-        // Redirect always to dashboard smoothly
         setTimeout(() => {
           router.push('/dashboard');
-        }, 1600);
+        }, 1500);
       } else {
         alert(saveResult.error || 'Gagal menyimpan transaksi.');
       }
     } catch (saveErr) {
       console.error('Error executing save transaction:', saveErr);
-      alert('Terjadi kesalahan saat menyimpan transaksi ke database.');
+      alert('Terjadi kesalahan saat menyimpan catatan.');
     } finally {
       setIsAutoSaving(false);
     }
   };
 
-  // HANDS-FREE VOICE PIPELINE: Parse via Gemini -> Similarity Check -> Auto-Save
-  const processVoiceWithGeminiAndAutoSave = async (transcript: string) => {
+  // Voice Pipeline: parse -> similarity check -> save
+  const processVoiceAndSave = async (transcript: string) => {
     setIsProcessingVoice(true);
     setRawVoiceText(`"${transcript}"`);
 
     try {
-      // Step 1: Gemini 3.6 Flash parsing
       const res = await fetch('/api/parse-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,17 +134,14 @@ export default function CatatPage() {
         const d = result.data;
         setType(d.type || 'income');
         setProductName(d.product_name);
-        setQuantity(d.quantity?.toString() || '1');
-        setUnit(d.unit || 'kg');
-        setTotalAmount(d.total_price?.toString() || '0');
-        setSource('voice');
+        setQuantity(d.quantity || 1);
+        setTotalAmount(d.total_price || 0);
 
         setIsProcessingVoice(false);
 
-        // Step 2: Cek kemiripan produk dengan master data yang sudah ada
+        // Check existing product
         const simCheck = findSimilarProduct(d.product_name, productsList);
 
-        // KASUS A: Nama mirip tetapi tidak persis sama -> Tampilkan konfirmasi 1 ketukan!
         if (simCheck.isSimilar && simCheck.matchedProduct) {
           setSimilarityPrompt({
             isOpen: true,
@@ -205,7 +153,6 @@ export default function CatatPage() {
           return;
         }
 
-        // KASUS B: Nama persis sama (sudah ada) -> Simpan otomatis langsung
         if (simCheck.isExact && simCheck.matchedProduct) {
           await executeSaveTransaction(
             simCheck.matchedProduct.name,
@@ -216,18 +163,17 @@ export default function CatatPage() {
           return;
         }
 
-        // KASUS C: Produk baru (belum pernah ada sama sekali) -> Otomatis buat produk & simpan instan!
         await executeSaveTransaction(d.product_name, d, transcript, true);
       }
     } catch (err) {
-      console.error('Error in voice auto-save flow:', err);
-      alert('Gagal memproses suara. Silakan coba kembali.');
+      console.error('Error processing voice:', err);
+      alert('Gagal memproses suara. Silakan coba bicara kembali.');
     } finally {
       setIsProcessingVoice(false);
     }
   };
 
-  // Robust Web Speech API with Real-Time Interim Feedback & Safe Toggle
+  // Web Speech API handler
   const toggleSpeechRecognition = () => {
     if (isListening) {
       if (recognitionRef.current) {
@@ -243,7 +189,7 @@ export default function CatatPage() {
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Browser Anda belum mendukung Web Speech API langsung. Anda dapat menggunakan kolom Teks AI atau tombol Preset di bawah.');
+      alert('Browser HP Anda belum mendukung input suara langsung. Anda bisa menggunakan formulir manual di bawah.');
       return;
     }
 
@@ -252,7 +198,7 @@ export default function CatatPage() {
       recognitionRef.current = recognition;
       recognition.lang = 'id-ID';
       recognition.continuous = false;
-      recognition.interimResults = true; // Show words as user speaks
+      recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
       let accumulated = '';
@@ -279,13 +225,11 @@ export default function CatatPage() {
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech event info:', event.error);
+        console.warn('Speech event error:', event.error);
         if (event.error === 'no-speech') {
-          setRawVoiceText('Tidak ada suara terdeteksi. Silakan tekan mikrofon lalu coba bicara lagi.');
+          setRawVoiceText('Suara belum terdengar. Tekan tombol lalu bicara lagi.');
         } else if (event.error === 'not-allowed') {
-          setRawVoiceText('Izin akses mikrofon ditolak. Harap izinkan akses mikrofon di browser.');
-        } else if (event.error === 'network') {
-          setRawVoiceText('Koneksi suara terganggu. Anda dapat menggunakan kolom Teks AI atau Preset di bawah.');
+          setRawVoiceText('Izin mikrofon belum aktif di HP Anda.');
         }
         setIsListening(false);
       };
@@ -294,7 +238,7 @@ export default function CatatPage() {
         setIsListening(false);
         const toProcess = accumulated.trim();
         if (toProcess && toProcess.length > 2) {
-          processVoiceWithGeminiAndAutoSave(toProcess);
+          processVoiceAndSave(toProcess);
         }
       };
 
@@ -305,11 +249,11 @@ export default function CatatPage() {
     }
   };
 
-  // Submit manual form (requires manual click)
+  // Manual Submit
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productName || !quantity || !totalAmount) {
-      alert('Harap lengkapi semua kolom transaksi.');
+      alert('Harap lengkapi nama barang, jumlah, dan nominal uang.');
       return;
     }
 
@@ -321,11 +265,10 @@ export default function CatatPage() {
         body: JSON.stringify({
           type,
           productName,
-          quantity: parseFloat(quantity),
-          unit,
-          totalAmount: parseFloat(totalAmount),
+          quantity,
+          unit: unit.replace(/\s*\(.*\)/, ''), // e.g. "Kilogram (kg)" -> "Kilogram"
+          totalAmount,
           source: 'manual',
-          rawVoiceText: null,
         }),
       });
 
@@ -346,66 +289,58 @@ export default function CatatPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Navigation Back */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      {/* Navigation Back Pill */}
+      <div>
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-2xs transition-all"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-800 bg-white hover:bg-slate-50 px-5 py-2.5 rounded-full border-2 border-slate-200 shadow-2xs transition-all cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 stroke-[3]" />
           <span>Kembali ke Beranda</span>
         </Link>
-        <span className="text-xs text-slate-400 font-medium">Pencatatan Otomatis Hands-Free</span>
       </div>
 
-      {/* Hands-free Auto-Saved Notification */}
-      {showSuccessToast && autoSavedInfo && (
-        <div className="bg-emerald-800 text-white p-5 rounded-3xl shadow-xl space-y-2.5 animate-in fade-in slide-in-from-top-4 duration-300 border border-emerald-600">
-          <div className="flex items-center gap-2.5">
-            <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
-            <h4 className="font-extrabold text-sm tracking-tight">
-              Catatan Transaksi Berhasil Disimpan!
-            </h4>
-          </div>
+      {/* Page Title & Subtitle */}
+      <div>
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          Catat Transaksi
+        </h1>
+        <p className="text-sm font-semibold text-slate-500 mt-1.5 leading-relaxed">
+          Setiap kali Anda menjual atau belanja, catat di sini supaya untung Anda selalu terpantau.
+        </p>
+      </div>
 
-          <div className="bg-emerald-950/50 p-3 rounded-xl text-xs flex items-center justify-between">
-            <div>
-              <span className="font-bold text-white text-sm">{autoSavedInfo.productName}</span>
-              <span className="text-emerald-200 ml-2">
-                ({autoSavedInfo.quantity} {autoSavedInfo.unit})
-              </span>
-            </div>
-            <span className="font-black text-amber-300 text-sm">
-              {autoSavedInfo.type === 'income' ? '+' : '-'}Rp
-              {autoSavedInfo.totalAmount.toLocaleString('id-ID')}
-            </span>
+      {/* Success Notification */}
+      {showSuccessToast && (
+        <div className="bg-[#00875A] text-white p-5 rounded-3xl shadow-xl flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300">
+          <CheckCircle2 className="w-7 h-7 flex-shrink-0" />
+          <div>
+            <h4 className="font-black text-base">Catatan Berhasil Disimpan!</h4>
+            <p className="text-xs text-emerald-100 font-medium">
+              Kembali ke Beranda untuk melihat pembaruan untung...
+            </p>
           </div>
-          <p className="text-[11px] text-emerald-200 flex items-center gap-1.5">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Mengalihkan kembali ke Beranda untuk melihat pembaruan untung & kas...</span>
-          </p>
         </div>
       )}
 
-      {/* MODAL KONFIRMASI SATU KETUKAN: APAKAH INI PRODUK YANG SAMA? */}
+      {/* 1-Tap Similar Product Confirmation Modal */}
       {similarityPrompt?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
             <div className="space-y-2 text-center">
-              <div className="inline-flex p-3 bg-amber-100 text-amber-800 rounded-2xl">
-                <HelpCircle className="w-7 h-7" />
+              <div className="inline-flex p-3 bg-emerald-100 text-emerald-800 rounded-2xl">
+                <HelpCircle className="w-8 h-8 stroke-[2.5]" />
               </div>
-              <h3 className="text-lg font-black text-slate-900">
-                Apakah ini produk yang sama?
+              <h3 className="text-xl font-black text-slate-900">
+                Apakah barang ini sama?
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Anda menyebutkan <strong className="text-slate-900">&quot;{similarityPrompt.candidateName}&quot;</strong>. Sistem mendeteksi nama ini mirip dengan produk yang sudah ada di toko Anda:
+              <p className="text-sm text-slate-600 font-semibold leading-relaxed">
+                Anda menyebutkan &quot;{similarityPrompt.candidateName}&quot;. Apakah ini sama dengan:
               </p>
             </div>
 
-            <div className="space-y-2.5">
-              {/* Opsi 1: Pakai produk yang sudah ada (Satu Ketukan) */}
+            <div className="space-y-3">
               <button
                 type="button"
                 onClick={() => {
@@ -413,25 +348,21 @@ export default function CatatPage() {
                   setSimilarityPrompt(null);
                   executeSaveTransaction(existingProduct.name, parsedData, rawVoiceText, false);
                 }}
-                className="w-full p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border-2 border-emerald-500/80 text-left transition-all group cursor-pointer shadow-xs active:scale-98 flex items-center justify-between"
+                className="w-full p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-500 text-left transition-all cursor-pointer flex items-center justify-between"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">✅</span>
-                  <div>
-                    <div className="text-xs font-black text-emerald-900 group-hover:text-emerald-950">
-                      {similarityPrompt.existingProduct.name}
-                    </div>
-                    <div className="text-[11px] text-emerald-700 font-medium">
-                      Gunakan produk yang sudah ada di toko
-                    </div>
+                <div>
+                  <div className="text-base font-black text-emerald-950">
+                    {similarityPrompt.existingProduct.name}
+                  </div>
+                  <div className="text-xs text-emerald-700 font-bold">
+                    Ya, gunakan barang yang sudah ada
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-200/70 px-2.5 py-1 rounded-xl">
+                <span className="text-xs font-black text-emerald-800 bg-emerald-200 px-3 py-1 rounded-xl">
                   Sudah Ada
                 </span>
               </button>
 
-              {/* Opsi 2: Buat produk baru terpisah (Satu Ketukan) */}
               <button
                 type="button"
                 onClick={() => {
@@ -439,349 +370,281 @@ export default function CatatPage() {
                   setSimilarityPrompt(null);
                   executeSaveTransaction(candidateName, parsedData, rawVoiceText, true);
                 }}
-                className="w-full p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-300/80 text-left transition-all group cursor-pointer shadow-2xs active:scale-98 flex items-center justify-between"
+                className="w-full p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border-2 border-slate-300 text-left transition-all cursor-pointer flex items-center justify-between"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">➕</span>
-                  <div>
-                    <div className="text-xs font-black text-slate-800 group-hover:text-slate-900">
-                      {similarityPrompt.candidateName}
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-medium">
-                      Simpan sebagai produk baru terpisah
-                    </div>
+                <div>
+                  <div className="text-base font-black text-slate-800">
+                    {similarityPrompt.candidateName}
+                  </div>
+                  <div className="text-xs text-slate-500 font-bold">
+                    Bukan, simpan sebagai barang baru
                   </div>
                 </div>
-                <span className="text-xs font-bold text-slate-600 bg-slate-200/80 px-2.5 py-1 rounded-xl">
-                  Produk Baru
+                <span className="text-xs font-black text-slate-600 bg-slate-200 px-3 py-1 rounded-xl">
+                  Barang Baru
                 </span>
               </button>
             </div>
 
-            <div className="text-center pt-1">
+            <div className="text-center pt-2">
               <button
                 type="button"
                 onClick={() => setSimilarityPrompt(null)}
-                className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
               >
-                Batal & ulangi bicara
+                Batal
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Form Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 md:p-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Catat Transaksi</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Bicara natural → AI Gemini mem-parsing → <strong>Otomatis tersimpan instan</strong> tanpa perlu menekan tombol simpan.
+      {/* VOICE CARD (Screenshot 3 style) */}
+      <div className="bg-[#EAF7ED] border-2 border-[#C7EED0] rounded-3xl p-6 sm:p-8 text-center space-y-6 shadow-xs">
+        {/* Badge Pill */}
+        <div className="inline-flex items-center gap-1.5 bg-[#00875A] text-white px-4 py-1.5 rounded-full text-xs font-black shadow-2xs">
+          <Mic className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Cara Termudah</span>
+        </div>
+
+        {/* Big Heading */}
+        <div className="space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+            Cukup Ucapkan, Tidak Perlu Mengetik
+          </h2>
+          <p className="text-sm sm:text-base font-semibold text-slate-600 max-w-lg mx-auto leading-relaxed">
+            Tekan tombol besar di bawah, lalu bicara seperti biasa. Catatan langsung tersimpan sendiri.
           </p>
         </div>
 
-        {/* 1. Voice Recognition Section (HANDS-FREE AUTO-SAVE) */}
-        <div className="bg-gradient-to-b from-emerald-50/60 via-slate-50 to-white border-2 border-emerald-500/40 rounded-3xl p-6 text-center space-y-4 shadow-sm relative overflow-hidden">
-          {/* Badge Hands-free */}
-          <div className="inline-flex items-center gap-1.5 bg-emerald-700 text-white px-3 py-1 rounded-full text-[11px] font-bold shadow-xs">
-            <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-            <span>Fitur Suara: Otomatis Simpan Instan</span>
-          </div>
+        {/* Huge Circular Mic Button */}
+        <div className="py-2">
+          <button
+            type="button"
+            onClick={toggleSpeechRecognition}
+            disabled={isProcessingVoice || isAutoSaving}
+            className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center mx-auto shadow-xl transition-all duration-300 cursor-pointer ${
+              isListening
+                ? 'bg-rose-600 text-white scale-110 animate-pulse shadow-rose-300'
+                : isProcessingVoice || isAutoSaving
+                ? 'bg-amber-600 text-white animate-spin'
+                : 'bg-[#00875A] hover:bg-[#059669] text-white hover:scale-105 active:scale-95 shadow-emerald-700/25'
+            }`}
+          >
+            {isListening ? (
+              <MicOff className="w-12 h-12 stroke-[2.5]" />
+            ) : isProcessingVoice || isAutoSaving ? (
+              <Loader2 className="w-12 h-12 animate-spin" />
+            ) : (
+              <Mic className="w-12 h-12 stroke-[2.5]" />
+            )}
+          </button>
 
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={toggleSpeechRecognition}
-              disabled={isProcessingVoice || isAutoSaving}
-              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer ${
-                isListening
-                  ? 'bg-rose-600 text-white scale-110 shadow-rose-200 animate-pulse'
-                  : isProcessingVoice || isAutoSaving
-                  ? 'bg-amber-600 text-white animate-spin shadow-amber-200'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white hover:scale-105 active:scale-95 shadow-emerald-200'
-              }`}
-            >
-              {isListening ? (
-                <MicOff className="w-10 h-10" />
-              ) : isProcessingVoice || isAutoSaving ? (
-                <Loader2 className="w-10 h-10 animate-spin" />
-              ) : (
-                <Mic className="w-10 h-10" />
-              )}
-            </button>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-sm font-black text-slate-800">
-              {isListening
-                ? '🔴 Mendengarkan suara Anda... Ketuk lagi untuk selesai.'
-                : isProcessingVoice
-                ? 'Gemini AI sedang mem-parsing suara transaksi...'
-                : isAutoSaving
-                ? 'Menyimpan langsung ke database...'
-                : 'Tekan mikrofon & bicara (Langsung tersimpan)'}
-            </p>
-            <p className="text-xs text-slate-500">
-              Cukup sebutkan dagangan, jumlah, dan uangnya. Contoh: <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-medium border border-emerald-200/60">&quot;Jual bawang merah 5 kg dapat 200 ribu&quot;</span>
-            </p>
-          </div>
+          <p className="mt-4 text-base sm:text-lg font-black text-slate-900">
+            {isListening
+              ? '🔴 Sedang mendengarkan... Bicara saja'
+              : isProcessingVoice
+              ? 'Sedang memahami ucapan Anda...'
+              : isAutoSaving
+              ? 'Menyimpan catatan...'
+              : 'Tekan lalu bicara'}
+          </p>
 
           {rawVoiceText && (
-            <div className="bg-white border border-emerald-300 p-3 rounded-2xl text-left text-xs space-y-1 shadow-2xs">
-              <span className="text-[10px] uppercase font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 tracking-wider">
-                Transkrip Suara:
-              </span>
-              <p className="text-slate-800 font-bold italic pt-1">{rawVoiceText}</p>
-            </div>
+            <p className="mt-2 text-xs font-bold text-emerald-800 italic bg-white/70 py-1.5 px-4 rounded-full max-w-md mx-auto border border-emerald-200">
+              {rawVoiceText}
+            </p>
           )}
-
-          {/* Quick Direct Text / Voice Dictation Fallback */}
-          <div className="pt-2 border-t border-slate-200/80">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (directTextInput.trim()) {
-                  processVoiceWithGeminiAndAutoSave(directTextInput.trim());
-                  setDirectTextInput('');
-                }
-              }}
-              className="flex gap-2 max-w-md mx-auto"
-            >
-              <input
-                type="text"
-                placeholder="Atau ketik/dikte: e.g. Beli tomat 10 kg 80rb"
-                value={directTextInput}
-                onChange={(e) => setDirectTextInput(e.target.value)}
-                className="flex-1 text-xs bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-medium text-slate-800 focus:outline-emerald-600 shadow-2xs"
-              />
-              <button
-                type="submit"
-                disabled={isProcessingVoice || isAutoSaving || !directTextInput.trim()}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap"
-              >
-                Proses AI
-              </button>
-            </form>
-          </div>
-
-          {/* Quick Presets for Demo */}
-          <div className="pt-2 border-t border-slate-200/80">
-            <span className="text-[11px] font-bold text-slate-500 block mb-2">
-              Atau Uji Cepat dengan 1 Ketukan:
-            </span>
-            <div className="flex flex-wrap justify-center gap-2">
-              {/* Preset 1: Beli Kangkung */}
-              <button
-                type="button"
-                disabled={isProcessingVoice || isAutoSaving}
-                onClick={() =>
-                  processVoiceWithGeminiAndAutoSave('Beli kangkung 10 kg bayar 100 ribu')
-                }
-                className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>&quot;Beli kangkung 10 kg bayar 100 ribu&quot;</span>
-              </button>
-
-              {/* Preset 2: Beli Bawang Merah Brebes */}
-              <button
-                type="button"
-                disabled={isProcessingVoice || isAutoSaving}
-                onClick={() =>
-                  processVoiceWithGeminiAndAutoSave('Beli bawang merah brebes 5 kg bayar 150 ribu')
-                }
-                className="text-[11px] bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold border border-amber-300/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
-              >
-                <HelpCircle className="w-3 h-3 text-amber-600" />
-                <span>&quot;Beli bawang merah brebes 5 kg bayar 150 ribu&quot;</span>
-              </button>
-
-              {/* Preset 3: Jual Bawang Merah */}
-              <button
-                type="button"
-                disabled={isProcessingVoice || isAutoSaving}
-                onClick={() =>
-                  processVoiceWithGeminiAndAutoSave('Jual bawang merah 5 kg dapat 200 ribu')
-                }
-                className="text-[11px] bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900 font-bold border border-emerald-300/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95"
-              >
-                &quot;Jual bawang merah 5 kg dapat 200 ribu&quot;
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Divider */}
-        <div className="relative flex items-center justify-center pt-2">
-          <div className="border-t border-slate-200 w-full" />
-          <span className="bg-white px-3 text-xs font-bold uppercase tracking-wider text-slate-400 absolute">
-            atau formulir manual (Klik Simpan Manual)
-          </span>
+        {/* Examples Section */}
+        <div className="pt-2 space-y-2.5">
+          <p className="text-xs uppercase font-extrabold text-slate-500 tracking-wider">
+            CONTOH YANG BISA ANDA UCAPKAN
+          </p>
+
+          <div className="space-y-2 max-w-xl mx-auto">
+            {[
+              'Jual bawang merah 5 kilo dapat 200 ribu',
+              'Beli kangkung 10 ikat bayar 100 ribu',
+              'Jual cabai rawit 3 kilo dapat 150 ribu',
+            ].map((phrase) => (
+              <button
+                key={phrase}
+                type="button"
+                onClick={() => processVoiceAndSave(phrase)}
+                className="w-full bg-white hover:bg-emerald-50/70 border-2 border-slate-200/90 hover:border-emerald-500 rounded-2xl py-3 px-5 text-sm sm:text-base font-bold text-slate-800 shadow-2xs transition-all text-center cursor-pointer active:scale-98"
+              >
+                &ldquo;{phrase}&rdquo;
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* 2. Manual Form */}
-        <form onSubmit={handleManualSubmit} className="space-y-6">
-          {/* Segmented Toggle */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Jenis Transaksi</label>
-            <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setType('expense')}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  type === 'expense'
-                    ? 'bg-white text-rose-700 shadow-sm border border-slate-200'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <ArrowUpRight className="w-4 h-4 text-rose-600" />
-                <span>Pengeluaran (Beli Modal)</span>
-              </button>
+      {/* Divider (Screenshot 4) */}
+      <div className="relative flex py-2 items-center">
+        <div className="flex-grow border-t-2 border-slate-200" />
+        <span className="flex-shrink mx-4 text-sm font-extrabold text-slate-400 uppercase tracking-wider">
+          Atau isi sendiri
+        </span>
+        <div className="flex-grow border-t-2 border-slate-200" />
+      </div>
 
-              <button
-                type="button"
-                onClick={() => setType('income')}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  type === 'income'
-                    ? 'bg-white text-emerald-800 shadow-sm border border-slate-200'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
-                <span>Pemasukan (Jual Dagangan)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Product Autocomplete */}
-          <div className="relative">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Nama Produk / Bahan Baku
-            </label>
-            <input
-              type="text"
-              value={productName}
-              onChange={(e) => handleProductChange(e.target.value)}
-              placeholder="Ketik nama dagangan (mis: Bawang Merah, Cabai)..."
-              required
-              className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:bg-white focus:outline-emerald-600 transition-all font-medium text-slate-900"
-            />
-
-            {showSuggestions && filteredProducts.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden divide-y divide-slate-100">
-                {filteredProducts.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() =>
-                      handleSelectProduct(
-                        p.name,
-                        p.unit || 'kg',
-                        type === 'expense' ? p.cost_price || 30000 : p.selling_price || 40000
-                      )
-                    }
-                    className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 text-xs flex items-center justify-between transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <span className="font-semibold text-slate-800">{p.name}</span>
-                      <span className="text-slate-400 ml-2">({p.unit || 'kg'})</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quantity & Unit */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Jumlah</label>
-              <input
-                type="number"
-                step="any"
-                min="0.1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="mis: 5"
-                required
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:bg-white focus:outline-emerald-600 transition-all font-medium text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Satuan</label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:bg-white focus:outline-emerald-600 transition-all font-medium text-slate-900 cursor-pointer"
-              >
-                <option value="kg">Kilogram (kg)</option>
-                <option value="ikat">Ikat</option>
-                <option value="pcs">Pcs / Buah</option>
-                <option value="karung">Karung</option>
-                <option value="liter">Liter</option>
-                <option value="bungkus">Bungkus</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Total Amount */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-              <span>Total Uang (Nominal Bayar / Diterima)</span>
-              {quantity && totalAmount && parseFloat(quantity) > 0 ? (
-                <span className="text-slate-400 font-normal">
-                  Rata-rata: Rp
-                  {(parseFloat(totalAmount) / parseFloat(quantity)).toLocaleString('id-ID', {
-                    maximumFractionDigits: 0,
-                  })}
-                  /{unit}
-                </span>
-              ) : null}
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-3.5 text-sm font-bold text-slate-400">Rp</span>
-              <input
-                type="number"
-                min="100"
-                value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value)}
-                placeholder="200000"
-                required
-                className="w-full text-base font-bold bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-3 focus:bg-white focus:outline-emerald-600 transition-all text-slate-900"
-              />
-            </div>
-          </div>
-
-          {/* Manual Submit Button */}
-          <div className="pt-2">
+      {/* MANUAL FORM CARD (Screenshot 4) */}
+      <form
+        onSubmit={handleManualSubmit}
+        className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 sm:p-8 space-y-6"
+      >
+        {/* Catatan Apa? */}
+        <div className="space-y-3">
+          <label className="block text-lg font-black text-slate-900">
+            Ini catatan apa?
+          </label>
+          <div className="grid grid-cols-2 gap-3.5">
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 px-6 rounded-2xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-400 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all duration-150 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => setType('income')}
+              className={`py-4 px-4 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                type === 'income'
+                  ? 'bg-[#00875A] text-white border-2 border-[#00744D] shadow-sm'
+                  : 'bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-slate-100'
+              }`}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Menyimpan ke Supabase...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Simpan Transaksi Manual</span>
-                </>
-              )}
+              <ArrowDownLeft className="w-5 h-5 stroke-[3]" />
+              <span>Uang Masuk</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setType('expense')}
+              className={`py-4 px-4 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                type === 'expense'
+                  ? 'bg-rose-600 text-white border-2 border-rose-700 shadow-sm'
+                  : 'bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <ArrowUpRight className="w-5 h-5 stroke-[3]" />
+              <span>Uang Keluar</span>
             </button>
           </div>
-        </form>
-      </div>
+          <p className="text-xs font-semibold text-slate-500">
+            {type === 'income'
+              ? 'Pilih ini kalau Anda menjual dagangan dan menerima uang.'
+              : 'Pilih ini kalau Anda belanja kulakan atau membayar biaya.'}
+          </p>
+        </div>
 
-      <div className="flex items-start gap-2.5 p-4 bg-white/60 border border-slate-200/60 rounded-2xl text-xs text-slate-500">
-        <HelpCircle className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-        <p>
-          Fitur suara langsung menyimpan transaksi otomatis ke database Supabase agar pedagang tidak perlu mengetik atau menyentuh layar saat tangan sedang sibuk.
-        </p>
-      </div>
+        {/* Nama Barang */}
+        <div className="space-y-2">
+          <label className="block text-lg font-black text-slate-900">
+            Nama barang
+          </label>
+          <input
+            type="text"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="Contoh: Bawang Merah"
+            className="w-full bg-slate-50 border-2 border-slate-200 rounded-full px-6 py-4 text-base sm:text-lg font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-[#00875A] focus:bg-white outline-hidden transition-all"
+            required
+          />
+        </div>
+
+        {/* Stepper Jumlah & Satuan */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* Berapa Banyak? */}
+          <div className="space-y-2">
+            <label className="block text-lg font-black text-slate-900">
+              Berapa banyak?
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                className="w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-300 flex items-center justify-center text-slate-800 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer flex-shrink-0"
+              >
+                <Minus className="w-6 h-6 stroke-[3]" />
+              </button>
+
+              <input
+                type="number"
+                min="1"
+                step="any"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseFloat(e.target.value) || 1))}
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl py-3.5 text-center text-2xl font-black text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => setQuantity((prev) => prev + 1)}
+                className="w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-300 flex items-center justify-center text-slate-800 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer flex-shrink-0"
+              >
+                <Plus className="w-6 h-6 stroke-[3]" />
+              </button>
+            </div>
+          </div>
+
+          {/* Satuan */}
+          <div className="space-y-2">
+            <label className="block text-lg font-black text-slate-900">
+              Satuan
+            </label>
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 py-3.5 text-base sm:text-lg font-bold text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden cursor-pointer"
+            >
+              <option value="Kilogram (kg)">Kilogram (kg)</option>
+              <option value="Ikat">Ikat</option>
+              <option value="Butir">Butir</option>
+              <option value="Liter">Liter</option>
+              <option value="Gram (gr)">Gram (gr)</option>
+              <option value="Pack">Pack</option>
+              <option value="Bungkus">Bungkus</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Uang yang Anda terima / bayar */}
+        <div className="space-y-2">
+          <label className="block text-lg font-black text-slate-900">
+            {type === 'income' ? 'Uang yang Anda terima' : 'Uang yang Anda bayar'}
+          </label>
+          <div className="relative">
+            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl font-black text-slate-700 pointer-events-none">
+              Rp
+            </span>
+            <input
+              type="text"
+              value={totalAmount ? totalAmount.toLocaleString('id-ID') : ''}
+              onChange={(e) => {
+                const numeric = e.target.value.replace(/\D/g, '');
+                setTotalAmount(numeric ? parseInt(numeric, 10) : 0);
+              }}
+              placeholder="0"
+              className="w-full bg-slate-50 border-2 border-slate-200 rounded-full pl-16 pr-6 py-4 text-xl sm:text-2xl font-black text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden transition-all"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-[#00875A] hover:bg-[#059669] text-white py-4 px-6 rounded-2xl font-black text-xl shadow-md active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>Menyimpan...</span>
+            </>
+          ) : (
+            <span>Simpan Catatan</span>
+          )}
+        </button>
+      </form>
     </div>
   );
 }

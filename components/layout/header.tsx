@@ -1,7 +1,8 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { Calendar, Plus, Clock, Settings, TrendingUp } from 'lucide-react';
+import { Calendar, Plus } from 'lucide-react';
 
 interface HeaderProps {
   ownerName?: string;
@@ -17,66 +18,64 @@ export function Header({ ownerName = 'Pak Budi', businessName = 'Kios Berkah Say
   });
 
   return (
-    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3.5">
-      {/* Desktop Header */}
+    <header className="bg-transparent px-4 md:px-8 pt-6 pb-2">
+      {/* Desktop Header Layout */}
       <div className="hidden md:flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-            <span>Selamat datang,</span>
-            <span className="text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200/60">
-              {ownerName}
-            </span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            Halo, {ownerName}
+          </h1>
+          <div className="flex items-center gap-2 mt-1.5 text-sm font-semibold text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
             <span>{businessName}</span>
-            <span className="text-slate-300">•</span>
-            <span className="text-slate-500 font-medium">Pantauan Finansial & Advisor Real-time</span>
-          </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-medium text-slate-600">
-            <Calendar className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2.5 rounded-2xl text-sm font-bold text-slate-800 shadow-2xs">
+            <Calendar className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
             <span>{currentDate}</span>
           </div>
 
           <Link
             href="/catat"
-            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-sm px-4 py-2 rounded-xl shadow-sm hover:shadow transition-all duration-150 active:scale-95"
+            className="flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-sm px-5 py-2.5 rounded-2xl shadow-sm hover:shadow transition-all duration-150 active:scale-95 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5 stroke-[2.5]" />
             <span>Catat Transaksi</span>
           </Link>
         </div>
       </div>
 
-      {/* Mobile Header */}
-      <div className="flex md:hidden items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center text-white shadow-xs">
-            <TrendingUp className="w-4 h-4 text-emerald-100" />
+      {/* Mobile Header Layout */}
+      <div className="flex md:hidden flex-col gap-3.5">
+        <div>
+          <div className="flex items-center gap-2 text-2xl font-extrabold text-slate-900 tracking-tight flex-wrap">
+            <span>Selamat datang,</span>
+            <span className="bg-[#A3E635] text-slate-950 px-3 py-0.5 rounded-xl font-black">
+              {ownerName}
+            </span>
           </div>
-          <div>
-            <h1 className="font-bold text-base text-slate-800 leading-tight">VokaSync</h1>
-            <p className="text-[11px] text-slate-500 truncate max-w-[150px]">{ownerName} • {businessName}</p>
+          <div className="flex items-center gap-2 mt-1 text-xs font-semibold text-slate-600">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span>{businessName}</span>
+            <span className="text-slate-300">•</span>
+            <span>Buku Keuangan Sederhana</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex-1 flex items-center justify-center gap-2 bg-white border-2 border-slate-200 py-2.5 px-3 rounded-2xl text-xs font-bold text-slate-800 shadow-2xs">
+            <Calendar className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
+            <span>{currentDate}</span>
+          </div>
+
           <Link
-            href="/riwayat"
-            className="p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-            title="Catatan Transaksi"
+            href="/catat"
+            className="flex-1 flex items-center justify-center gap-1.5 bg-[#00875A] text-white font-bold text-xs py-2.5 px-3 rounded-2xl shadow-sm active:scale-95"
           >
-            <Clock className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/settings"
-            className="p-2 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-            title="Pengaturan"
-          >
-            <Settings className="w-5 h-5" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Catat Transaksi</span>
           </Link>
         </div>
       </div>
