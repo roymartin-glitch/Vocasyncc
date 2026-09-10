@@ -6,6 +6,7 @@ import {
   Receipt,
   PiggyBank,
   Percent,
+  Share2,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { TrendChart } from '@/components/dashboard/TrendChart';
@@ -104,9 +105,10 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={handleShareWhatsAppRekap}
-            className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-black text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer self-start sm:self-auto border-2 border-[#1EBE5B]"
+            className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer self-start sm:self-auto border-2 border-emerald-600/80"
           >
-            <span>📲 Kirim Rekap ke WhatsApp</span>
+            <Share2 className="w-4 h-4 stroke-[2.5]" />
+            <span>Kirim Rekap WhatsApp</span>
           </button>
         </div>
 

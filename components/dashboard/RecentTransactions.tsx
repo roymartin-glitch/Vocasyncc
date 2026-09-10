@@ -74,8 +74,8 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                         {primaryItem?.product_name || 'Transaksi'}
                       </p>
                       {tx.source === 'voice' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-[#A3E635] text-slate-950">
-                          <Mic className="w-3 h-3 stroke-[2.5]" /> Suara
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/80 text-emerald-900 border border-emerald-300/60">
+                          <Mic className="w-3 h-3 stroke-[2.5] text-emerald-700" /> Suara
                         </span>
                       )}
                     </div>

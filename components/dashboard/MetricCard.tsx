@@ -68,37 +68,37 @@ export function MetricCard({
 
   if (variant === 'lime') {
     return (
-      <div className="bg-[#A3E635] text-slate-950 p-6 rounded-3xl border-2 border-[#84CC16] shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+      <div className="bg-[#ECFDF5] text-emerald-950 p-6 rounded-3xl border-2 border-emerald-300 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-3">
             {icon && (
-              <div className="w-12 h-12 rounded-2xl bg-black/10 border border-black/15 flex items-center justify-center text-slate-950 flex-shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 flex-shrink-0">
                 {icon}
               </div>
             )}
             <div>
-              <h3 className="font-extrabold text-lg tracking-tight text-slate-950 leading-tight">
+              <h3 className="font-extrabold text-lg tracking-tight text-emerald-950 leading-tight">
                 {title}
               </h3>
-              <p className="text-xs font-bold text-slate-800 mt-0.5">
+              <p className="text-xs font-semibold text-emerald-800/80 mt-0.5">
                 {description}
               </p>
             </div>
           </div>
 
           {/* Huge Display Number */}
-          <div className="mt-5 text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+          <div className="mt-5 text-3xl sm:text-4xl font-black text-emerald-900 tracking-tight">
             {value}
           </div>
         </div>
 
         {/* Change Badge */}
         <div className="mt-5 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 bg-black/10 border border-black/15 text-slate-950 font-extrabold text-xs px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1 bg-emerald-200/80 border border-emerald-300 text-emerald-900 font-extrabold text-xs px-2.5 py-1 rounded-full">
             {isPositive ? <ArrowUp className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDown className="w-3.5 h-3.5 stroke-[3]" />}
             <span>{isPositive ? `+${changePercent.toLocaleString('id-ID')}%` : `${changePercent.toLocaleString('id-ID')}%`}</span>
           </span>
-          <span className="text-xs font-bold text-slate-800">dari kemarin</span>
+          <span className="text-xs font-semibold text-emerald-800/70">dari kemarin</span>
         </div>
       </div>
     );
