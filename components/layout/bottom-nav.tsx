@@ -3,13 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, PlusCircle, Package, FlaskConical, History } from 'lucide-react';
+import { LayoutGrid, PlusCircle, Package, FileText, History } from 'lucide-react';
 
 const navItems = [
   { name: 'Beranda', href: '/dashboard', icon: LayoutGrid },
   { name: 'Catat', href: '/catat', icon: PlusCircle },
-  { name: 'Produk Saya', href: '/produk', icon: Package },
-  { name: 'Coba & Pantau', href: '/eksperimen', icon: FlaskConical },
+  { name: 'Barang', href: '/produk', icon: Package },
+  { name: 'Laporan', href: '/laporan', icon: FileText },
   { name: 'Riwayat', href: '/riwayat', icon: History },
 ];
 

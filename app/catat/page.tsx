@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Minus,
   Plus,
+  Volume2,
 } from 'lucide-react';
 import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
@@ -29,13 +30,19 @@ export default function CatatPage() {
   const [unit, setUnit] = useState('Kilogram (kg)');
   const [totalAmount, setTotalAmount] = useState<number>(200000);
 
-  // Voice recording & auto-save states
+  // Voice recording & patient auto-save states
   const [isListening, setIsListening] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rawVoiceText, setRawVoiceText] = useState<string | null>(null);
-  const recognitionRef = React.useRef<any>(null);
+  const [collectedTranscript, setCollectedTranscript] = useState<string>('');
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
+
+  const recognitionRef = useRef<any>(null);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const accumulatedRef = useRef<string>('');
 
   const [autoSavedInfo, setAutoSavedInfo] = useState<{
     productName: string;
@@ -67,7 +74,28 @@ export default function CatatPage() {
         }
       })
       .catch((err) => console.warn('Product list fallback:', err));
+
+    return () => {
+      clearSilenceTimers();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (_) {}
+      }
+    };
   }, []);
+
+  const clearSilenceTimers = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setSilenceCountdown(null);
+  };
 
   // Save transaction executor
   const executeSaveTransaction = async (
@@ -103,9 +131,10 @@ export default function CatatPage() {
         });
         setShowSuccessToast(true);
 
+        // Beri jeda 2.8 detik agar lansia sempat membaca konfirmasi dengan tenang
         setTimeout(() => {
           router.push('/dashboard');
-        }, 1500);
+        }, 2800);
       } else {
         alert(saveResult.error || 'Gagal menyimpan transaksi.');
       }
@@ -117,8 +146,10 @@ export default function CatatPage() {
     }
   };
 
-  // Voice Pipeline: parse -> similarity check -> save
+  // Process voice calmly
   const processVoiceAndSave = async (transcript: string) => {
+    clearSilenceTimers();
+    setIsListening(false);
     setIsProcessingVoice(true);
     setRawVoiceText(`"${transcript}"`);
 
@@ -139,7 +170,6 @@ export default function CatatPage() {
 
         setIsProcessingVoice(false);
 
-        // Check existing product
         const simCheck = findSimilarProduct(d.product_name, productsList);
 
         if (simCheck.isSimilar && simCheck.matchedProduct) {
@@ -164,6 +194,8 @@ export default function CatatPage() {
         }
 
         await executeSaveTransaction(d.product_name, d, transcript, true);
+      } else {
+        alert('Kalimat belum jelas. Silakan ucapkan dengan santai, contoh: "Jual beras 5 kilo 75 ribu"');
       }
     } catch (err) {
       console.error('Error processing voice:', err);
@@ -173,23 +205,18 @@ export default function CatatPage() {
     }
   };
 
-  // Web Speech API handler
-  const toggleSpeechRecognition = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (_) {}
-      }
-      setIsListening(false);
-      return;
-    }
+  // Start voice recognition with patient pause-handling
+  const startListening = () => {
+    clearSilenceTimers();
+    accumulatedRef.current = '';
+    setCollectedTranscript('');
+    setRawVoiceText(null);
 
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Browser HP Anda belum mendukung input suara langsung. Anda bisa menggunakan formulir manual di bawah.');
+      alert('Browser HP Anda belum mendukung suara langsung. Silakan gunakan formulir manual di bawah.');
       return;
     }
 
@@ -197,56 +224,113 @@ export default function CatatPage() {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
       recognition.lang = 'id-ID';
-      recognition.continuous = false;
+      recognition.continuous = true; // Biarkan mendengarkan lebih lama tanpa terputus cepat
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      let accumulated = '';
-
       recognition.onstart = () => {
         setIsListening(true);
-        setRawVoiceText('Mendengarkan... Silakan bicara');
+        setRawVoiceText('Mendengarkan... Silakan bicara dengan santai');
       };
 
       recognition.onresult = (event: any) => {
+        clearSilenceTimers();
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const trans = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            accumulated += ' ' + trans;
+            accumulatedRef.current += ' ' + trans;
           } else {
             interim += trans;
           }
         }
-        const currentText = (accumulated + ' ' + interim).trim();
+        const currentText = (accumulatedRef.current + ' ' + interim).trim();
         if (currentText) {
+          setCollectedTranscript(currentText);
           setRawVoiceText(`"${currentText}"`);
+
+          // Jeda santai: Berikan waktu 3 detik setelah ucapan terakhir sebelum menyarankan simpan
+          startGentleSilenceTimer(currentText);
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech event error:', event.error);
+        console.warn('Speech event info:', event.error);
         if (event.error === 'no-speech') {
-          setRawVoiceText('Suara belum terdengar. Tekan tombol lalu bicara lagi.');
+          // Jangan hentikan terburu-buru, beri kesempatan pedagang bersiap
+          setRawVoiceText('Silakan bicara... kami masih mendengarkan dengan santai');
         } else if (event.error === 'not-allowed') {
           setRawVoiceText('Izin mikrofon belum aktif di HP Anda.');
+          setIsListening(false);
         }
-        setIsListening(false);
       };
 
       recognition.onend = () => {
-        setIsListening(false);
-        const toProcess = accumulated.trim();
-        if (toProcess && toProcess.length > 2) {
-          processVoiceAndSave(toProcess);
+        // Jika recognition terhenti secara otomatis tapi pengguna belum selesai, jangan buru-buru tutup
+        const current = accumulatedRef.current.trim();
+        if (current.length > 2) {
+          startGentleSilenceTimer(current);
+        } else {
+          setIsListening(false);
         }
       };
 
       recognition.start();
     } catch (e) {
-      console.error('Speech recognition start error:', e);
+      console.error('Speech start error:', e);
       setIsListening(false);
     }
+  };
+
+  // Timer santai dengan hitungan mundur jelas
+  const startGentleSilenceTimer = (text: string) => {
+    clearSilenceTimers();
+    let secondsLeft = 3;
+    setSilenceCountdown(secondsLeft);
+
+    countdownIntervalRef.current = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft > 0) {
+        setSilenceCountdown(secondsLeft);
+      } else {
+        clearSilenceTimers();
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.stop();
+          } catch (_) {}
+        }
+        processVoiceAndSave(text);
+      }
+    }, 1000);
+  };
+
+  // Stop manually when user is ready
+  const finishAndSaveNow = () => {
+    clearSilenceTimers();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+    }
+    setIsListening(false);
+    const text = collectedTranscript.trim() || accumulatedRef.current.trim();
+    if (text && text.length > 2) {
+      processVoiceAndSave(text);
+    } else {
+      alert('Belum ada ucapan yang terdengar. Silakan tekan tombol mic dan bicara santai.');
+    }
+  };
+
+  const cancelListening = () => {
+    clearSilenceTimers();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_) {}
+    }
+    setIsListening(false);
+    setCollectedTranscript('');
+    setRawVoiceText(null);
   };
 
   // Manual Submit
@@ -266,7 +350,7 @@ export default function CatatPage() {
           type,
           productName,
           quantity,
-          unit: unit.replace(/\s*\(.*\)/, ''), // e.g. "Kilogram (kg)" -> "Kilogram"
+          unit: unit.replace(/\s*\(.*\)/, ''),
           totalAmount,
           source: 'manual',
         }),
@@ -277,7 +361,7 @@ export default function CatatPage() {
         setShowSuccessToast(true);
         setTimeout(() => {
           router.push('/dashboard');
-        }, 1200);
+        }, 1800);
       } else {
         alert(result.error || 'Gagal menyimpan transaksi.');
       }
@@ -306,21 +390,27 @@ export default function CatatPage() {
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
           Catat Transaksi
         </h1>
-        <p className="text-sm font-semibold text-slate-500 mt-1.5 leading-relaxed">
+        <p className="text-sm sm:text-base font-semibold text-slate-500 mt-1.5 leading-relaxed">
           Setiap kali Anda menjual atau belanja, catat di sini supaya untung Anda selalu terpantau.
         </p>
       </div>
 
-      {/* Success Notification */}
-      {showSuccessToast && (
-        <div className="bg-[#00875A] text-white p-5 rounded-3xl shadow-xl flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300">
-          <CheckCircle2 className="w-7 h-7 flex-shrink-0" />
-          <div>
-            <h4 className="font-black text-base">Catatan Berhasil Disimpan!</h4>
-            <p className="text-xs text-emerald-100 font-medium">
-              Kembali ke Beranda untuk melihat pembaruan untung...
-            </p>
+      {/* Calm Success Notification */}
+      {showSuccessToast && autoSavedInfo && (
+        <div className="bg-[#00875A] text-white p-6 rounded-3xl shadow-xl space-y-2 animate-in fade-in slide-in-from-top-4 duration-300 border-2 border-[#00744D]">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-8 h-8 flex-shrink-0 text-white" />
+            <div>
+              <h4 className="font-black text-lg">Catatan Berhasil Disimpan!</h4>
+              <p className="text-sm text-emerald-100 font-semibold">
+                {autoSavedInfo.productName} ({autoSavedInfo.quantity} {autoSavedInfo.unit}) •{' '}
+                {autoSavedInfo.type === 'income' ? '+' : '-'}Rp{autoSavedInfo.totalAmount.toLocaleString('id-ID')}
+              </p>
+            </div>
           </div>
+          <p className="text-xs text-emerald-200 pt-1 font-medium">
+            Membuka kembali Beranda untuk melihat pembaruan kas...
+          </p>
         </div>
       )}
 
@@ -399,7 +489,7 @@ export default function CatatPage() {
         </div>
       )}
 
-      {/* VOICE CARD (Screenshot 3 style) */}
+      {/* CALM & PATIENT VOICE CARD */}
       <div className="bg-[#EAF7ED] border-2 border-[#C7EED0] rounded-3xl p-6 sm:p-8 text-center space-y-6 shadow-xs">
         {/* Badge Pill */}
         <div className="inline-flex items-center gap-1.5 bg-[#00875A] text-white px-4 py-1.5 rounded-full text-xs font-black shadow-2xs">
@@ -413,26 +503,26 @@ export default function CatatPage() {
             Cukup Ucapkan, Tidak Perlu Mengetik
           </h2>
           <p className="text-sm sm:text-base font-semibold text-slate-600 max-w-lg mx-auto leading-relaxed">
-            Tekan tombol besar di bawah, lalu bicara seperti biasa. Catatan langsung tersimpan sendiri.
+            Tekan tombol mic di bawah, lalu bicara santai tanpa terburu-buru. Suara Anda akan didengarkan dengan tenang.
           </p>
         </div>
 
-        {/* Huge Circular Mic Button */}
-        <div className="py-2">
+        {/* Huge Circular Mic Button with Gentle State */}
+        <div className="py-2 space-y-3">
           <button
             type="button"
-            onClick={toggleSpeechRecognition}
+            onClick={isListening ? finishAndSaveNow : startListening}
             disabled={isProcessingVoice || isAutoSaving}
             className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center mx-auto shadow-xl transition-all duration-300 cursor-pointer ${
               isListening
-                ? 'bg-rose-600 text-white scale-110 animate-pulse shadow-rose-300'
+                ? 'bg-emerald-600 text-white ring-8 ring-emerald-200 scale-105 animate-pulse'
                 : isProcessingVoice || isAutoSaving
                 ? 'bg-amber-600 text-white animate-spin'
                 : 'bg-[#00875A] hover:bg-[#059669] text-white hover:scale-105 active:scale-95 shadow-emerald-700/25'
             }`}
           >
             {isListening ? (
-              <MicOff className="w-12 h-12 stroke-[2.5]" />
+              <Volume2 className="w-12 h-12 stroke-[2.5]" />
             ) : isProcessingVoice || isAutoSaving ? (
               <Loader2 className="w-12 h-12 animate-spin" />
             ) : (
@@ -440,9 +530,9 @@ export default function CatatPage() {
             )}
           </button>
 
-          <p className="mt-4 text-base sm:text-lg font-black text-slate-900">
+          <p className="text-base sm:text-lg font-black text-slate-900">
             {isListening
-              ? '🔴 Sedang mendengarkan... Bicara saja'
+              ? '🟢 Sedang mendengarkan... Bicara dengan santai'
               : isProcessingVoice
               ? 'Sedang memahami ucapan Anda...'
               : isAutoSaving
@@ -450,10 +540,41 @@ export default function CatatPage() {
               : 'Tekan lalu bicara'}
           </p>
 
+          {/* Transcript Display Box */}
           {rawVoiceText && (
-            <p className="mt-2 text-xs font-bold text-emerald-800 italic bg-white/70 py-1.5 px-4 rounded-full max-w-md mx-auto border border-emerald-200">
-              {rawVoiceText}
-            </p>
+            <div className="bg-white/90 border-2 border-emerald-300 p-3.5 rounded-2xl max-w-md mx-auto shadow-2xs space-y-1">
+              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                Yang Didengar:
+              </span>
+              <p className="text-base font-black text-slate-900 leading-snug">
+                {rawVoiceText}
+              </p>
+              {silenceCountdown !== null && (
+                <p className="text-xs font-bold text-amber-700 pt-1">
+                  ⏳ Menyimpan otomatis dalam {silenceCountdown} detik... Atau tekan tombol di bawah jika sudah selesai.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons while listening (gives full patient control) */}
+          {isListening && (
+            <div className="flex items-center justify-center gap-3 pt-2 max-w-sm mx-auto">
+              <button
+                type="button"
+                onClick={finishAndSaveNow}
+                className="flex-1 bg-[#00875A] hover:bg-[#059669] text-white py-3 px-4 rounded-2xl font-black text-sm shadow-sm active:scale-95 transition-all cursor-pointer"
+              >
+                ✓ Selesai & Simpan
+              </button>
+              <button
+                type="button"
+                onClick={cancelListening}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 px-4 rounded-2xl font-bold text-sm cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
           )}
         </div>
 
@@ -482,7 +603,7 @@ export default function CatatPage() {
         </div>
       </div>
 
-      {/* Divider (Screenshot 4) */}
+      {/* Divider */}
       <div className="relative flex py-2 items-center">
         <div className="flex-grow border-t-2 border-slate-200" />
         <span className="flex-shrink mx-4 text-sm font-extrabold text-slate-400 uppercase tracking-wider">
@@ -491,7 +612,7 @@ export default function CatatPage() {
         <div className="flex-grow border-t-2 border-slate-200" />
       </div>
 
-      {/* MANUAL FORM CARD (Screenshot 4) */}
+      {/* MANUAL FORM CARD */}
       <form
         onSubmit={handleManualSubmit}
         className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm p-6 sm:p-8 space-y-6"

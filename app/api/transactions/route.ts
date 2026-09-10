@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
     const search = searchParams.get('search');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     let query = supabase
       .from('transactions')
@@ -35,6 +37,14 @@ export async function GET(req: NextRequest) {
 
     if (type && (type === 'income' || type === 'expense')) {
       query = query.eq('type', type);
+    }
+
+    if (startDate) {
+      query = query.gte('transaction_date', startDate);
+    }
+
+    if (endDate) {
+      query = query.lte('transaction_date', `${endDate}T23:59:59.999Z`);
     }
 
     const { data, error } = await query;

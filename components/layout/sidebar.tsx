@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   PlusCircle,
   Package,
+  FileText,
   History,
   Settings,
   LogOut,
@@ -22,6 +23,7 @@ const navItems = [
   { name: 'Beranda', href: '/dashboard', icon: LayoutGrid },
   { name: 'Catat', href: '/catat', icon: PlusCircle },
   { name: 'Barang', href: '/produk', icon: Package },
+  { name: 'Laporan', href: '/laporan', icon: FileText },
   { name: 'Riwayat', href: '/riwayat', icon: History },
   { name: 'Pengaturan', href: '/settings', icon: Settings },
 ];

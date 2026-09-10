@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Clock,
@@ -13,15 +13,21 @@ import {
   Plus,
   X,
   CheckCircle2,
-  AlertTriangle,
+  Calendar,
+  Filter,
   Loader2,
 } from 'lucide-react';
 import { mockTransactions } from '@/lib/mock-data';
 import { Transaction } from '@/types';
 
+type DatePreset = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+
 export default function RiwayatPage() {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,6 +50,37 @@ export default function RiwayatPage() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  // Set date ranges helper
+  const applyPreset = (preset: DatePreset) => {
+    setDatePreset(preset);
+    const now = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+      const todayStr = formatDate(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === 'yesterday') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const yStr = formatDate(y);
+      setStartDate(yStr);
+      setEndDate(yStr);
+    } else if (preset === 'week') {
+      const w = new Date();
+      w.setDate(w.getDate() - 7);
+      setStartDate(formatDate(w));
+      setEndDate(formatDate(now));
+    } else if (preset === 'month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setStartDate(formatDate(firstDay));
+      setEndDate(formatDate(now));
+    } else if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    }
+  };
+
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
@@ -51,6 +88,9 @@ export default function RiwayatPage() {
       const params = new URLSearchParams();
       if (filterType !== 'all') params.append('type', filterType);
       if (searchQuery) params.append('search', searchQuery);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
       if (params.toString()) url += `?${params.toString()}`;
 
       const res = await fetch(url);
@@ -67,7 +107,48 @@ export default function RiwayatPage() {
 
   useEffect(() => {
     fetchTransactions();
-  }, [filterType, searchQuery]);
+  }, [filterType, searchQuery, startDate, endDate]);
+
+  // Client-side date filter fallback for offline/instant feel
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      if (filterType !== 'all' && tx.type !== filterType) return false;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesProduct = tx.items?.some((it) =>
+          it.product_name ? it.product_name.toLowerCase().includes(query) : false
+        );
+        const matchesVoice = tx.raw_voice_text?.toLowerCase().includes(query);
+        if (!matchesProduct && !matchesVoice) return false;
+      }
+      if (startDate) {
+        const txDate = tx.transaction_date.split('T')[0];
+        if (txDate < startDate) return false;
+      }
+      if (endDate) {
+        const txDate = tx.transaction_date.split('T')[0];
+        if (txDate > endDate) return false;
+      }
+      return true;
+    });
+  }, [transactions, filterType, searchQuery, startDate, endDate]);
+
+  // Calculate totals for filtered range
+  const summary = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    filteredTransactions.forEach((tx) => {
+      const amt = tx.total_amount || 0;
+      if (tx.type === 'income') income += amt;
+      else expense += amt;
+    });
+    return {
+      income,
+      expense,
+      profit: income - expense,
+      count: filteredTransactions.length,
+    };
+  }, [filteredTransactions]);
 
   const openEdit = (tx: Transaction) => {
     setEditingTx(tx);
@@ -95,7 +176,7 @@ export default function RiwayatPage() {
       const data = await res.json();
       if (data.success) {
         setIsEditModalOpen(false);
-        showToast('Transaksi berhasil diedit di database!');
+        showToast('Catatan transaksi berhasil diperbarui!');
         fetchTransactions();
       } else {
         alert(data.error || 'Gagal mengubah transaksi.');
@@ -120,7 +201,7 @@ export default function RiwayatPage() {
       const data = await res.json();
       if (data.success) {
         setIsDeleteModalOpen(false);
-        showToast('Transaksi berhasil dihapus dari database!');
+        showToast('Catatan transaksi berhasil dihapus!');
         fetchTransactions();
       } else {
         alert(data.error || 'Gagal menghapus transaksi.');
@@ -131,7 +212,7 @@ export default function RiwayatPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Toast */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-4 duration-200">
@@ -141,336 +222,350 @@ export default function RiwayatPage() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Clock className="w-6 h-6 text-emerald-700" />
-            <span>Catatan Transaksi</span>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+            <Clock className="w-8 h-8 text-[#00875A] stroke-[2.5]" />
+            <span>Riwayat Transaksi</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Pantau, audit, dan edit seluruh pencatatan transaksi dari database Supabase Anda.
+          <p className="text-sm font-semibold text-slate-500 mt-1">
+            Lihat, cari, dan telusuri seluruh catatan uang masuk dan uang keluar kios Anda.
           </p>
         </div>
 
         <Link
           href="/catat"
-          className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all active:scale-95 self-start"
+          className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-sm px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95 self-start cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5 stroke-[2.5]" />
           <span>Catat Transaksi Baru</span>
         </Link>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => setFilterType('all')}
-            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-              filterType === 'all'
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Semua ({transactions.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('income')}
-            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-              filterType === 'income'
-                ? 'bg-emerald-700 text-white'
-                : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-            }`}
-          >
-            Pemasukan
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterType('expense')}
-            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-              filterType === 'expense'
-                ? 'bg-rose-700 text-white'
-                : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
-            }`}
-          >
-            Pengeluaran
-          </button>
+      {/* Date Filter & Preset Controls */}
+      <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-base font-black text-slate-900">
+          <Calendar className="w-5 h-5 text-[#00875A] stroke-[2.5]" />
+          <span>Pilih Waktu & Tanggal:</span>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari transaksi berdasarkan nama produk..."
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 focus:bg-white focus:outline-emerald-600 transition-all text-slate-800"
-          />
+        {/* Date Presets Pills */}
+        <div className="flex flex-wrap gap-2.5">
+          {[
+            { id: 'all', label: 'Semua Waktu' },
+            { id: 'today', label: 'Hari Ini' },
+            { id: 'yesterday', label: 'Kemarin' },
+            { id: 'week', label: '7 Hari Terakhir' },
+            { id: 'month', label: 'Bulan Ini' },
+          ].map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset(preset.id as DatePreset)}
+              className={`text-sm font-bold px-4 py-2.5 rounded-2xl transition-all cursor-pointer ${
+                datePreset === preset.id
+                  ? 'bg-[#00875A] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Date Range Picker */}
+        <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Dari Tanggal:
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setDatePreset('custom');
+                setStartDate(e.target.value);
+              }}
+              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Sampai Tanggal:
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setDatePreset('custom');
+                setEndDate(e.target.value);
+              }}
+              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Jenis Transaksi:
+            </label>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden cursor-pointer"
+            >
+              <option value="all">Semua Jenis</option>
+              <option value="income">Uang Masuk (Penjualan)</option>
+              <option value="expense">Uang Keluar (Belanja)</option>
+            </select>
+          </div>
+
+          {/* Search Input */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">
+              Cari Nama Barang:
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Contoh: Bawang..."
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards for Selected Date Range */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Uang Masuk */}
+        <div className="bg-white p-5 rounded-3xl border-2 border-slate-200 shadow-sm">
+          <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+            Total Uang Masuk
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#00875A] mt-1.5 tracking-tight">
+            Rp{summary.income.toLocaleString('id-ID')}
+          </div>
+          <div className="text-xs font-semibold text-slate-400 mt-1">
+            Penjualan pada periode ini
+          </div>
+        </div>
+
+        {/* Total Uang Keluar */}
+        <div className="bg-white p-5 rounded-3xl border-2 border-slate-200 shadow-sm">
+          <div className="text-xs font-bold text-rose-800 uppercase tracking-wider">
+            Total Uang Keluar
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 mt-1.5 tracking-tight">
+            Rp{summary.expense.toLocaleString('id-ID')}
+          </div>
+          <div className="text-xs font-semibold text-slate-400 mt-1">
+            Belanja & biaya pada periode ini
+          </div>
+        </div>
+
+        {/* Sisa Uang / Untung Bersih */}
+        <div className="bg-[#A3E635] p-5 rounded-3xl border-2 border-[#84CC16] shadow-sm">
+          <div className="text-xs font-black text-slate-950 uppercase tracking-wider">
+            Sisa Uang (Untung Bersih)
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-950 mt-1.5 tracking-tight">
+            Rp{summary.profit.toLocaleString('id-ID')}
+          </div>
+          <div className="text-xs font-bold text-slate-800 mt-1">
+            Dari {summary.count} catatan transaksi
+          </div>
         </div>
       </div>
 
       {/* Transactions List */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
-            <span>Memuat catatan transaksi dari database...</span>
+          <div className="p-12 text-center text-slate-400 text-sm font-bold flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-[#00875A]" />
+            <span>Memuat catatan transaksi...</span>
+          </div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 space-y-2">
+            <p className="text-lg font-bold">Tidak ada catatan transaksi pada tanggal ini.</p>
+            <p className="text-xs text-slate-400">Silakan ubah pilihan tanggal atau catat transaksi baru.</p>
           </div>
         ) : (
-          <>
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100">
-                  <tr>
-                    <th className="py-3.5 px-6">Waktu</th>
-                    <th className="py-3.5 px-6">Produk / Barang</th>
-                    <th className="py-3.5 px-6">Jenis</th>
-                    <th className="py-3.5 px-6">Jumlah</th>
-                    <th className="py-3.5 px-6">Total Nominal</th>
-                    <th className="py-3.5 px-6">Metode</th>
-                    <th className="py-3.5 px-6 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 text-xs">
-                        Tidak ada transaksi yang cocok dengan filter.
-                      </td>
-                    </tr>
-                  ) : (
-                    transactions.map((tx) => {
-                      const isIncome = tx.type === 'income';
-                      const item = tx.items?.[0];
+          <div className="divide-y-2 divide-slate-100">
+            {filteredTransactions.map((tx) => {
+              const isIncome = tx.type === 'income';
+              const item = tx.items?.[0];
+              const dateStr = new Date(tx.transaction_date).toLocaleDateString('id-ID', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              });
+              const timeStr = new Date(tx.transaction_date).toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
 
-                      return (
-                        <tr key={tx.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-4 px-6 font-medium text-slate-500 whitespace-nowrap">
-                            {new Date(tx.transaction_date).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="font-bold text-slate-900">{item?.product_name}</div>
-                            {tx.raw_voice_text && (
-                              <span className="text-[11px] text-slate-400 italic truncate max-w-xs block">
-                                {tx.raw_voice_text}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-6">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                                isIncome
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
-                              }`}
-                            >
-                              {isIncome ? (
-                                <ArrowDownLeft className="w-3 h-3 stroke-[2.5]" />
-                              ) : (
-                                <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
-                              )}
-                              <span>{isIncome ? 'Pemasukan' : 'Pengeluaran'}</span>
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 font-medium text-slate-700">
-                            {item ? `${item.quantity} ${item.unit}` : '-'}
-                          </td>
-                          <td className="py-4 px-6 font-black text-slate-900 whitespace-nowrap">
-                            <span className={isIncome ? 'text-emerald-700' : 'text-slate-900'}>
-                              {isIncome ? '+' : '-'}Rp{tx.total_amount?.toLocaleString('id-ID')}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            {tx.source === 'voice' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60 font-semibold text-[10px]">
-                                <Mic className="w-3 h-3" /> Suara
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold text-[10px]">
-                                Manual
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-6 text-right">
-                            <div className="inline-flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => openEdit(tx)}
-                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-                                title="Edit Transaksi"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openDelete(tx)}
-                                className="p-1.5 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Hapus Transaksi"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+              return (
+                <div
+                  key={tx.id}
+                  className="p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        isIncome ? 'bg-emerald-100 text-[#00875A]' : 'bg-rose-100 text-rose-700'
+                      }`}
+                    >
+                      {isIncome ? (
+                        <ArrowDownLeft className="w-6 h-6 stroke-[2.8]" />
+                      ) : (
+                        <ArrowUpRight className="w-6 h-6 stroke-[2.8]" />
+                      )}
+                    </div>
 
-            {/* Mobile Card List */}
-            <div className="block md:hidden divide-y divide-slate-100">
-              {transactions.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">
-                  Tidak ada transaksi ditemukan.
-                </div>
-              ) : (
-                transactions.map((tx) => {
-                  const isIncome = tx.type === 'income';
-                  const item = tx.items?.[0];
-
-                  return (
-                    <div key={tx.id} className="p-4 space-y-2.5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900">{item?.product_name}</h4>
-                          <p className="text-[11px] text-slate-400">
-                            {new Date(tx.transaction_date).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}{' '}
-                            • {item ? `${item.quantity} ${item.unit}` : ''}
-                          </p>
-                        </div>
-
-                        <div className="text-right">
-                          <p
-                            className={`text-sm font-black ${
-                              isIncome ? 'text-emerald-700' : 'text-slate-900'
-                            }`}
-                          >
-                            {isIncome ? '+' : '-'}Rp{tx.total_amount?.toLocaleString('id-ID')}
-                          </p>
-                          <span
-                            className={`inline-block text-[10px] font-bold ${
-                              isIncome ? 'text-emerald-600' : 'text-rose-600'
-                            }`}
-                          >
-                            {isIncome ? 'Pemasukan' : 'Pengeluaran'}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-lg font-black text-slate-900">
+                          {item?.product_name || 'Catatan Dagang'}
+                        </span>
+                        {tx.source === 'voice' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#A3E635] text-slate-950">
+                            <Mic className="w-3 h-3 stroke-[2.5]" /> Suara
                           </span>
-                        </div>
+                        )}
+                        <span
+                          className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                            isIncome
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
+                          }`}
+                        >
+                          {isIncome ? 'Uang Masuk' : 'Uang Keluar'}
+                        </span>
                       </div>
 
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-50 text-xs">
-                        <div>
-                          {tx.source === 'voice' ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700">
-                              <Mic className="w-3 h-3" /> Rekam Suara
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400">Ketik Manual</span>
-                          )}
-                        </div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        {item ? `${item.quantity} ${item.unit} • ` : ''}
+                        {dateStr}, Jam {timeStr}
+                      </p>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(tx)}
-                            className="text-xs text-slate-600 font-semibold hover:text-slate-900 cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <span className="text-slate-300">•</span>
-                          <button
-                            type="button"
-                            onClick={() => openDelete(tx)}
-                            className="text-xs text-rose-600 font-semibold hover:text-rose-800 cursor-pointer"
-                          >
-                            Hapus
-                          </button>
-                        </div>
+                      {tx.raw_voice_text && (
+                        <p className="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-xl border border-slate-200 inline-block">
+                          &ldquo;{tx.raw_voice_text}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <div className="text-left sm:text-right">
+                      <div
+                        className={`text-xl sm:text-2xl font-black tracking-tight ${
+                          isIncome ? 'text-[#00875A]' : 'text-rose-600'
+                        }`}
+                      >
+                        {isIncome ? '+' : '-'}Rp{(tx.total_amount || 0).toLocaleString('id-ID')}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(tx)}
+                        className="p-2.5 rounded-xl border-2 border-slate-200 hover:border-emerald-600 hover:text-[#00875A] text-slate-600 transition-all cursor-pointer"
+                        title="Ubah"
+                      >
+                        <Edit2 className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDelete(tx)}
+                        className="p-2.5 rounded-xl border-2 border-slate-200 hover:border-rose-600 hover:text-rose-600 text-slate-600 transition-all cursor-pointer"
+                        title="Hapus"
+                      >
+                        <Trash2 className="w-4 h-4 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Edit Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-base text-slate-900">Edit Transaksi</h3>
+      {isEditModalOpen && editingTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-black text-slate-900">Ubah Catatan</h3>
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveEdit} className="space-y-4">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama Dagangan</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  Nama Barang
+                </label>
                 <input
                   type="text"
                   value={editProductName}
                   onChange={(e) => setEditProductName(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-bold text-slate-900"
                   required
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Jumlah</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  Jumlah
+                </label>
                 <input
                   type="number"
                   step="any"
                   value={editQuantity}
                   onChange={(e) => setEditQuantity(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-bold text-slate-900"
                   required
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Total Uang (Rp)</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  Total Nominal (Rp)
+                </label>
                 <input
                   type="number"
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-bold text-slate-900"
                   required
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-500 font-semibold cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-sm"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-2xl bg-[#00875A] hover:bg-[#059669] text-white font-black text-sm shadow-sm"
                 >
                   Simpan Perubahan
                 </button>
@@ -482,32 +577,30 @@ export default function RiwayatPage() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && txToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5 text-center">
+            <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+              <Trash2 className="w-7 h-7 stroke-[2.5]" />
             </div>
-
-            <div className="text-center space-y-1">
-              <h3 className="font-bold text-base text-slate-900">Hapus Catatan Transaksi?</h3>
-              <p className="text-xs text-slate-500">
-                Transaksi <strong>{txToDelete.items?.[0]?.product_name}</strong> sebesar{' '}
-                <strong>Rp{txToDelete.total_amount?.toLocaleString('id-ID')}</strong> akan dihapus permanen dari Supabase.
+            <div>
+              <h3 className="text-xl font-black text-slate-900">Hapus Catatan Ini?</h3>
+              <p className="text-sm font-semibold text-slate-500 mt-1">
+                Catatan {txToDelete.items?.[0]?.product_name || 'transaksi'} sebesar Rp
+                {(txToDelete.total_amount || 0).toLocaleString('id-ID')} akan dihapus.
               </p>
             </div>
-
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-sm"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm shadow-sm"
               >
                 Ya, Hapus
               </button>
