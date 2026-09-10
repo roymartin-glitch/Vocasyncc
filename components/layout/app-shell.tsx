@@ -60,30 +60,35 @@ export function AppShell({ children }: AppShellProps) {
     const cachedBusiness = localStorage.getItem('vokasync_business_name');
     if (cachedBusiness) setBusinessName(cachedBusiness);
 
-    // 2. Fetch profile & settings
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          if (data.data.business_name) {
-            setBusinessName(data.data.business_name);
-            localStorage.setItem('vokasync_business_name', data.data.business_name);
+    // 2. Fetch profile & settings (throttled to once per 60s per session to keep navigation fast)
+    const lastSynced = sessionStorage.getItem('vokasync_settings_synced');
+    const now = Date.now();
+    if (!lastSynced || now - Number(lastSynced) > 60000) {
+      fetch('/api/settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            sessionStorage.setItem('vokasync_settings_synced', String(Date.now()));
+            if (data.data.business_name) {
+              setBusinessName(data.data.business_name);
+              localStorage.setItem('vokasync_business_name', data.data.business_name);
+            }
+            if (data.data.owner_name) {
+              setOwnerName(data.data.owner_name);
+              localStorage.setItem('vokasync_owner_name', data.data.owner_name);
+            }
+            if (data.data.text_size) {
+              applyTextSize(data.data.text_size);
+              localStorage.setItem('vokasync_text_size', data.data.text_size);
+            }
+            if (data.data.theme) {
+              applyTheme(data.data.theme);
+              localStorage.setItem('vokasync_theme', data.data.theme);
+            }
           }
-          if (data.data.owner_name) {
-            setOwnerName(data.data.owner_name);
-            localStorage.setItem('vokasync_owner_name', data.data.owner_name);
-          }
-          if (data.data.text_size) {
-            applyTextSize(data.data.text_size);
-            localStorage.setItem('vokasync_text_size', data.data.text_size);
-          }
-          if (data.data.theme) {
-            applyTheme(data.data.theme);
-            localStorage.setItem('vokasync_theme', data.data.theme);
-          }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    }
 
     // 3. Listen to settings changed event for real-time reactivity without refresh
     const handleSettingsChange = (e: any) => {

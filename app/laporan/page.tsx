@@ -43,22 +43,45 @@ export default function LaporanPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
 
-  const fetchRealTimeData = async () => {
-    setIsLoading(true);
+  const fetchRealTimeData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const [insightsRes, txRes] = await Promise.allSettled([
         fetch('/api/insights').then((r) => r.json()),
         fetch('/api/transactions').then((r) => r.json()),
       ]);
 
+      let nextMetrics: DashboardMetrics | null = null;
+      let nextTrend: TrendDayData[] | null = null;
+      let nextTx: Transaction[] | null = null;
+
       if (insightsRes.status === 'fulfilled' && insightsRes.value.success) {
         const d = insightsRes.value;
-        if (d.metrics) setMetrics(d.metrics);
-        if (d.trendData) setTrendData(d.trendData);
+        if (d.metrics) {
+          setMetrics(d.metrics);
+          nextMetrics = d.metrics;
+        }
+        if (d.trendData) {
+          setTrendData(d.trendData);
+          nextTrend = d.trendData;
+        }
       }
 
       if (txRes.status === 'fulfilled' && txRes.value.success) {
-        setTransactions(txRes.value.data || []);
+        const txList = txRes.value.data || [];
+        setTransactions(txList);
+        nextTx = txList;
+      }
+
+      // Persist to session cache for instant future transitions
+      if (typeof window !== 'undefined' && nextMetrics && nextTx) {
+        try {
+          sessionStorage.setItem('vokasync_laporan_cache', JSON.stringify({
+            metrics: nextMetrics,
+            trendData: nextTrend || [],
+            transactions: nextTx,
+          }));
+        } catch (_) {}
       }
 
       setLastRefreshed(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
@@ -70,7 +93,23 @@ export default function LaporanPage() {
   };
 
   useEffect(() => {
-    fetchRealTimeData();
+    // 0ms instant hydrate from session cache if available
+    let hasCache = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('vokasync_laporan_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.metrics) setMetrics(parsed.metrics);
+          if (parsed.trendData) setTrendData(parsed.trendData);
+          if (parsed.transactions) setTransactions(parsed.transactions);
+          setIsLoading(false);
+          hasCache = true;
+        }
+      } catch (_) {}
+    }
+    // Revalidate in background
+    fetchRealTimeData(hasCache);
   }, []);
 
   // Filter transactions based on selected period
@@ -209,7 +248,7 @@ export default function LaporanPage() {
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
           <button
             type="button"
-            onClick={fetchRealTimeData}
+            onClick={() => fetchRealTimeData(false)}
             className="flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
             title="Perbarui Data"
           >

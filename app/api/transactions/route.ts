@@ -54,6 +54,11 @@ export async function GET(req: NextRequest) {
       query = query.lte('transaction_date', `${endDate}T23:59:59.999Z`);
     }
 
+    const limitParam = searchParams.get('limit');
+    if (limitParam) {
+      query = query.limit(parseInt(limitParam, 10));
+    }
+
     const { data, error } = await query;
 
     if (error) {
@@ -97,7 +102,10 @@ export async function GET(req: NextRequest) {
         )
       : formatted;
 
-    return NextResponse.json({ success: true, data: result });
+    return NextResponse.json(
+      { success: true, data: result },
+      { headers: { 'Cache-Control': 'private, no-cache, must-revalidate' } }
+    );
   } catch (err: any) {
     console.error('GET /api/transactions error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

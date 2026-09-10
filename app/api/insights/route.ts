@@ -165,64 +165,75 @@ export async function GET(req: NextRequest) {
     // 6. Get recent insights from pre-fetched parallel query
     let primaryInsight = insights?.[0];
 
-    // If no insight exists yet, generate with Gemini
-    if (!primaryInsight && profile.id && allTx.length > 0) {
-      try {
-        const prompt = getDailyAdvisorPrompt(profile.owner_name, {
-          todayIncome,
-          todayExpense,
-          todayProfit,
-          todayMargin,
-          threshold,
-        });
-        const generatedMessage = await callGemini(prompt);
-        const { data: savedInsight } = await supabase
-          .from('ai_insights')
-          .insert({
-            user_id: profile.id,
-            severity,
-            message: generatedMessage.trim(),
-            has_quick_action: hasQuickAction,
-            metric_snapshot: { todayMargin, threshold },
-          })
-          .select()
-          .single();
+    // 6. Fast response: If no insight exists yet, construct immediate deterministic diagnosis
+    // and fire background Gemini generation without delaying the user's dashboard response
+    const hasData = allTx.length > 0;
 
-        primaryInsight = savedInsight;
-      } catch (e) {
-        console.warn('Gemini dynamic insight fallback:', e);
-      }
+    const defaultMessage = hasData
+      ? todayMargin < threshold
+        ? `${activeProfile.owner_name}, margin keuntungan barang dagangan Anda sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi modal kulakan.`
+        : `${activeProfile.owner_name}, margin usaha Anda saat ini terpantau sehat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs modal secara otomatis.`
+      : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau kulakan pertama Anda hari ini untuk melihat analisa keuangan otomatis.`;
+
+    if (!primaryInsight && profile.id && allTx.length > 0) {
+      // Background worker: generate rich narrative without blocking the user's dashboard HTTP request
+      const prompt = getDailyAdvisorPrompt(profile.owner_name, {
+        todayIncome,
+        todayExpense,
+        todayProfit,
+        todayMargin,
+        threshold,
+      });
+
+      callGemini(prompt)
+        .then(async (generatedMessage) => {
+          if (generatedMessage?.trim()) {
+            await supabase
+              .from('ai_insights')
+              .insert({
+                user_id: profile.id,
+                severity,
+                message: generatedMessage.trim(),
+                has_quick_action: hasQuickAction,
+                metric_snapshot: { todayMargin, threshold },
+              });
+          }
+        })
+        .catch((e) => console.warn('Background Gemini insight info:', e));
     }
 
     // Combine low stock signals and general business signals
     const allSignals = [...lowStockSignals, ...(insights || [])];
 
-    const hasData = allTx.length > 0;
-
-    return NextResponse.json({
-      success: true,
-      profile,
-      metrics: {
-        today_income: todayIncome,
-        today_income_change: hasData ? 12.8 : 0,
-        today_expense: todayExpense,
-        today_expense_change: hasData ? -3.5 : 0,
-        today_profit: todayProfit,
-        today_profit_change: hasData ? 18.2 : 0,
-        today_margin: todayMargin,
-        today_margin_change: hasData ? 2.4 : 0,
+    return NextResponse.json(
+      {
+        success: true,
+        profile,
+        metrics: {
+          today_income: todayIncome,
+          today_income_change: hasData ? 12.8 : 0,
+          today_expense: todayExpense,
+          today_expense_change: hasData ? -3.5 : 0,
+          today_profit: todayProfit,
+          today_profit_change: hasData ? 18.2 : 0,
+          today_margin: todayMargin,
+          today_margin_change: hasData ? 2.4 : 0,
+        },
+        trendData,
+        primaryInsight: primaryInsight || {
+          severity: hasData ? severity : 'green',
+          has_quick_action: hasData ? hasQuickAction : false,
+          message: defaultMessage,
+          created_at: 'Baru saja',
+        },
+        signals: allSignals,
       },
-      trendData,
-      primaryInsight: primaryInsight || {
-        severity: hasData ? severity : 'green',
-        has_quick_action: hasData ? hasQuickAction : false,
-        message: hasData
-          ? `${activeProfile.owner_name}, margin usaha Anda saat ini tercatat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs harga modal secara otomatis.`
-          : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau kulakan pertama Anda hari ini untuk melihat analisa keuangan otomatis.`,
-        created_at: 'Baru saja',
-      },
-      signals: allSignals,
-    });
+      {
+        headers: {
+          'Cache-Control': 'private, no-cache, must-revalidate',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('GET /api/insights error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

@@ -40,22 +40,51 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Parallelize insights and transactions fetching for instant dashboard display
+      // Parallelize insights and transactions fetching with limit for instant display
       const [insightsResult, txResult] = await Promise.allSettled([
         fetch('/api/insights').then((r) => r.json()),
-        fetch('/api/transactions').then((r) => r.json()),
+        fetch('/api/transactions?limit=6').then((r) => r.json()),
       ]);
+
+      let newMetrics: DashboardMetrics | null = null;
+      let newTrend: TrendDayData[] | null = null;
+      let newInsight: AIInsight | null = null;
+      let newTx: Transaction[] = [];
 
       if (insightsResult.status === 'fulfilled' && insightsResult.value.success) {
         const data = insightsResult.value;
-        if (data.metrics) setMetrics(data.metrics);
-        if (data.trendData) setTrendData(data.trendData);
-        if (data.primaryInsight) setPrimaryInsight(data.primaryInsight);
+        if (data.metrics) {
+          setMetrics(data.metrics);
+          newMetrics = data.metrics;
+        }
+        if (data.trendData) {
+          setTrendData(data.trendData);
+          newTrend = data.trendData;
+        }
+        if (data.primaryInsight) {
+          setPrimaryInsight(data.primaryInsight);
+          newInsight = data.primaryInsight;
+        }
       }
 
       if (txResult.status === 'fulfilled' && txResult.value.success) {
-        setTransactions(txResult.value.data || []);
+        const items = txResult.value.data || [];
+        setTransactions(items);
+        newTx = items;
       }
+
+      // Persist to session cache for 0ms instant display next time
+      try {
+        sessionStorage.setItem(
+          'vokasync_dash_cache',
+          JSON.stringify({
+            metrics: newMetrics,
+            trendData: newTrend,
+            primaryInsight: newInsight,
+            transactions: newTx,
+          })
+        );
+      } catch (_) {}
     } catch (e) {
       console.warn('Dashboard live fetch fallback to seed:', e);
     } finally {
@@ -64,6 +93,19 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // 1. Instant 0ms cache hydrate
+    try {
+      const cached = sessionStorage.getItem('vokasync_dash_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.metrics) setMetrics(parsed.metrics);
+        if (parsed.trendData?.length) setTrendData(parsed.trendData);
+        if (parsed.primaryInsight) setPrimaryInsight(parsed.primaryInsight);
+        if (parsed.transactions) setTransactions(parsed.transactions);
+      }
+    } catch (_) {}
+
+    // 2. Fetch fresh data in background
     fetchDashboardData();
   }, []);
 

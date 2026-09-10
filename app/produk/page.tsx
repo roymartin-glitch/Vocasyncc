@@ -65,14 +65,23 @@ export default function ProdukPage() {
   const [isLoadingAiNote, setIsLoadingAiNote] = useState(false);
 
   // Fetch product list
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const res = await fetch('/api/product-analysis');
       const data = await res.json();
-      if (data.success) {
-        setProducts(data.data || []);
+      if (data.success && data.data) {
+        setProducts(data.data);
         if (data.threshold) setThreshold(data.threshold);
-        return data.data || [];
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('vokasync_products_cache', JSON.stringify({
+              data: data.data,
+              threshold: data.threshold,
+            }));
+          } catch (_) {}
+        }
+        return data.data;
       }
     } catch (e) {
       console.warn('Product analysis fetch fallback:', e);
@@ -83,10 +92,27 @@ export default function ProdukPage() {
   }, []);
 
   useEffect(() => {
-    loadProducts().then((loaded) => {
+    let hasCache = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('vokasync_products_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+            setProducts(parsed.data);
+            setSelectedProduct(parsed.data[0]);
+            if (parsed.threshold) setThreshold(parsed.threshold);
+            setIsLoading(false);
+            hasCache = true;
+          }
+        }
+      } catch (_) {}
+    }
+
+    loadProducts(hasCache).then((loaded) => {
       if (loaded && loaded.length > 0) {
-        setSelectedProduct(loaded[0]);
-      } else {
+        setSelectedProduct((prev) => prev || loaded[0]);
+      } else if (!hasCache) {
         setSelectedProduct(null);
       }
     });

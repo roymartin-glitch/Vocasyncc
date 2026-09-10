@@ -66,6 +66,18 @@ export default function CatatPage() {
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('vokasync_products_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+            setProductsList(parsed.data);
+          }
+        }
+      } catch (_) {}
+    }
+
     fetch('/api/product-analysis')
       .then((res) => res.json())
       .then((data) => {

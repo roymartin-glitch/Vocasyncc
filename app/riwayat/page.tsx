@@ -81,8 +81,8 @@ export default function RiwayatPage() {
     }
   };
 
-  const fetchTransactions = async () => {
-    setIsLoading(true);
+  const fetchTransactions = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       let url = '/api/transactions';
       const params = new URLSearchParams();
@@ -95,8 +95,14 @@ export default function RiwayatPage() {
 
       const res = await fetch(url);
       const data = await res.json();
-      if (data.success) {
-        setTransactions(data.data || []);
+      if (data.success && data.data) {
+        setTransactions(data.data);
+        // Cache default view (all transactions)
+        if (filterType === 'all' && !searchQuery && !startDate && !endDate && typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('vokasync_tx_cache', JSON.stringify(data.data));
+          } catch (_) {}
+        }
       }
     } catch (err) {
       console.warn('Transactions fetch fallback:', err);
@@ -106,7 +112,21 @@ export default function RiwayatPage() {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    let hasCache = false;
+    if (filterType === 'all' && !searchQuery && !startDate && !endDate && typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('vokasync_tx_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTransactions(parsed);
+            setIsLoading(false);
+            hasCache = true;
+          }
+        }
+      } catch (_) {}
+    }
+    fetchTransactions(hasCache);
   }, [filterType, searchQuery, startDate, endDate]);
 
   // Client-side date filter fallback for offline/instant feel
