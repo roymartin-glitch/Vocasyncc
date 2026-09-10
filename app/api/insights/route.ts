@@ -8,37 +8,57 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
 
-    // 1. Get profile
-    const { data: profiles } = await supabase.from('profiles').select('*').limit(1);
-    const profile = profiles?.[0] || {
+    // 1. Run all database queries in parallel for maximum speed & lowest latency
+    const [profilesRes, txRes, batchesRes, insightsRes] = await Promise.all([
+      supabase.from('profiles').select('*').limit(1),
+      supabase
+        .from('transactions')
+        .select(`
+          id,
+          type,
+          transaction_date,
+          source,
+          raw_voice_text,
+          transaction_items (
+            quantity,
+            unit_price,
+            product_id,
+            products (
+              id,
+              name
+            )
+          )
+        `)
+        .order('transaction_date', { ascending: false }),
+      supabase
+        .from('stock_batches')
+        .select(`
+          product_id,
+          initial_quantity,
+          remaining_quantity,
+          unit,
+          status,
+          products (
+            id,
+            name
+          )
+        `),
+      supabase
+        .from('ai_insights')
+        .select('*, products(name)')
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ]);
+
+    const profile = profilesRes.data?.[0] || {
       owner_name: 'Pak Budi',
       business_name: 'Kios Berkah Sayur',
       margin_alert_threshold: 20,
     };
     const threshold = Number(profile.margin_alert_threshold) || 20;
-
-    // 2. Get all transactions with items
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select(`
-        id,
-        type,
-        transaction_date,
-        source,
-        raw_voice_text,
-        transaction_items (
-          quantity,
-          unit_price,
-          product_id,
-          products (
-            id,
-            name
-          )
-        )
-      `)
-      .order('transaction_date', { ascending: false });
-
-    const allTx = transactions || [];
+    const allTx = txRes.data || [];
+    const batches = batchesRes.data || [];
+    const insights = insightsRes.data || [];
 
     // 3. Compute Today's Financials
     const todayStr = new Date().toISOString().split('T')[0];
@@ -81,20 +101,6 @@ export async function GET(req: NextRequest) {
     // 5. Check stock levels for "Peringatan Stok Hampir Habis" (Severity: yellow)
     const lowStockSignals: any[] = [];
     try {
-      const { data: batches } = await supabase
-        .from('stock_batches')
-        .select(`
-          product_id,
-          initial_quantity,
-          remaining_quantity,
-          unit,
-          status,
-          products (
-            id,
-            name
-          )
-        `);
-
       if (batches && batches.length > 0) {
         const prodMap: Record<string, { name: string; unit: string; initial: number; remaining: number }> = {};
         batches.forEach((b: any) => {
@@ -145,13 +151,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 6. Get recent insights or generate one via Gemini
-    const { data: insights } = await supabase
-      .from('ai_insights')
-      .select('*, products(name)')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
+    // 6. Get recent insights from pre-fetched parallel query
     let primaryInsight = insights?.[0];
 
     // If no insight exists yet, generate with Gemini

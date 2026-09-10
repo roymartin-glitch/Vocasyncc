@@ -6,22 +6,11 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
 
-    // 1. Get profile threshold
-    const { data: profiles } = await supabase.from('profiles').select('margin_alert_threshold').limit(1);
-    const threshold = Number(profiles?.[0]?.margin_alert_threshold) || 20;
-
-    // 2. Get all products
-    const { data: products, error: prodErr } = await supabase
-      .from('products')
-      .select('id, name, default_unit, image_url')
-      .order('name');
-
-    if (prodErr) throw prodErr;
-
-    // 3. Get all transaction items
-    const { data: items, error: itemErr } = await supabase
-      .from('transaction_items')
-      .select(`
+    // Parallelize all database queries concurrently for maximum speed
+    const [profilesRes, productsRes, itemsRes, batchesRes] = await Promise.all([
+      supabase.from('profiles').select('margin_alert_threshold').limit(1),
+      supabase.from('products').select('id, name, default_unit, image_url').order('name'),
+      supabase.from('transaction_items').select(`
         product_id,
         quantity,
         unit_price,
@@ -29,20 +18,14 @@ export async function GET(req: NextRequest) {
           type,
           transaction_date
         )
-      `);
+      `),
+      supabase.from('stock_batches').select('*'),
+    ]);
 
-    if (itemErr) throw itemErr;
-
-    // 4. Get active stock batches (FIFO inventory)
-    let stockBatches: any[] = [];
-    try {
-      const { data: bData } = await supabase
-        .from('stock_batches')
-        .select('*');
-      if (bData) stockBatches = bData;
-    } catch (bErr) {
-      console.warn('stock_batches query fallback:', bErr);
-    }
+    const threshold = Number(profilesRes.data?.[0]?.margin_alert_threshold) || 20;
+    const products = productsRes.data || [];
+    const items = itemsRes.data || [];
+    const stockBatches = batchesRes.data || [];
 
     // Compute cost price, selling price, and stock per product
     const productStats: Record<string, any> = {};

@@ -32,21 +32,22 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // 1. Fetch live insights & metrics
-      const res = await fetch('/api/insights');
-      const data = await res.json();
-      if (data.success) {
+      // Parallelize insights and transactions fetching for instant dashboard display
+      const [insightsResult, txResult] = await Promise.allSettled([
+        fetch('/api/insights').then((r) => r.json()),
+        fetch('/api/transactions').then((r) => r.json()),
+      ]);
+
+      if (insightsResult.status === 'fulfilled' && insightsResult.value.success) {
+        const data = insightsResult.value;
         setMetrics(data.metrics);
         if (data.trendData?.length > 0) setTrendData(data.trendData);
         if (data.primaryInsight) setPrimaryInsight(data.primaryInsight);
         if (data.signals?.length > 0) setSignals(data.signals);
       }
 
-      // 2. Fetch live transactions
-      const txRes = await fetch('/api/transactions');
-      const txData = await txRes.json();
-      if (txData.success && txData.data?.length > 0) {
-        setTransactions(txData.data);
+      if (txResult.status === 'fulfilled' && txResult.value.success && txResult.value.data?.length > 0) {
+        setTransactions(txResult.value.data);
       }
     } catch (e) {
       console.warn('Dashboard live fetch fallback to seed:', e);

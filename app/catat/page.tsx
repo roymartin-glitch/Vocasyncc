@@ -36,6 +36,8 @@ export default function CatatPage() {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [directTextInput, setDirectTextInput] = useState('');
+  const recognitionRef = React.useRef<any>(null);
   const [autoSavedInfo, setAutoSavedInfo] = useState<{
     productName: string;
     quantity: number;
@@ -225,51 +227,80 @@ export default function CatatPage() {
     }
   };
 
-  // Web Speech API
-  const startSpeechRecognition = () => {
+  // Robust Web Speech API with Real-Time Interim Feedback & Safe Toggle
+  const toggleSpeechRecognition = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (_) {}
+      }
+      setIsListening(false);
+      return;
+    }
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Browser Anda tidak mendukung Web Speech API langsung. Anda dapat mencoba tombol Preset Suara di bawah.');
+      alert('Browser Anda belum mendukung Web Speech API langsung. Anda dapat menggunakan kolom Teks AI atau tombol Preset di bawah.');
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.lang = 'id-ID';
-      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.interimResults = true; // Show words as user speaks
       recognition.maxAlternatives = 1;
+
+      let accumulated = '';
 
       recognition.onstart = () => {
         setIsListening(true);
-        setRawVoiceText('Mendengarkan suara Anda...');
+        setRawVoiceText('Mendengarkan... Silakan bicara');
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setIsListening(false);
-        processVoiceWithGeminiAndAutoSave(transcript);
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const trans = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            accumulated += ' ' + trans;
+          } else {
+            interim += trans;
+          }
+        }
+        const currentText = (accumulated + ' ' + interim).trim();
+        if (currentText) {
+          setRawVoiceText(`"${currentText}"`);
+        }
       };
 
       recognition.onerror = (event: any) => {
+        console.warn('Speech event info:', event.error);
         if (event.error === 'no-speech') {
-          setRawVoiceText('Tidak ada suara terdeteksi. Silakan coba bicara lebih dekat dengan mikrofon.');
+          setRawVoiceText('Tidak ada suara terdeteksi. Silakan tekan mikrofon lalu coba bicara lagi.');
         } else if (event.error === 'not-allowed') {
-          setRawVoiceText('Izin akses mikrofon ditolak di browser. Harap izinkan akses mikrofon.');
-        } else if (event.error !== 'aborted') {
-          console.warn('Speech event info:', event.error);
+          setRawVoiceText('Izin akses mikrofon ditolak. Harap izinkan akses mikrofon di browser.');
+        } else if (event.error === 'network') {
+          setRawVoiceText('Koneksi suara terganggu. Anda dapat menggunakan kolom Teks AI atau Preset di bawah.');
         }
         setIsListening(false);
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        const toProcess = accumulated.trim();
+        if (toProcess && toProcess.length > 2) {
+          processVoiceWithGeminiAndAutoSave(toProcess);
+        }
       };
 
       recognition.start();
     } catch (e) {
-      console.error('Speech recognition error:', e);
+      console.error('Speech recognition start error:', e);
       setIsListening(false);
     }
   };
@@ -460,7 +491,7 @@ export default function CatatPage() {
           <div className="flex justify-center">
             <button
               type="button"
-              onClick={startSpeechRecognition}
+              onClick={toggleSpeechRecognition}
               disabled={isProcessingVoice || isAutoSaving}
               className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer ${
                 isListening
@@ -483,9 +514,9 @@ export default function CatatPage() {
           <div className="space-y-1">
             <p className="text-sm font-black text-slate-800">
               {isListening
-                ? 'Mendengarkan suara Anda... Katakan transaksi Anda.'
+                ? '🔴 Mendengarkan suara Anda... Ketuk lagi untuk selesai.'
                 : isProcessingVoice
-                ? 'Gemini 3.6 Flash sedang mem-parsing suara...'
+                ? 'Gemini AI sedang mem-parsing suara transaksi...'
                 : isAutoSaving
                 ? 'Menyimpan langsung ke database...'
                 : 'Tekan mikrofon & bicara (Langsung tersimpan)'}
@@ -495,10 +526,48 @@ export default function CatatPage() {
             </p>
           </div>
 
+          {rawVoiceText && (
+            <div className="bg-white border border-emerald-300 p-3 rounded-2xl text-left text-xs space-y-1 shadow-2xs">
+              <span className="text-[10px] uppercase font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 tracking-wider">
+                Transkrip Suara:
+              </span>
+              <p className="text-slate-800 font-bold italic pt-1">{rawVoiceText}</p>
+            </div>
+          )}
+
+          {/* Quick Direct Text / Voice Dictation Fallback */}
+          <div className="pt-2 border-t border-slate-200/80">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (directTextInput.trim()) {
+                  processVoiceWithGeminiAndAutoSave(directTextInput.trim());
+                  setDirectTextInput('');
+                }
+              }}
+              className="flex gap-2 max-w-md mx-auto"
+            >
+              <input
+                type="text"
+                placeholder="Atau ketik/dikte: e.g. Beli tomat 10 kg 80rb"
+                value={directTextInput}
+                onChange={(e) => setDirectTextInput(e.target.value)}
+                className="flex-1 text-xs bg-white border border-slate-300 rounded-xl px-3.5 py-2 font-medium text-slate-800 focus:outline-emerald-600 shadow-2xs"
+              />
+              <button
+                type="submit"
+                disabled={isProcessingVoice || isAutoSaving || !directTextInput.trim()}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                Proses AI
+              </button>
+            </form>
+          </div>
+
           {/* Quick Presets for Demo */}
-          <div className="pt-3 border-t border-slate-200/80">
+          <div className="pt-2 border-t border-slate-200/80">
             <span className="text-[11px] font-bold text-slate-500 block mb-2">
-              Contoh Percakapan Transaksi Cepat:
+              Atau Uji Cepat dengan 1 Ketukan:
             </span>
             <div className="flex flex-wrap justify-center gap-2">
               {/* Preset 1: Beli Kangkung */}
@@ -514,7 +583,7 @@ export default function CatatPage() {
                 <span>&quot;Beli kangkung 10 kg bayar 100 ribu&quot;</span>
               </button>
 
-              {/* Preset 2: Beli Bawang Merah Brebes (Nama Mirip -> Konfirmasi 1 Ketukan) */}
+              {/* Preset 2: Beli Bawang Merah Brebes */}
               <button
                 type="button"
                 disabled={isProcessingVoice || isAutoSaving}
@@ -524,10 +593,10 @@ export default function CatatPage() {
                 className="text-[11px] bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold border border-amber-300/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
                 <HelpCircle className="w-3 h-3 text-amber-600" />
-                <span>&quot;Beli bawang merah brebes 5 kg bayar 150 ribu&quot; (Uji Nama Mirip)</span>
+                <span>&quot;Beli bawang merah brebes 5 kg bayar 150 ribu&quot;</span>
               </button>
 
-              {/* Preset 3: Jual Bawang Merah (Transaksi Normal) */}
+              {/* Preset 3: Jual Bawang Merah */}
               <button
                 type="button"
                 disabled={isProcessingVoice || isAutoSaving}
@@ -538,29 +607,8 @@ export default function CatatPage() {
               >
                 &quot;Jual bawang merah 5 kg dapat 200 ribu&quot;
               </button>
-
-              {/* Preset 4: Kulakan Cabai Rawit */}
-              <button
-                type="button"
-                disabled={isProcessingVoice || isAutoSaving}
-                onClick={() =>
-                  processVoiceWithGeminiAndAutoSave('Beli cabai rawit merah 10 kilo modal 450 ribu')
-                }
-                className="text-[11px] bg-rose-50 hover:bg-rose-100/80 text-rose-900 font-bold border border-rose-300/80 px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95"
-              >
-                &quot;Beli cabai rawit 10 kg modal 450 ribu&quot;
-              </button>
             </div>
           </div>
-
-          {rawVoiceText && (
-            <div className="bg-white border border-emerald-300 p-3 rounded-2xl text-left text-xs space-y-1 shadow-2xs">
-              <span className="text-[10px] uppercase font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 tracking-wider">
-                Transkrip Terdeteksi:
-              </span>
-              <p className="text-slate-800 font-bold italic pt-1">{rawVoiceText}</p>
-            </div>
-          )}
         </div>
 
         {/* Divider */}
