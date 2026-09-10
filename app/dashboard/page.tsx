@@ -22,10 +22,19 @@ import { AIInsight, DashboardMetrics, Transaction, TrendDayData } from '@/types'
 
 export default function DashboardPage() {
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockDashboardMetrics);
-  const [trendData, setTrendData] = useState<TrendDayData[]>(mockTrendData);
-  const [primaryInsight, setPrimaryInsight] = useState<AIInsight>(mockInsights[0]);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    today_income: 0,
+    today_income_change: 0,
+    today_expense: 0,
+    today_expense_change: 0,
+    today_profit: 0,
+    today_profit_change: 0,
+    today_margin: 0,
+    today_margin_change: 0,
+  });
+  const [trendData, setTrendData] = useState<TrendDayData[]>([]);
+  const [primaryInsight, setPrimaryInsight] = useState<AIInsight | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = async () => {
@@ -39,12 +48,12 @@ export default function DashboardPage() {
       if (insightsResult.status === 'fulfilled' && insightsResult.value.success) {
         const data = insightsResult.value;
         if (data.metrics) setMetrics(data.metrics);
-        if (data.trendData?.length > 0) setTrendData(data.trendData);
+        if (data.trendData) setTrendData(data.trendData);
         if (data.primaryInsight) setPrimaryInsight(data.primaryInsight);
       }
 
-      if (txResult.status === 'fulfilled' && txResult.value.success && txResult.value.data?.length > 0) {
-        setTransactions(txResult.value.data);
+      if (txResult.status === 'fulfilled' && txResult.value.success) {
+        setTransactions(txResult.value.data || []);
       }
     } catch (e) {
       console.warn('Dashboard live fetch fallback to seed:', e);
@@ -64,10 +73,10 @@ export default function DashboardPage() {
       month: 'long',
       year: 'numeric',
     });
-    const income = (metrics.today_income ?? 2067000).toLocaleString('id-ID');
-    const expense = (metrics.today_expense ?? 1430000).toLocaleString('id-ID');
-    const profit = (metrics.today_profit ?? 637000).toLocaleString('id-ID');
-    const margin = (metrics.today_margin ?? 30.8).toLocaleString('id-ID');
+    const income = (metrics.today_income ?? 0).toLocaleString('id-ID');
+    const expense = (metrics.today_expense ?? 0).toLocaleString('id-ID');
+    const profit = (metrics.today_profit ?? 0).toLocaleString('id-ID');
+    const margin = (metrics.today_margin ?? 0).toLocaleString('id-ID');
 
     const message = `📊 *Rekap Keuangan Kios*\n📅 ${todayStr}\n\n• *Uang Masuk:* Rp${income}\n• *Uang Keluar:* Rp${expense}\n• *Untung Bersih:* Rp${profit} (${margin}%)\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
 
@@ -82,7 +91,7 @@ export default function DashboardPage() {
       <StudioModal
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
-        productName={primaryInsight.product_name || 'Bawang Merah Brebes'}
+        productName={primaryInsight?.product_name || 'Bawang Merah Brebes'}
       />
 
       {/* Ringkasan Hari Ini Section */}
@@ -107,8 +116,8 @@ export default function DashboardPage() {
           <MetricCard
             title="Uang Masuk"
             description="Total penjualan hari ini"
-            value={`Rp${(metrics.today_income ?? 2067000).toLocaleString('id-ID')}`}
-            changePercent={metrics.today_income_change ?? 12.8}
+            value={`Rp${(metrics.today_income ?? 0).toLocaleString('id-ID')}`}
+            changePercent={metrics.today_income_change ?? 0}
             variant="emerald"
             icon={<Wallet className="w-6 h-6 stroke-[2.5]" />}
           />
@@ -117,8 +126,8 @@ export default function DashboardPage() {
           <MetricCard
             title="Uang Keluar"
             description="Total belanja & biaya"
-            value={`Rp${(metrics.today_expense ?? 1430000).toLocaleString('id-ID')}`}
-            changePercent={metrics.today_expense_change ?? -3.5}
+            value={`Rp${(metrics.today_expense ?? 0).toLocaleString('id-ID')}`}
+            changePercent={metrics.today_expense_change ?? 0}
             variant="white"
             isExpense={true}
             icon={<Receipt className="w-6 h-6 text-emerald-800 stroke-[2.5]" />}
@@ -128,8 +137,8 @@ export default function DashboardPage() {
           <MetricCard
             title="Untung Bersih"
             description="Sisa uang untuk Anda"
-            value={`Rp${(metrics.today_profit ?? 637000).toLocaleString('id-ID')}`}
-            changePercent={metrics.today_profit_change ?? 18.2}
+            value={`Rp${(metrics.today_profit ?? 0).toLocaleString('id-ID')}`}
+            changePercent={metrics.today_profit_change ?? 0}
             variant="lime"
             icon={<PiggyBank className="w-6 h-6 stroke-[2.5]" />}
           />
@@ -138,8 +147,8 @@ export default function DashboardPage() {
           <MetricCard
             title="Persen Untung"
             description="Untung dari setiap penjualan"
-            value={`${(metrics.today_margin ?? 30.8).toLocaleString('id-ID')}%`}
-            changePercent={metrics.today_margin_change ?? 2.4}
+            value={`${(metrics.today_margin ?? 0).toLocaleString('id-ID')}%`}
+            changePercent={metrics.today_margin_change ?? 0}
             variant="white"
             icon={<Percent className="w-6 h-6 text-emerald-800 stroke-[2.5]" />}
           />

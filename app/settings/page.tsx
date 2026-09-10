@@ -27,19 +27,34 @@ import { TextSizeSetting, AnalysisPeriodSetting, AppThemeSetting } from '@/types
 
 export default function SettingsPage() {
   // 1. Profil Toko
-  const [businessName, setBusinessName] = useState(mockProfile.business_name);
-  const [ownerName, setOwnerName] = useState(mockProfile.owner_name);
+  const [businessName, setBusinessName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vokasync_business_name') || '';
+    }
+    return '';
+  });
+  const [ownerName, setOwnerName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vokasync_owner_name') || '';
+    }
+    return '';
+  });
   const [businessType, setBusinessType] = useState('Sayur & Buah');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // 2. Peringatan
+  // 2. Peringatan (Sederhana & Ramah Pedagang)
   const [marginThreshold, setMarginThreshold] = useState('20');
-  const [lowStockThreshold, setLowStockThreshold] = useState('20');
+  const [lowStockThreshold, setLowStockThreshold] = useState('2');
   const [supplierCostThreshold, setSupplierCostThreshold] = useState('5');
 
-  // 3. Suara
-  const [soundAlertEnabled, setSoundAlertEnabled] = useState(false);
+  // 3. Suara (2 Pilihan: Aktif vs Mati)
+  const [soundAlertEnabled, setSoundAlertEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vokasync_sound_alert') === 'true';
+    }
+    return false;
+  });
   const [soundAlertVolume, setSoundAlertVolume] = useState(80);
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false);
 
@@ -74,8 +89,14 @@ export default function SettingsPage() {
       .then((data) => {
         if (data.success && data.data) {
           const p = data.data;
-          if (p.business_name) setBusinessName(p.business_name);
-          if (p.owner_name) setOwnerName(p.owner_name);
+          if (p.business_name) {
+            setBusinessName(p.business_name);
+            localStorage.setItem('vokasync_business_name', p.business_name);
+          }
+          if (p.owner_name) {
+            setOwnerName(p.owner_name);
+            localStorage.setItem('vokasync_owner_name', p.owner_name);
+          }
           if (p.business_type) {
             // Map legacy 'pasar' to 'Sayur & Buah'
             if (p.business_type === 'pasar') setBusinessType('Sayur & Buah');
@@ -84,9 +105,16 @@ export default function SettingsPage() {
             else setBusinessType(p.business_type);
           }
           if (p.margin_alert_threshold !== undefined) setMarginThreshold(p.margin_alert_threshold.toString());
-          if (p.low_stock_threshold !== undefined) setLowStockThreshold(p.low_stock_threshold.toString());
+          if (p.low_stock_threshold !== undefined) {
+            const rawVal = Number(p.low_stock_threshold);
+            setLowStockThreshold(rawVal > 15 ? '2' : rawVal.toString());
+          }
           if (p.supplier_cost_increase_threshold !== undefined) setSupplierCostThreshold(p.supplier_cost_increase_threshold.toString());
-          if (p.sound_alert_enabled !== undefined) setSoundAlertEnabled(Boolean(p.sound_alert_enabled));
+          if (p.sound_alert_enabled !== undefined) {
+            const isEnabled = Boolean(p.sound_alert_enabled);
+            setSoundAlertEnabled(isEnabled);
+            localStorage.setItem('vokasync_sound_alert', isEnabled ? 'true' : 'false');
+          }
           if (p.sound_alert_volume !== undefined) setSoundAlertVolume(Number(p.sound_alert_volume));
           if (p.text_size) setTextSize(p.text_size as TextSizeSetting);
           if (p.theme) setTheme(p.theme as AppThemeSetting);
@@ -158,7 +186,7 @@ export default function SettingsPage() {
         owner_name: ownerName,
         business_type: businessType,
         margin_alert_threshold: parseFloat(marginThreshold) || 20,
-        low_stock_threshold: parseFloat(lowStockThreshold) || 20,
+        low_stock_threshold: parseFloat(lowStockThreshold) || 2,
         supplier_cost_increase_threshold: parseFloat(supplierCostThreshold) || 5,
         sound_alert_enabled: soundAlertEnabled,
         sound_alert_volume: soundAlertVolume,
@@ -175,6 +203,9 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem('vokasync_sound_alert', soundAlertEnabled ? 'true' : 'false');
+        localStorage.setItem('vokasync_business_name', businessName);
+        localStorage.setItem('vokasync_owner_name', ownerName);
         showSuccess('Semua pengaturan berhasil disimpan ke database!');
         // Broadcast updates to Header and Sidebar
         window.dispatchEvent(
@@ -184,6 +215,7 @@ export default function SettingsPage() {
               owner_name: ownerName,
               text_size: textSize,
               theme: theme,
+              sound_alert_enabled: soundAlertEnabled,
             },
           })
         );
@@ -304,20 +336,20 @@ export default function SettingsPage() {
               <span>Pengaturan Peringatan</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Atur batas toleransi risiko agar Anda selalu mendapat sinyal cepat sebelum mengalami kerugian.
+              Atur batas pengingat sederhana agar Anda selalu mendapat sinyal cepat sebelum barang habis atau rugi.
             </p>
           </div>
 
           <div className="space-y-4">
-            {/* Batas Untung Minimum */}
+            {/* Batas Untung Minimal */}
             <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <Percent className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Batas Untung Minimum (%)</span>
+                  <span>Batas Untung Minimal (%)</span>
                 </label>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  VokaSync akan peringatkan Anda jika untung produk di bawah angka ini.
+                  VokaSync akan beri tahu Anda jika untung jualan turun di bawah angka ini.
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start md:self-auto">
@@ -333,39 +365,42 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Batas Stok Hampir Habis */}
+            {/* Pengingat Sisa Stok Barang (Sederhana: Tanpa Persen, Pakai Satuan Fisik) */}
             <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <Package className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Batas Stok Hampir Habis (%)</span>
+                  <span>Pengingat Sisa Stok Barang</span>
                 </label>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Anda akan diperingatkan jika stok tinggal sekian persen dari kulakan awal.
+                  Beri tahu jika stok barang dagangan tinggal sedikit (misal: sisa 1 atau 2 kg / bungkus / pcs).
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start md:self-auto">
+                <span className="text-xs font-bold text-slate-600">Sisa</span>
                 <input
                   type="number"
                   min="1"
                   max="99"
                   value={lowStockThreshold}
                   onChange={(e) => setLowStockThreshold(e.target.value)}
-                  className="w-24 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
+                  className="w-20 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
                 />
-                <span className="text-xs font-bold text-slate-500">%</span>
+                <span className="text-xs font-bold text-slate-700 bg-slate-200/80 px-2.5 py-1.5 rounded-xl">
+                  kg / pcs
+                </span>
               </div>
             </div>
 
-            {/* Batas Kenaikan Harga Supplier */}
+            {/* Batas Kenaikan Harga Kulakan (Bukan Istilah Supplier) */}
             <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Batas Kenaikan Harga Supplier (%)</span>
+                  <span>Batas Kenaikan Harga Kulakan (%)</span>
                 </label>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  VokaSync akan peringatkan jika harga kulakan naik melebihi angka ini.
+                  VokaSync akan beri tahu jika harga kulakan dari pedagang besar atau tengkulak naik melebihi angka ini.
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start md:self-auto">
@@ -384,62 +419,106 @@ export default function SettingsPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* 3. PENGATURAN SUARA */}
+        {/* 3. PENGATURAN SUARA (2 PILIHAN JELAS: AKTIF VS MATI) */}
         {/* ========================================================================= */}
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 md:p-8 space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
               <Volume2 className="w-4 h-4 text-emerald-700" />
-              <span>Pengaturan Suara</span>
+              <span>Pengaturan Suara Asisten</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Bantu Anda tetap siaga saat sibuk melayani pembeli di pasar dengan peringatan audio otomatis.
+              Pilih apakah asisten VokaSync boleh bersuara berbicara atau tetap hening saat bertransaksi.
             </p>
           </div>
 
-          <div className="space-y-5">
-            {/* Toggle Suara Peringatan */}
-            <div className="flex items-center justify-between p-4 bg-slate-50/80 border border-slate-200 rounded-2xl">
-              <div className="space-y-0.5">
-                <label className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <span>Suara Peringatan</span>
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                      soundAlertEnabled
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {soundAlertEnabled ? 'AKTIF' : 'NONAKTIF'}
-                  </span>
-                </label>
-                <p className="text-xs text-slate-500">
-                  Jika aktif, VokaSync akan berbicara saat ada peringatan penting.
-                </p>
-              </div>
-
+          <div className="space-y-4">
+            {/* 2 Big Choice Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Pilihan 1: Suara Aktif */}
               <button
                 type="button"
-                onClick={() => setSoundAlertEnabled(!soundAlertEnabled)}
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer ${
-                  soundAlertEnabled ? 'bg-emerald-700' : 'bg-slate-300'
+                onClick={() => {
+                  setSoundAlertEnabled(true);
+                  localStorage.setItem('vokasync_sound_alert', 'true');
+                  window.dispatchEvent(
+                    new CustomEvent('vokasync-settings-changed', {
+                      detail: { sound_alert_enabled: true },
+                    })
+                  );
+                }}
+                className={`p-4.5 rounded-2xl border-2 text-left transition-all flex items-start gap-3.5 cursor-pointer ${
+                  soundAlertEnabled
+                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-sm'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
                 }`}
               >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
-                    soundAlertEnabled ? 'translate-x-6' : 'translate-x-1'
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    soundAlertEnabled ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-500'
                   }`}
-                />
+                >
+                  <Volume2 className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Suara Aktif (Bisa Berbicara)</span>
+                    {soundAlertEnabled && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    Asisten akan berbicara ramah mengonfirmasi transaksi dan sinyal untung.
+                  </p>
+                </div>
+              </button>
+
+              {/* Pilihan 2: Suara Mati */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSoundAlertEnabled(false);
+                  localStorage.setItem('vokasync_sound_alert', 'false');
+                  window.dispatchEvent(
+                    new CustomEvent('vokasync-settings-changed', {
+                      detail: { sound_alert_enabled: false },
+                    })
+                  );
+                }}
+                className={`p-4.5 rounded-2xl border-2 text-left transition-all flex items-start gap-3.5 cursor-pointer ${
+                  !soundAlertEnabled
+                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-sm'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    !soundAlertEnabled ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <VolumeX className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Suara Mati (Hening)</span>
+                    {!soundAlertEnabled && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    Aplikasi tenang tanpa suara sama sekali. Layar tetap bekerja normal.
+                  </p>
+                </div>
               </button>
             </div>
 
-            {/* Volume Suara Peringatan (HANYA TAMPIL JIKA SUARA PERINGATAN = ON) */}
+            {/* Volume Suara & Tes Suara (Hanya muncul jika suara aktif) */}
             {soundAlertEnabled && (
               <div className="p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
                     <Volume2 className="w-4 h-4 text-emerald-700" />
-                    <span>Volume Suara Peringatan</span>
+                    <span>Tingkat Keras Suara (Volume)</span>
                   </label>
                   <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
                     {soundAlertVolume}%

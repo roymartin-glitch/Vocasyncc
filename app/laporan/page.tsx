@@ -28,9 +28,18 @@ type ReportPeriod = 'today' | 'week' | 'month' | 'all';
 
 export default function LaporanPage() {
   const [period, setPeriod] = useState<ReportPeriod>('today');
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockDashboardMetrics);
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
-  const [trendData, setTrendData] = useState<TrendDayData[]>(mockTrendData);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    today_income: 0,
+    today_income_change: 0,
+    today_expense: 0,
+    today_expense_change: 0,
+    today_profit: 0,
+    today_profit_change: 0,
+    today_margin: 0,
+    today_margin_change: 0,
+  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [trendData, setTrendData] = useState<TrendDayData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
 
@@ -45,11 +54,11 @@ export default function LaporanPage() {
       if (insightsRes.status === 'fulfilled' && insightsRes.value.success) {
         const d = insightsRes.value;
         if (d.metrics) setMetrics(d.metrics);
-        if (d.trendData?.length > 0) setTrendData(d.trendData);
+        if (d.trendData) setTrendData(d.trendData);
       }
 
-      if (txRes.status === 'fulfilled' && txRes.value.success && txRes.value.data?.length > 0) {
-        setTransactions(txRes.value.data);
+      if (txRes.status === 'fulfilled' && txRes.value.success) {
+        setTransactions(txRes.value.data || []);
       }
 
       setLastRefreshed(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));

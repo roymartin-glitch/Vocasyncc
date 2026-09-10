@@ -154,19 +154,25 @@ export function calculateStockRemaining(productId: string, batches: any[]): numb
 }
 
 /**
- * Menentukan apakah sisa stok berada di bawah ambang batas (default 20%).
+ * Menentukan apakah sisa stok berada di bawah ambang batas.
+ * Mendukung ambang kuantitas fisik (misal: sisa 1 atau 2 kg/pcs) maupun persentase.
  */
 export function isStockLow(
   remainingQty: number,
   initialOrReferenceQty: number,
-  thresholdPercent: number = 20
+  threshold: number = 2
 ): boolean {
   if (remainingQty <= 0) return true;
+  // Jika ambang batas berupa kuantitas fisik kecil (misal: <= 15 kg/pcs), bandingkan langsung sisa stok
+  if (threshold <= 15) {
+    return remainingQty <= threshold;
+  }
+  // Jika persentase (misal: 20%)
   if (!initialOrReferenceQty || initialOrReferenceQty <= 0) {
-    return remainingQty <= 5;
+    return remainingQty <= 2;
   }
   const percentage = (remainingQty / initialOrReferenceQty) * 100;
-  return percentage <= thresholdPercent;
+  return percentage <= threshold;
 }
 
 /**

@@ -28,7 +28,7 @@ const navItems = [
   { name: 'Pengaturan', href: '/settings', icon: Settings },
 ];
 
-export function Sidebar({ businessName = 'Kios Berkah Sayur' }: SidebarProps) {
+export function Sidebar({ businessName = 'Toko Saya' }: SidebarProps) {
   const pathname = usePathname();
 
   return (

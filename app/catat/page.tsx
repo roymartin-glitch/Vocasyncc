@@ -99,6 +99,10 @@ export default function CatatPage() {
 
   const speakConfirmation = (product: string, qty: number, unitName: string, amount: number, isIncome: boolean) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    // Check user preference in settings (if disabled, remain silent)
+    const isSoundActive = localStorage.getItem('vokasync_sound_alert') !== 'false';
+    if (!isSoundActive) return;
+
     try {
       window.speechSynthesis.cancel();
       const actionWord = isIncome ? 'Jual' : 'Beli';

@@ -28,8 +28,8 @@ import { ProductAnalysisItem, ProductActionCategory } from '@/types';
 import { StudioModal } from '@/components/studio/StudioModal';
 
 export default function ProdukPage() {
-  const [products, setProducts] = useState<ProductAnalysisItem[]>(mockProducts);
-  const [selectedProduct, setSelectedProduct] = useState<ProductAnalysisItem>(mockProducts[0]);
+  const [products, setProducts] = useState<ProductAnalysisItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductAnalysisItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [threshold, setThreshold] = useState(mockProfile.margin_alert_threshold);
@@ -69,10 +69,10 @@ export default function ProdukPage() {
     try {
       const res = await fetch('/api/product-analysis');
       const data = await res.json();
-      if (data.success && data.data?.length > 0) {
-        setProducts(data.data);
+      if (data.success) {
+        setProducts(data.data || []);
         if (data.threshold) setThreshold(data.threshold);
-        return data.data;
+        return data.data || [];
       }
     } catch (e) {
       console.warn('Product analysis fetch fallback:', e);
@@ -86,6 +86,8 @@ export default function ProdukPage() {
     loadProducts().then((loaded) => {
       if (loaded && loaded.length > 0) {
         setSelectedProduct(loaded[0]);
+      } else {
+        setSelectedProduct(null);
       }
     });
   }, [loadProducts]);

@@ -46,6 +46,11 @@ export default function LoginPage() {
     setSuccessMessage('Masuk sebagai akun demo Pak Budi (Kios Berkah Sayur)...');
 
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        localStorage.setItem('vokasync_owner_name', 'Pak Budi');
+        localStorage.setItem('vokasync_business_name', 'Kios Berkah Sayur');
+      }
       // Clear any prior active session so demo doesn't conflict
       await supabase.auth.signOut();
       setTimeout(() => {
@@ -73,6 +78,29 @@ export default function LoginPage() {
         throw error;
       }
 
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
+
+      // Fetch the actual user profile for this newly logged in user
+      if (data.user) {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('owner_name, business_name, text_size, theme, sound_alert_enabled')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (userProfile && typeof window !== 'undefined') {
+          if (userProfile.owner_name) localStorage.setItem('vokasync_owner_name', userProfile.owner_name);
+          if (userProfile.business_name) localStorage.setItem('vokasync_business_name', userProfile.business_name);
+          if (userProfile.text_size) localStorage.setItem('vokasync_text_size', userProfile.text_size);
+          if (userProfile.theme) localStorage.setItem('vokasync_theme', userProfile.theme);
+          if (userProfile.sound_alert_enabled !== undefined) {
+            localStorage.setItem('vokasync_sound_alert', userProfile.sound_alert_enabled ? 'true' : 'false');
+          }
+        }
+      }
+
       setSuccessMessage('Login berhasil! Mengalihkan ke Beranda...');
       setTimeout(() => {
         window.location.href = '/dashboard';
@@ -97,6 +125,12 @@ export default function LoginPage() {
     }
 
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        localStorage.setItem('vokasync_owner_name', ownerName.trim());
+        localStorage.setItem('vokasync_business_name', businessName.trim());
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -122,6 +156,8 @@ export default function LoginPage() {
             business_name: businessName.trim(),
             business_type: businessType,
             margin_alert_threshold: 20,
+            low_stock_threshold: 2,
+            sound_alert_enabled: false,
           });
         } catch (_) {}
       }

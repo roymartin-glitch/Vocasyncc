@@ -8,7 +8,7 @@ import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
     const userId = profile?.id;
 
     let txQuery = supabase
@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
     ]);
 
     const activeProfile = profile || {
-      owner_name: 'Pak Budi',
-      business_name: 'Kios Berkah Sayur',
+      owner_name: 'Pedagang',
+      business_name: 'Toko Saya',
       margin_alert_threshold: 20,
     };
     const threshold = Number(activeProfile.margin_alert_threshold) || 20;
@@ -149,11 +149,11 @@ export async function GET(req: NextRequest) {
       console.warn('Stock alert check fallback:', sErr);
     }
 
-    // Fallback low stock alert for presentation demo if stock_batches is empty
-    if (lowStockSignals.length === 0) {
+    // Fallback low stock alert ONLY for unauthenticated demo presentation
+    if (lowStockSignals.length === 0 && !user) {
       lowStockSignals.push({
         id: 'stock-alert-cabai',
-        user_id: profile.id || 'user-001',
+        user_id: profile?.id || 'demo-user',
         product_name: 'Cabai Rawit Merah',
         severity: 'yellow',
         message: 'Stok Cabai Rawit Merah tinggal 3 kg. Segera kulakan agar tidak kehabisan.',
@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
     let primaryInsight = insights?.[0];
 
     // If no insight exists yet, generate with Gemini
-    if (!primaryInsight && profile.id) {
+    if (!primaryInsight && profile.id && allTx.length > 0) {
       try {
         const prompt = getDailyAdvisorPrompt(profile.owner_name, {
           todayIncome,
@@ -197,24 +197,28 @@ export async function GET(req: NextRequest) {
     // Combine low stock signals and general business signals
     const allSignals = [...lowStockSignals, ...(insights || [])];
 
+    const hasData = allTx.length > 0;
+
     return NextResponse.json({
       success: true,
       profile,
       metrics: {
         today_income: todayIncome,
-        today_income_change: 12.8,
+        today_income_change: hasData ? 12.8 : 0,
         today_expense: todayExpense,
-        today_expense_change: -3.5,
+        today_expense_change: hasData ? -3.5 : 0,
         today_profit: todayProfit,
-        today_profit_change: 18.2,
+        today_profit_change: hasData ? 18.2 : 0,
         today_margin: todayMargin,
-        today_margin_change: 2.4,
+        today_margin_change: hasData ? 2.4 : 0,
       },
       trendData,
       primaryInsight: primaryInsight || {
-        severity,
-        has_quick_action: hasQuickAction,
-        message: `${profile.owner_name}, margin usaha Anda saat ini tercatat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs harga modal secara otomatis.`,
+        severity: hasData ? severity : 'green',
+        has_quick_action: hasData ? hasQuickAction : false,
+        message: hasData
+          ? `${activeProfile.owner_name}, margin usaha Anda saat ini tercatat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs harga modal secara otomatis.`
+          : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau kulakan pertama Anda hari ini untuk melihat analisa keuangan otomatis.`,
         created_at: 'Baru saja',
       },
       signals: allSignals,

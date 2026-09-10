@@ -23,7 +23,7 @@ import { Transaction } from '@/types';
 type DatePreset = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 
 export default function RiwayatPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [startDate, setStartDate] = useState<string>('');
@@ -95,8 +95,8 @@ export default function RiwayatPage() {
 
       const res = await fetch(url);
       const data = await res.json();
-      if (data.success && data.data) {
-        setTransactions(data.data);
+      if (data.success) {
+        setTransactions(data.data || []);
       }
     } catch (err) {
       console.warn('Transactions fetch fallback:', err);

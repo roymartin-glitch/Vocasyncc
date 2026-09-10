@@ -15,8 +15,18 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
-  const [businessName, setBusinessName] = useState(mockProfile.business_name);
-  const [ownerName, setOwnerName] = useState(mockProfile.owner_name);
+  const [businessName, setBusinessName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vokasync_business_name') || 'Toko Saya';
+    }
+    return 'Toko Saya';
+  });
+  const [ownerName, setOwnerName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vokasync_owner_name') || 'Pedagang';
+    }
+    return 'Pedagang';
+  });
 
   // Apply text size and theme to root documentElement
   useEffect(() => {
@@ -44,13 +54,25 @@ export function AppShell({ children }: AppShellProps) {
     const cachedTheme = localStorage.getItem('vokasync_theme') || 'terang';
     applyTheme(cachedTheme);
 
+    const cachedOwner = localStorage.getItem('vokasync_owner_name');
+    if (cachedOwner) setOwnerName(cachedOwner);
+
+    const cachedBusiness = localStorage.getItem('vokasync_business_name');
+    if (cachedBusiness) setBusinessName(cachedBusiness);
+
     // 2. Fetch profile & settings
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data) {
-          if (data.data.business_name) setBusinessName(data.data.business_name);
-          if (data.data.owner_name) setOwnerName(data.data.owner_name);
+          if (data.data.business_name) {
+            setBusinessName(data.data.business_name);
+            localStorage.setItem('vokasync_business_name', data.data.business_name);
+          }
+          if (data.data.owner_name) {
+            setOwnerName(data.data.owner_name);
+            localStorage.setItem('vokasync_owner_name', data.data.owner_name);
+          }
           if (data.data.text_size) {
             applyTextSize(data.data.text_size);
             localStorage.setItem('vokasync_text_size', data.data.text_size);

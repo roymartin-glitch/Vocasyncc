@@ -9,7 +9,7 @@ interface HeaderProps {
   businessName?: string;
 }
 
-export function Header({ ownerName = 'Pak Budi', businessName = 'Kios Berkah Sayur' }: HeaderProps) {
+export function Header({ ownerName = 'Pedagang', businessName = 'Toko Saya' }: HeaderProps) {
   const currentDate = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: 'numeric',
