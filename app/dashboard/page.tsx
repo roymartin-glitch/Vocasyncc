@@ -57,6 +57,25 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, []);
 
+  const handleShareWhatsAppRekap = () => {
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const income = (metrics.today_income ?? 2067000).toLocaleString('id-ID');
+    const expense = (metrics.today_expense ?? 1430000).toLocaleString('id-ID');
+    const profit = (metrics.today_profit ?? 637000).toLocaleString('id-ID');
+    const margin = (metrics.today_margin ?? 30.8).toLocaleString('id-ID');
+
+    const message = `📊 *Rekap Keuangan Kios*\n📅 ${todayStr}\n\n• *Uang Masuk:* Rp${income}\n• *Uang Keluar:* Rp${expense}\n• *Untung Bersih:* Rp${profit} (${margin}%)\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
+
+    if (typeof window !== 'undefined') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Visual Marketing Poster Modal */}
@@ -68,9 +87,19 @@ export default function DashboardPage() {
 
       {/* Ringkasan Hari Ini Section */}
       <section className="space-y-4">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          Ringkasan Hari Ini
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            Ringkasan Hari Ini
+          </h2>
+
+          <button
+            type="button"
+            onClick={handleShareWhatsAppRekap}
+            className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-black text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer self-start sm:self-auto border-2 border-[#1EBE5B]"
+          >
+            <span>📲 Kirim Rekap ke WhatsApp</span>
+          </button>
+        </div>
 
         {/* 4 Accessible Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

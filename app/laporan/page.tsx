@@ -155,6 +155,28 @@ export default function LaporanPage() {
     return Array.from(map.values()).sort((a, b) => b.totalIncome - a.totalIncome);
   }, [filteredTransactions]);
 
+  const handleShareWhatsAppLaporan = () => {
+    const periodLabel =
+      period === 'today'
+        ? 'Hari Ini'
+        : period === 'week'
+        ? '7 Hari Terakhir'
+        : period === 'month'
+        ? 'Bulan Ini'
+        : 'Semua Waktu';
+
+    const inc = reportTotals.income.toLocaleString('id-ID');
+    const exp = reportTotals.expense.toLocaleString('id-ID');
+    const prof = reportTotals.profit.toLocaleString('id-ID');
+    const mrg = reportTotals.margin.toLocaleString('id-ID');
+
+    const message = `📊 *Laporan Keuangan Toko*\nPeriode: ${periodLabel}\n\n• *Total Uang Masuk:* Rp${inc}\n• *Total Uang Keluar:* Rp${exp}\n• *Untung Bersih (Sisa):* Rp${prof} (${mrg}%)\n• *Jumlah Transaksi:* ${reportTotals.txCount} catatan\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
+
+    if (typeof window !== 'undefined') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
   const handlePrint = () => {
     if (typeof window !== 'undefined') {
       window.print();
@@ -175,7 +197,7 @@ export default function LaporanPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
           <button
             type="button"
             onClick={fetchRealTimeData}
@@ -184,6 +206,14 @@ export default function LaporanPage() {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Segarkan</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareWhatsAppLaporan}
+            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
+          >
+            <span>📲 Rekap WhatsApp</span>
           </button>
 
           <button

@@ -97,6 +97,22 @@ export default function CatatPage() {
     setSilenceCountdown(null);
   };
 
+  const speakConfirmation = (product: string, qty: number, unitName: string, amount: number, isIncome: boolean) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const actionWord = isIncome ? 'Jual' : 'Beli';
+      const cleanUnit = unitName.replace(/\s*\(.*\)/, '');
+      const textToSpeak = `Catatan ${actionWord} ${product} ${qty} ${cleanUnit} sebesar ${amount.toLocaleString('id-ID')} rupiah sudah tersimpan ya.`;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis confirmation info:', e);
+    }
+  };
+
   // Save transaction executor
   const executeSaveTransaction = async (
     finalProductName: string,
@@ -131,10 +147,19 @@ export default function CatatPage() {
         });
         setShowSuccessToast(true);
 
-        // Beri jeda 2.8 detik agar lansia sempat membaca konfirmasi dengan tenang
+        // Suara balasan asisten berbicara ramah kepada pedagang
+        speakConfirmation(
+          finalProductName,
+          d.quantity || 1,
+          d.unit || 'kg',
+          d.total_price || 0,
+          (d.type || 'income') === 'income'
+        );
+
+        // Beri jeda 3.5 detik agar lansia sempat mendengar suara balasan dan membaca konfirmasi dengan tenang
         setTimeout(() => {
           router.push('/dashboard');
-        }, 2800);
+        }, 3500);
       } else {
         alert(saveResult.error || 'Gagal menyimpan transaksi.');
       }
@@ -359,9 +384,10 @@ export default function CatatPage() {
       const result = await res.json();
       if (result.success) {
         setShowSuccessToast(true);
+        speakConfirmation(productName, quantity, unit, totalAmount, type === 'income');
         setTimeout(() => {
           router.push('/dashboard');
-        }, 1800);
+        }, 2500);
       } else {
         alert(result.error || 'Gagal menyimpan transaksi.');
       }

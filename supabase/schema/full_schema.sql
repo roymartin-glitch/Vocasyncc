@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   sound_alert_enabled BOOLEAN DEFAULT false,
   sound_alert_volume NUMERIC DEFAULT 80,
   text_size TEXT DEFAULT 'normal',
+  theme TEXT DEFAULT 'terang',
   default_unit TEXT DEFAULT 'kg',
   analysis_period TEXT DEFAULT '7d',
   app_settings JSONB DEFAULT '{}',
@@ -35,18 +36,36 @@ CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
--- Trigger auto create profile on user registration
+-- Trigger auto create profile on user registration (dynamically extracts registered names)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, business_name, owner_name, business_type, margin_alert_threshold)
+  INSERT INTO public.profiles (
+    id,
+    business_name,
+    owner_name,
+    business_type,
+    margin_alert_threshold,
+    low_stock_threshold,
+    supplier_cost_increase_threshold,
+    theme,
+    text_size
+  )
   VALUES (
     new.id,
-    COALESCE(new.raw_user_meta_data->>'business_name', 'Kios Berkah Sayur'),
-    COALESCE(new.raw_user_meta_data->>'owner_name', 'Pak Budi'),
-    COALESCE(new.raw_user_meta_data->>'business_type', 'pasar'),
-    20
-  );
+    COALESCE(NULLIF(new.raw_user_meta_data->>'business_name', ''), 'Kios Dagang Saya'),
+    COALESCE(NULLIF(new.raw_user_meta_data->>'owner_name', ''), split_part(new.email, '@', 1)),
+    COALESCE(NULLIF(new.raw_user_meta_data->>'business_type', ''), 'Sayur & Buah'),
+    20,
+    20,
+    5,
+    'terang',
+    'normal'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    business_name = EXCLUDED.business_name,
+    owner_name = EXCLUDED.owner_name,
+    business_type = EXCLUDED.business_type;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -64,6 +83,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   default_unit TEXT NOT NULL DEFAULT 'kg',
+  image_url TEXT DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -270,4 +290,30 @@ ALTER TABLE public.stock_batches ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can manage own stock batches" ON public.stock_batches;
 CREATE POLICY "Users can manage own stock batches" ON public.stock_batches FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- 9. SUPABASE STORAGE (Bucket product-images)
+-- ------------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'product-images',
+  'product-images',
+  TRUE,
+  5242880,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Users can upload product images" ON storage.objects;
+CREATE POLICY "Users can upload product images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'product-images');
+
+DROP POLICY IF EXISTS "Anyone can view product images" ON storage.objects;
+CREATE POLICY "Anyone can view product images" ON storage.objects FOR SELECT TO public USING (bucket_id = 'product-images');
+
+DROP POLICY IF EXISTS "Users can update their product images" ON storage.objects;
+CREATE POLICY "Users can update their product images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'product-images');
+
+DROP POLICY IF EXISTS "Users can delete their product images" ON storage.objects;
+CREATE POLICY "Users can delete their product images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'product-images');
+
 
