@@ -10,8 +10,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   business_name TEXT DEFAULT 'Kios Berkah Sayur',
   owner_name TEXT DEFAULT 'Pak Budi',
-  business_type TEXT DEFAULT 'pasar' CHECK (business_type IN ('pasar', 'kuliner', 'kriya', 'kelontong', 'lainnya')),
+  business_type TEXT DEFAULT 'Sayur & Buah',
   margin_alert_threshold NUMERIC DEFAULT 20,
+  low_stock_threshold NUMERIC DEFAULT 20,
+  supplier_cost_increase_threshold NUMERIC DEFAULT 5,
+  sound_alert_enabled BOOLEAN DEFAULT false,
+  sound_alert_volume NUMERIC DEFAULT 80,
+  text_size TEXT DEFAULT 'normal',
+  default_unit TEXT DEFAULT 'kg',
+  analysis_period TEXT DEFAULT '7d',
+  app_settings JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

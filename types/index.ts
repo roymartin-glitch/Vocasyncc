@@ -1,11 +1,39 @@
-export type BusinessType = 'pasar' | 'kuliner' | 'kriya' | 'kelontong' | 'lainnya';
+export type BusinessType =
+  | 'Sayur & Buah'
+  | 'Daging & Ikan'
+  | 'Kuliner Rumahan'
+  | 'Kriya & Fashion'
+  | 'Kelontong'
+  | 'Lainnya'
+  | string;
 
-export interface Profile {
+export type TextSizeSetting = 'normal' | 'besar' | 'sangat-besar';
+export type AnalysisPeriodSetting = '7d' | '30d' | '3m';
+
+export interface AppSettings {
+  low_stock_threshold: number; // default 20%
+  supplier_cost_increase_threshold: number; // default 5%
+  sound_alert_enabled: boolean; // default false
+  sound_alert_volume: number; // default 80% (0-100)
+  text_size: TextSizeSetting; // default 'normal'
+  default_unit: string; // default 'kg'
+  analysis_period: AnalysisPeriodSetting; // default '7d'
+}
+
+export interface Profile extends Partial<AppSettings> {
   id: string;
   business_name: string;
   owner_name: string;
   business_type: BusinessType;
   margin_alert_threshold: number; // default 20%
+  low_stock_threshold?: number;
+  supplier_cost_increase_threshold?: number;
+  sound_alert_enabled?: boolean;
+  sound_alert_volume?: number;
+  text_size?: TextSizeSetting;
+  default_unit?: string;
+  analysis_period?: AnalysisPeriodSetting;
+  app_settings?: Partial<AppSettings>;
   created_at?: string;
   updated_at?: string;
 }

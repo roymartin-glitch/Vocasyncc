@@ -39,3 +39,16 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Accessibility: Text Size Settings */
+html.text-size-normal {
+  font-size: 16px;
+}
+
+html.text-size-besar {
+  font-size: 18px;
+}
+
+html.text-size-sangat-besar {
+  font-size: 20px;
+}

@@ -60,7 +60,7 @@ export default function CatatPage() {
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Fetch products from database
+  // Fetch products and default unit from database
   useEffect(() => {
     fetch('/api/product-analysis')
       .then((res) => res.json())
@@ -70,6 +70,15 @@ export default function CatatPage() {
         }
       })
       .catch((err) => console.warn('Product list fallback:', err));
+
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((sData) => {
+        if (sData.success && sData.data?.default_unit) {
+          setUnit(sData.data.default_unit);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleProductChange = (val: string) => {
@@ -139,10 +148,10 @@ export default function CatatPage() {
           })
           .catch(() => {});
 
-        // Redirect after brief confirmation
+        // Redirect always to dashboard smoothly
         setTimeout(() => {
-          router.push(isNew ? '/produk' : '/dashboard');
-        }, 1900);
+          router.push('/dashboard');
+        }, 1600);
       } else {
         alert(saveResult.error || 'Gagal menyimpan transaksi.');
       }
@@ -323,23 +332,11 @@ export default function CatatPage() {
       {showSuccessToast && autoSavedInfo && (
         <div className="bg-emerald-800 text-white p-5 rounded-3xl shadow-xl space-y-2.5 animate-in fade-in slide-in-from-top-4 duration-300 border border-emerald-600">
           <div className="flex items-center gap-2.5">
-            {autoSavedInfo.isNewProduct ? (
-              <Sparkles className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
-            ) : (
-              <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
-            )}
+            <Zap className="w-5 h-5 text-amber-300 fill-amber-300 animate-bounce" />
             <h4 className="font-extrabold text-sm tracking-tight">
-              {autoSavedInfo.isNewProduct
-                ? 'Produk Baru Otomatis Terbentuk & Tersimpan!'
-                : 'Otomatis Tersimpan ke Supabase Tanpa Klik!'}
+              Catatan Transaksi Berhasil Disimpan!
             </h4>
           </div>
-
-          {autoSavedInfo.isNewProduct && (
-            <p className="text-xs text-emerald-100 bg-emerald-900/60 p-2.5 rounded-xl border border-emerald-700/60 leading-relaxed">
-              Pak Roy tidak perlu repot setup tabel produk. Produk <strong>{autoSavedInfo.productName}</strong> langsung masuk ke <strong>Produk Saya</strong> dan batch stoknya telah otomatis aktif!
-            </p>
-          )}
 
           <div className="bg-emerald-950/50 p-3 rounded-xl text-xs flex items-center justify-between">
             <div>
@@ -355,11 +352,7 @@ export default function CatatPage() {
           </div>
           <p className="text-[11px] text-emerald-200 flex items-center gap-1.5">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>
-              {autoSavedInfo.isNewProduct
-                ? 'Mengalihkan ke halaman Produk Saya...'
-                : 'Mengalihkan kembali ke Beranda untuk melihat pembaruan margin...'}
-            </span>
+            <span>Mengalihkan kembali ke Beranda untuk melihat pembaruan untung & kas...</span>
           </p>
         </div>
       )}
@@ -508,7 +501,7 @@ export default function CatatPage() {
               Contoh Percakapan Transaksi Cepat:
             </span>
             <div className="flex flex-wrap justify-center gap-2">
-              {/* Preset 1: Beli Kangkung (Produk Baru Otomatis) */}
+              {/* Preset 1: Beli Kangkung */}
               <button
                 type="button"
                 disabled={isProcessingVoice || isAutoSaving}
@@ -518,7 +511,7 @@ export default function CatatPage() {
                 className="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
               >
                 <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>&quot;Beli kangkung 10 kg bayar 100 ribu&quot; (Produk Baru)</span>
+                <span>&quot;Beli kangkung 10 kg bayar 100 ribu&quot;</span>
               </button>
 
               {/* Preset 2: Beli Bawang Merah Brebes (Nama Mirip -> Konfirmasi 1 Ketukan) */}
