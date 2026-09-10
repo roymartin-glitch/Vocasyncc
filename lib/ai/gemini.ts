@@ -40,6 +40,10 @@ export async function callGemini(
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const text = parts
+    .map((p: any) => p.text)
+    .filter(Boolean)
+    .join('\n');
   return text || '';
 }

@@ -135,14 +135,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Check or create product scoped to this user
+    // 2. Clean product name & check or create product scoped to this user
     let productId = '';
     let isNewProduct = false;
+
+    const cleanedRaw = productName
+      .replace(/^(saya\s+beli\s+barang|saya\s+beli|beli\s+barang|beli|jual|barang)\s+/i, '')
+      .replace(/\s*rp\s*\.?\s*$/i, '')
+      .replace(/[^a-zA-Z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const finalCleanName = cleanedRaw
+      ? cleanedRaw
+          .split(' ')
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ')
+      : 'Barang Dagangan';
+
     const { data: existingProduct } = await supabase
       .from('products')
       .select('id, name')
       .eq('user_id', userId)
-      .ilike('name', productName.trim())
+      .ilike('name', finalCleanName)
       .limit(1);
 
     if (existingProduct && existingProduct.length > 0) {
@@ -153,8 +168,8 @@ export async function POST(req: NextRequest) {
         .from('products')
         .insert({
           user_id: userId,
-          name: productName.trim(),
-          default_unit: unit,
+          name: finalCleanName,
+          default_unit: unit || 'kg',
         })
         .select()
         .single();

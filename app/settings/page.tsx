@@ -392,15 +392,15 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Batas Kenaikan Harga Kulakan (Bukan Istilah Supplier) */}
+            {/* Batas Kenaikan Harga Beli Modal */}
             <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Batas Kenaikan Harga Kulakan (%)</span>
+                  <span>Batas Kenaikan Harga Beli Modal (%)</span>
                 </label>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  VokaSync akan beri tahu jika harga kulakan dari pedagang besar atau tengkulak naik melebihi angka ini.
+                  VokaSync akan beri tahu jika harga beli barang modal dari pemasok / agen besar naik melebihi batas ini.
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start md:self-auto">

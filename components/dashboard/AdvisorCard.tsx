@@ -43,7 +43,7 @@ export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
           </div>
           <p className="text-xs leading-relaxed font-semibold text-amber-900/90">
             {insight?.message ||
-              `Margin keuntungan ${prodName} sedang di bawah batas aman. Pertimbangkan menyesuaikan harga jual atau kulakan.`}
+              `Margin keuntungan ${prodName} sedang di bawah batas aman. Pertimbangkan menyesuaikan harga jual atau kurangi harga beli modal.`}
           </p>
         </div>
       ) : (
@@ -54,7 +54,7 @@ export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
           </div>
           <p className="text-xs leading-relaxed font-semibold text-emerald-900/90">
             {insight?.message ||
-              'Selamat datang di VokaSync! Catat penjualan atau belanja kulakan pertama Anda hari ini untuk melihat analisa keuntungan otomatis.'}
+              'Selamat datang di VokaSync! Catat penjualan atau belanja stok barang pertama Anda hari ini untuk melihat analisa keuntungan otomatis.'}
           </p>
         </div>
       )}

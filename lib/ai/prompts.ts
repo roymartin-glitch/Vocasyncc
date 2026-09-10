@@ -1,17 +1,34 @@
 export function getParseVoicePrompt(transcript: string): string {
-  return `Tugas Anda adalah mengekstrak data transaksi perdagangan dari transkrip ucapan suara bahasa Indonesia menjadi format JSON murni.
+  return `Anda adalah AI asisten keuangan pedagang pasar & UMKM (VokaSync) yang cerdas dan teliti.
+Tugas Anda mengekstrak data transaksi perdagangan dari ucapan suara bahasa Indonesia menjadi format JSON murni.
 
-Transkrip ucapan pengguna:
+Ucapan pedagang:
 "${transcript}"
 
-Aturan ekstraksi:
-1. type: "income" jika transaksi penjualan/dapat uang dagangan. "expense" jika transaksi pembelian/kulakan modal/bayar bahan baku.
-2. product_name: Nama barang/produk yang diperdagangkan (kapitalkan setiap kata, misal "Bawang Merah Brebes", "Cabai Rawit").
-3. quantity: Jumlah kuantitas dalam angka (misal 5, 2.5, 10). Default 1 jika tidak disebut.
-4. unit: Satuan barang (pilih salah satu: "kg", "ikat", "pcs", "liter", "karung", "bungkus"). Default "kg".
-5. total_price: Total uang dalam angka bulat rupiah (misal "80 ribu" -> 80000, "1,5 juta" -> 1500000).
+Aturan ekstraksi wajib:
+1. type:
+   - "expense" jika transaksi pembelian barang dagangan, belanja modal stok, bayar bahan baku/kulakan, atau pengeluaran operasional (contoh: "saya beli", "beli barang", "belanja", "tambah stok", "bayar").
+   - "income" jika transaksi penjualan barang atau penerimaan uang (contoh: "jual", "laku", "dapat uang", "ada pembeli").
+2. product_name:
+   - HANYA nama murni komoditas/barang dagangan (kapitalkan, contoh: "Kangkung", "Cabai Rawit", "Bawang Merah", "Beras Pandan Wangi", "Tempe").
+   - DILARANG KERAS menyertakan kata pengantar seperti "saya", "aku", "gua", "gue", "beli", "jual", "barang", "kulak", "belanja", "tadi", "tolong", "catat", atau simbol harga seperti "rp", "rupiah", tanda baca.
+   - Contoh SALAH: "Saya Kangkung Rp .", "Saya Beli Barang Kangkung", "Kangkung Rp . Kangkung Rp .".
+   - Contoh BENAR: "Kangkung".
+   - Jika pedagang mengulang ucapan (misal "kangkung 10 kilo ... beli kangkung 10 kilo"), ambil nama barang sekali saja ("Kangkung").
+3. quantity:
+   - Jumlah kuantitas dalam angka (misal: "10 kilo" -> 10, "1kg" -> 1, "5 ikat" -> 5, "setengah kilo" -> 0.5). Default 1 jika tidak disebut.
+4. unit:
+   - Satuan barang standar: "kg" (untuk kilo/kilogram), "ikat", "pcs", "butir", "liter", "karung", "bungkus", "papan", "renteng", "ons", "dus". Default "kg".
+5. total_price:
+   - Total nilai uang transaksi dalam angka bulat rupiah.
+   - Logika nilai uang:
+     - "10 kilo Rp500.000" -> 500000 (BUKAN 10000!).
+     - "1kg harga 10rb" -> 10000.
+     - "5 kilo harga 20 ribu per kilo" -> 100000.
+     - "100 ribu" / "100rb" / "100k" -> 100000.
+     - "1,5 juta" -> 1500000.
 
-Wajib kembalikan HANYA JSON tanpa markdown codeblock dan tanpa penjelasan lain, dengan struktur:
+Wajib kembalikan HANYA format JSON valid tanpa tanda kutip markdown backtick dan tanpa penjelasan tambahan:
 {"product_name": "string", "quantity": number, "unit": "string", "total_price": number, "type": "expense" | "income"}`;
 }
 

@@ -50,6 +50,7 @@ export default function CatatPage() {
     unit: string;
     totalAmount: number;
     type: string;
+    isNewProduct?: boolean;
   } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -109,9 +110,15 @@ export default function CatatPage() {
     setSilenceCountdown(null);
   };
 
-  const speakConfirmation = (product: string, qty: number, unitName: string, amount: number, isIncome: boolean) => {
+  const speakConfirmation = (
+    product: string,
+    qty: number,
+    unitName: string,
+    amount: number,
+    isIncome: boolean,
+    isNewProduct = false
+  ) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    // Check user preference in settings (if disabled, remain silent)
     const isSoundActive = localStorage.getItem('vokasync_sound_alert') !== 'false';
     if (!isSoundActive) return;
 
@@ -119,7 +126,10 @@ export default function CatatPage() {
       window.speechSynthesis.cancel();
       const actionWord = isIncome ? 'Jual' : 'Beli';
       const cleanUnit = unitName.replace(/\s*\(.*\)/, '');
-      const textToSpeak = `Catatan ${actionWord} ${product} ${qty} ${cleanUnit} sebesar ${amount.toLocaleString('id-ID')} rupiah sudah tersimpan ya.`;
+      const newProdSentence = isNewProduct
+        ? ` dan barang baru ${product} sudah otomatis masuk ke daftar barang Anda`
+        : '';
+      const textToSpeak = `Catatan ${actionWord} ${product} ${qty} ${cleanUnit} sebesar ${amount.toLocaleString('id-ID')} rupiah sudah tersimpan ya${newProdSentence}.`;
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = 'id-ID';
       utterance.rate = 0.9;
@@ -154,14 +164,26 @@ export default function CatatPage() {
 
       const saveResult = await saveRes.json();
       if (saveResult.success) {
+        const isNew = Boolean(saveResult.data?.is_new_product);
         setAutoSavedInfo({
           productName: finalProductName,
           quantity: d.quantity || 1,
           unit: d.unit || 'kg',
           totalAmount: d.total_price || 0,
           type: d.type || 'income',
+          isNewProduct: isNew,
         });
         setShowSuccessToast(true);
+
+        // Clear session caches to guarantee instant fresh data across all tabs
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('vokasync_products_cache');
+            sessionStorage.removeItem('vokasync_dash_cache');
+            sessionStorage.removeItem('vokasync_laporan_cache');
+            sessionStorage.removeItem('vokasync_tx_cache');
+          } catch (_) {}
+        }
 
         // Suara balasan asisten berbicara ramah kepada pedagang
         speakConfirmation(
@@ -169,7 +191,8 @@ export default function CatatPage() {
           d.quantity || 1,
           d.unit || 'kg',
           d.total_price || 0,
-          (d.type || 'income') === 'income'
+          (d.type || 'income') === 'income',
+          isNew
         );
 
         // Beri jeda 3.5 detik agar lansia sempat mendengar suara balasan dan membaca konfirmasi dengan tenang
@@ -450,6 +473,11 @@ export default function CatatPage() {
               </p>
             </div>
           </div>
+          {autoSavedInfo.isNewProduct && (
+            <div className="inline-flex items-center gap-2 bg-emerald-800/80 px-3 py-1.5 rounded-xl text-xs font-black text-white border border-emerald-400/40">
+              <span>✨ Barang baru &apos;{autoSavedInfo.productName}&apos; otomatis ditambahkan ke daftar Barang Toko</span>
+            </div>
+          )}
           <p className="text-xs text-emerald-200 pt-1 font-medium">
             Membuka kembali Beranda untuk melihat pembaruan kas...
           </p>
@@ -694,7 +722,7 @@ export default function CatatPage() {
           <p className="text-xs font-semibold text-slate-500">
             {type === 'income'
               ? 'Pilih ini kalau Anda menjual dagangan dan menerima uang.'
-              : 'Pilih ini kalau Anda belanja kulakan atau membayar biaya.'}
+              : 'Pilih ini kalau Anda belanja stok barang dagangan atau membayar biaya modal.'}
           </p>
         </div>
 

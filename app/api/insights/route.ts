@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
               product_id: pId,
               product_name: data.name,
               severity: 'yellow',
-              message: `Stok ${data.name} tinggal ${data.remaining} ${data.unit}. Segera kulakan agar tidak kehabisan.`,
+              message: `Stok ${data.name} tinggal ${data.remaining} ${data.unit}. Segera belanja stok agar tidak kehabisan.`,
               has_quick_action: false,
               created_at: 'Baru saja',
             });
@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
         user_id: profile?.id || 'demo-user',
         product_name: 'Cabai Rawit Merah',
         severity: 'yellow',
-        message: 'Stok Cabai Rawit Merah tinggal 3 kg. Segera kulakan agar tidak kehabisan.',
+        message: 'Stok Cabai Rawit Merah tinggal 3 kg. Segera belanja stok agar tidak kehabisan.',
         has_quick_action: false,
         created_at: 'Baru saja',
       });
@@ -171,9 +171,9 @@ export async function GET(req: NextRequest) {
 
     const defaultMessage = hasData
       ? todayMargin < threshold
-        ? `${activeProfile.owner_name}, margin keuntungan barang dagangan Anda sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi modal kulakan.`
+        ? `${activeProfile.owner_name}, margin keuntungan barang dagangan Anda sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi harga beli modal.`
         : `${activeProfile.owner_name}, margin usaha Anda saat ini terpantau sehat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs modal secara otomatis.`
-      : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau kulakan pertama Anda hari ini untuk melihat analisa keuangan otomatis.`;
+      : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau belanja stok pertama Anda hari ini untuk melihat analisa keuangan otomatis.`;
 
     if (!primaryInsight && profile.id && allTx.length > 0) {
       // Background worker: generate rich narrative without blocking the user's dashboard HTTP request

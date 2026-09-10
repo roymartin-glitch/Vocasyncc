@@ -192,7 +192,7 @@ export default function ProdukPage() {
           label: 'Kurangi Stok',
           icon: MinusCircle,
           color: 'bg-rose-50 text-rose-800 border-rose-200',
-          desc: 'Margin sangat tipis dan modal tertahan. Pertimbangkan kurangi kuota kulakan harian.',
+          desc: 'Margin sangat tipis dan modal tertahan. Pertimbangkan kurangi belanja stok harian.',
         };
     }
   };
@@ -453,7 +453,7 @@ export default function ProdukPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Satuan Jual / Kulak <span className="text-rose-500">*</span>
+                  Satuan Jual / Beli Stok <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {['kg', 'ikat', 'butir', 'liter', 'bungkus', 'karung', 'pcs', 'renteng'].map(
@@ -724,7 +724,7 @@ export default function ProdukPage() {
                 {editSellingNum > 0 && editCostNum > 0 && (
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-600">
-                      <span>Harga Kulakan Terakhir:</span>
+                      <span>Harga Beli Modal Terakhir:</span>
                       <span className="font-bold text-slate-700">
                         Rp{editCostNum.toLocaleString('id-ID')} / {editUnit}
                       </span>
@@ -1024,7 +1024,7 @@ export default function ProdukPage() {
                 </button>
                 {selectedProduct.is_stock_low && (
                   <div className="absolute top-3 left-3 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md">
-                    ⚠️ Stok Menipis — Perlu Kulakan Segera
+                    ⚠️ Stok Menipis — Perlu Belanja Stok Segera
                   </div>
                 )}
               </div>
@@ -1102,7 +1102,7 @@ export default function ProdukPage() {
                       }`}
                     >
                       {selectedProduct.remaining_stock ?? 10} {selectedProduct.unit}
-                      {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Kulakan Segera)' : ' (Cukup)'}
+                      {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Belanja Stok)' : ' (Cukup)'}
                     </span>
                   </div>
                 </div>
