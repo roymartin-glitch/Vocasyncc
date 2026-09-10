@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     // 2. Get all products
     const { data: products, error: prodErr } = await supabase
       .from('products')
-      .select('id, name, default_unit')
+      .select('id, name, default_unit, image_url')
       .order('name');
 
     if (prodErr) throw prodErr;
@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
         id: p.id,
         name: p.name,
         unit: p.default_unit || 'kg',
+        image_url: p.image_url || null,
         latestCost: 0,
         latestCostDate: '',
         latestSelling: 0,
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
         id: stat.id,
         name: stat.name,
         unit: stat.unit,
+        image_url: stat.image_url || null,
         cost_price: Math.round(cost),
         selling_price: Math.round(selling),
         margin_percentage: margin,
@@ -242,6 +244,74 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('POST /api/product-analysis error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// PATCH: Update product details (name, unit, selling price, image_url)
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = createAdminClient();
+    const body = await req.json();
+    const { id, name, unit, sellingPrice, image_url } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Product ID wajib disertakan.' },
+        { status: 400 }
+      );
+    }
+
+    // Build update payload — only include fields that were sent
+    const updates: Record<string, any> = {};
+    if (name !== undefined && name.trim()) updates.name = name.trim();
+    if (unit !== undefined && unit.trim()) updates.default_unit = unit.trim();
+    if (image_url !== undefined) updates.image_url = image_url || null;
+    updates.updated_at = new Date().toISOString();
+
+    const { data: updatedProd, error: updateErr } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
+
+    // If sellingPrice supplied, insert a new income transaction item to update selling price
+    if (sellingPrice !== undefined && Number(sellingPrice) > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
+      const userId = profiles?.[0]?.id;
+      if (userId) {
+        const { data: incTx } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            type: 'income',
+            transaction_date: new Date().toISOString(),
+            source: 'manual',
+          })
+          .select()
+          .single();
+        if (incTx) {
+          await supabase.from('transaction_items').insert({
+            transaction_id: incTx.id,
+            product_id: id,
+            quantity: 1,
+            unit: unit || updatedProd.default_unit,
+            unit_price: Number(sellingPrice),
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Produk berhasil diperbarui.',
+      data: updatedProd,
+    });
+  } catch (err: any) {
+    console.error('PATCH /api/product-analysis error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

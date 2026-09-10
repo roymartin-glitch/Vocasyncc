@@ -43,6 +43,7 @@ export interface Product {
   user_id: string;
   name: string;
   default_unit: string;
+  image_url?: string | null;
   created_at?: string;
 }
 
@@ -157,6 +158,7 @@ export interface ProductAnalysisItem {
   total_revenue_7d: number;
   remaining_stock?: number;
   is_stock_low?: boolean;
+  image_url?: string | null;
 }
 
 export interface DashboardMetrics {

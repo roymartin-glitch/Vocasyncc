@@ -97,6 +97,7 @@ export const mockProducts: ProductAnalysisItem[] = [
     total_revenue_7d: 6720000,
     remaining_stock: 12,
     is_stock_low: false,
+    image_url: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'prod-2',
@@ -110,6 +111,7 @@ export const mockProducts: ProductAnalysisItem[] = [
     total_revenue_7d: 6174000,
     remaining_stock: 18,
     is_stock_low: false,
+    image_url: 'https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'prod-3',
@@ -123,6 +125,7 @@ export const mockProducts: ProductAnalysisItem[] = [
     total_revenue_7d: 5040000,
     remaining_stock: 3,
     is_stock_low: true,
+    image_url: 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'prod-4',
@@ -136,6 +139,7 @@ export const mockProducts: ProductAnalysisItem[] = [
     total_revenue_7d: 1792000,
     remaining_stock: 8,
     is_stock_low: false,
+    image_url: 'https://images.unsplash.com/photo-1508747703725-719777637510?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'prod-5',
@@ -149,6 +153,7 @@ export const mockProducts: ProductAnalysisItem[] = [
     total_revenue_7d: 588000,
     remaining_stock: 2,
     is_stock_low: true,
+    image_url: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=600&auto=format&fit=crop&q=80',
   },
 ];
 

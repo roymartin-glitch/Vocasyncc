@@ -16,6 +16,12 @@ import {
   X,
   RefreshCw,
   Package,
+  Pencil,
+  Camera,
+  Upload,
+  Check,
+  Trash2,
+  ImageOff,
 } from 'lucide-react';
 import { mockProducts, mockProfile } from '@/lib/mock-data';
 import { ProductAnalysisItem, ProductActionCategory } from '@/types';
@@ -38,6 +44,21 @@ export default function ProdukPage() {
   const [newProductSelling, setNewProductSelling] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState('');
+
+  // Edit Produk Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<ProductAnalysisItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUnit, setEditUnit] = useState('kg');
+  const [editSelling, setEditSelling] = useState('');
+  const [editError, setEditError] = useState('');
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+
+  // Image Upload State in Edit Modal
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // AI Advisor Note State
   const [aiNotes, setAiNotes] = useState<Record<string, string>>({});
@@ -206,12 +227,119 @@ export default function ProdukPage() {
     }
   };
 
+  // Open edit modal
+  const openEditModal = (p: ProductAnalysisItem) => {
+    setEditProduct(p);
+    setEditName(p.name);
+    setEditUnit(p.unit);
+    setEditSelling(String(p.selling_price));
+    setEditError('');
+    setImageFile(null);
+    setImagePreview(p.image_url || null);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle image file selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setEditError('Ukuran foto maksimal 5 MB.');
+      return;
+    }
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setEditError('');
+  };
+
+  // Upload image and return public URL
+  const uploadImage = async (productId: string): Promise<string | null> => {
+    if (!imageFile) return null;
+    setIsUploadingImage(true);
+    try {
+      const form = new FormData();
+      form.append('file', imageFile);
+      form.append('productId', productId);
+      const res = await fetch('/api/upload-product-image', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      return data.url;
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Submit edit handler
+  const handleEditProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProduct) return;
+    if (!editName.trim()) {
+      setEditError('Nama produk wajib diisi.');
+      return;
+    }
+    const selling = parseFloat(editSelling) || 0;
+    if (selling <= 0) {
+      setEditError('Harga jual ke pembeli harus lebih dari 0.');
+      return;
+    }
+
+    setIsEditSubmitting(true);
+    setEditError('');
+    try {
+      let newImageUrl: string | null | undefined = undefined;
+      if (imageFile) {
+        newImageUrl = await uploadImage(editProduct.id);
+      } else if (imagePreview === null) {
+        newImageUrl = null;
+      }
+
+      const body: Record<string, any> = {
+        id: editProduct.id,
+        name: editName.trim(),
+        unit: editUnit,
+        sellingPrice: selling,
+      };
+      if (newImageUrl !== undefined) body.image_url = newImageUrl;
+
+      const res = await fetch('/api/product-analysis', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || 'Gagal memperbarui produk.');
+
+      setIsEditModalOpen(false);
+      setImageFile(null);
+      setImagePreview(null);
+
+      const updatedList = await loadProducts();
+      if (updatedList) {
+        const refreshed = updatedList.find((p: ProductAnalysisItem) => p.id === editProduct.id);
+        if (refreshed) setSelectedProduct(refreshed);
+      }
+    } catch (err: any) {
+      setEditError(err.message || 'Terjadi kesalahan saat menyimpan.');
+    } finally {
+      setIsEditSubmitting(false);
+    }
+  };
+
   // Calculate live preview margin in modal
   const modalCostNum = parseFloat(newProductCost) || 0;
   const modalSellingNum = parseFloat(newProductSelling) || 0;
   const modalNetProfit = modalSellingNum - modalCostNum;
   const modalMargin =
     modalSellingNum > 0 ? Math.round((modalNetProfit / modalSellingNum) * 100) : 0;
+
+  // Calculate live preview margin in edit modal
+  const editSellingNum = parseFloat(editSelling) || 0;
+  const editCostNum = editProduct?.cost_price || 0;
+  const editNetProfit = editSellingNum - editCostNum;
+  const editMargin =
+    editSellingNum > 0 ? Math.round((editNetProfit / editSellingNum) * 100) : 0;
 
   const filteredProducts = products.filter((p) => {
     const matchesCat = selectedCategory === 'all' || p.action_category === selectedCategory;
@@ -411,6 +539,212 @@ export default function ProdukPage() {
         </div>
       )}
 
+      {/* ===== MODAL EDIT PRODUK (E-COMMERCE STYLE) ===== */}
+      {isEditModalOpen && editProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">Edit Produk & Foto</h3>
+                  <p className="text-xs text-slate-500">Kelola informasi komoditas dan foto etalase</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setIsEditModalOpen(false); setImageFile(null); setImagePreview(null); }}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
+              {/* Image Upload Zone */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Foto Produk
+                  </label>
+                  <span className="text-[11px] text-slate-400">Opsional (Maks. 5 MB)</span>
+                </div>
+                
+                <div className="relative group">
+                  {imagePreview ? (
+                    <div className="relative w-full h-48 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 shadow-inner">
+                      <img
+                        src={imagePreview}
+                        alt="Preview foto produk"
+                        className="w-full h-full object-cover"
+                      />
+                      {/* Hover Overlay Controls */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-1.5 bg-white text-slate-900 px-3 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-slate-100 transition-all cursor-pointer"
+                        >
+                          <Camera className="w-4 h-4 text-emerald-600" />
+                          Ganti Foto
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setImagePreview(null); setImageFile(null); }}
+                          className="flex items-center gap-1.5 bg-rose-500 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-rose-600 transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Hapus Foto
+                        </button>
+                      </div>
+                      {imageFile && (
+                        <div className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                          Foto Baru Dipilih
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
+                    >
+                      <div className="w-11 h-11 rounded-2xl bg-slate-200/80 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <Upload className="w-5 h-5 text-slate-500 group-hover:text-emerald-700 transition-colors" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-bold text-slate-700 group-hover:text-emerald-800 transition-colors">
+                          Klik untuk upload foto produk
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Format JPG, PNG, atau WEBP</p>
+                      </div>
+                    </button>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {editError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+                  {editError}
+                </div>
+              )}
+
+              <form onSubmit={handleEditProduct} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Produk <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-emerald-600 font-medium text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Satuan Penjualan</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['kg', 'ikat', 'butir', 'liter', 'bungkus', 'karung', 'pcs', 'renteng'].map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setEditUnit(u)}
+                        className={`text-xs py-1.5 px-2 rounded-xl font-bold border transition-all cursor-pointer ${
+                          editUnit === u
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Harga Jual ke Pembeli <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">Rp</span>
+                    <input
+                      type="number"
+                      required
+                      value={editSelling}
+                      onChange={(e) => setEditSelling(e.target.value)}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 focus:bg-white focus:outline-emerald-600 font-semibold text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Margin Calculation Preview in Edit Modal */}
+                {editSellingNum > 0 && editCostNum > 0 && (
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 text-xs">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Harga Kulakan Terakhir:</span>
+                      <span className="font-bold text-slate-700">
+                        Rp{editCostNum.toLocaleString('id-ID')} / {editUnit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Estimasi Untung Bersih:</span>
+                      <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                        Rp{editNetProfit.toLocaleString('id-ID')} / {editUnit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Estimasi Persentase Untung:</span>
+                      <span
+                        className={`font-black px-2 py-0.5 rounded-md ${
+                          editMargin >= threshold
+                            ? 'text-emerald-800 bg-emerald-100/70 border border-emerald-200'
+                            : 'text-rose-700 bg-rose-50 border border-rose-200'
+                        }`}
+                      >
+                        {editMargin}% {editMargin < threshold && `(Di bawah target ${threshold}%)`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditModalOpen(false); setImageFile(null); setImagePreview(null); }}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isEditSubmitting || isUploadingImage}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {(isEditSubmitting || isUploadingImage) ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /><span>{isUploadingImage ? 'Mengunggah foto...' : 'Menyimpan...'}</span></>
+                    ) : (
+                      <><Check className="w-4 h-4" /><span>Simpan Perubahan</span></>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -523,77 +857,105 @@ export default function ProdukPage() {
                 <div
                   key={p.id}
                   onClick={() => setSelectedProduct(p)}
-                  className={`bg-white p-5 rounded-2xl border transition-all duration-150 cursor-pointer ${
+                  className={`bg-white rounded-2xl border transition-all duration-150 cursor-pointer overflow-hidden ${
                     isSelected
                       ? 'border-emerald-600 shadow-md ring-2 ring-emerald-500/15'
                       : 'border-slate-200/80 hover:border-slate-300 shadow-xs'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="font-bold text-base text-slate-900 tracking-tight">{p.name}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Rata-rata {p.avg_daily_volume} {p.unit}/hari • Total Penjualan 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1 ${
-                          p.is_stock_low
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          <span>Stok tersisa:</span>
-                          <strong className="font-black">{p.remaining_stock ?? 10} {p.unit}</strong>
-                          {p.is_stock_low && <span className="text-[10px] bg-amber-200 text-amber-950 px-1 rounded font-black">⚠️ Menipis</span>}
-                        </span>
+                  {/* E-commerce style card: Thumbnail Image + Details */}
+                  <div className="flex flex-row items-stretch">
+                    {/* Thumbnail Image */}
+                    <div className="relative w-28 sm:w-32 flex-shrink-0 bg-slate-100 overflow-hidden">
+                      {p.image_url ? (
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          className="w-full h-full object-cover"
+                          style={{ minHeight: '128px' }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-slate-50" style={{ minHeight: '128px' }}>
+                          <ImageOff className="w-7 h-7 text-slate-300 mb-1" />
+                          <span className="text-[10px] text-slate-400 font-medium leading-tight">Belum ada foto</span>
+                        </div>
+                      )}
+                      {p.is_stock_low && (
+                        <div className="absolute top-2 left-2 bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
+                          ⚠️ Tipis
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="flex-1 p-4 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-base text-slate-900 tracking-tight truncate">{p.name}</h3>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              ~{p.avg_daily_volume} {p.unit}/hari • 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.color}`}
+                            >
+                              <BadgeIcon className="w-3 h-3" />
+                              <span className="hidden sm:inline">{badge.label}</span>
+                            </span>
+
+                            {/* Edit Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openEditModal(p); }}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 flex items-center justify-center transition-colors cursor-pointer"
+                              title="Edit produk dan foto"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Margin Bar */}
+                        <div className="space-y-1 my-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">Persentase Untung:</span>
+                            <span className="font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                              {p.margin_percentage}%
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                p.margin_percentage >= 30
+                                  ? 'bg-emerald-600'
+                                  : p.margin_percentage >= 20
+                                  ? 'bg-blue-600'
+                                  : p.margin_percentage >= 10
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-500'
+                              }`}
+                              style={{ width: `${Math.min(Math.max(p.margin_percentage * 2, 8), 100)}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
 
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badge.color}`}
-                    >
-                      <BadgeIcon className="w-3.5 h-3.5" />
-                      <span>{badge.label}</span>
-                    </span>
-                  </div>
-
-                  {/* Margin Visual Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Persentase Untung:</span>
-                      <span className="font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                        {p.margin_percentage}%
-                      </span>
-                    </div>
-
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          p.margin_percentage >= 30
-                            ? 'bg-emerald-600'
-                            : p.margin_percentage >= 20
-                            ? 'bg-blue-600'
-                            : p.margin_percentage >= 10
-                            ? 'bg-amber-500'
-                            : 'bg-rose-500'
-                        }`}
-                        style={{ width: `${Math.min(Math.max(p.margin_percentage * 2, 8), 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pricing Details */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                    <div>
-                      <span className="text-slate-400">Harga Beli dari Supplier: </span>
-                      <span className="font-semibold bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
-                        Rp{p.cost_price.toLocaleString('id-ID')}/{p.unit}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Harga Jual: </span>
-                      <span className="font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">
-                        Rp{p.selling_price.toLocaleString('id-ID')}/{p.unit}
-                      </span>
+                      {/* Pricing row */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                        <div>
+                          <span className="text-slate-400">Beli: </span>
+                          <span className="font-semibold text-slate-800">Rp{p.cost_price.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Jual: </span>
+                          <span className="font-bold text-slate-900">Rp{p.selling_price.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="font-semibold text-slate-700">
+                          Stok: <span className={`${p.is_stock_low ? 'text-amber-700 font-bold' : ''}`}>{p.remaining_stock ?? 10} {p.unit}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -605,129 +967,171 @@ export default function ProdukPage() {
         {/* Right Column: Selected Product Detail */}
         {selectedProduct && (
           <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs sticky top-24 space-y-6">
-              <div className="border-b border-slate-100 pb-4 flex items-start justify-between">
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    DETAIL ANALISIS PRODUK
-                  </span>
-                  <h2 className="text-xl font-black text-slate-900 mt-1 tracking-tight">
-                    {selectedProduct.name}
-                  </h2>
-                </div>
-                <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200/80">
-                  Satuan: {selectedProduct.unit}
-                </span>
-              </div>
-
-              {/* Financial Breakdown Table */}
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Harga Beli dari Supplier:</span>
-                  <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
-                    Rp{selectedProduct.cost_price.toLocaleString('id-ID')} / {selectedProduct.unit}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Harga Jual ke Pembeli:</span>
-                  <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
-                    Rp{selectedProduct.selling_price.toLocaleString('id-ID')} / {selectedProduct.unit}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Untung per Kg/Pcs:</span>
-                  <span className="font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
-                    Rp{(selectedProduct.selling_price - selectedProduct.cost_price).toLocaleString('id-ID')} / {selectedProduct.unit}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Persentase Untung:</span>
-                  <span
-                    className={`font-black px-2.5 py-0.5 rounded-md border ${
-                      selectedProduct.margin_percentage >= threshold
-                        ? 'text-emerald-800 bg-emerald-100/70 border-emerald-200'
-                        : 'text-rose-800 bg-rose-50 border-rose-200'
-                    }`}
-                  >
-                    {selectedProduct.margin_percentage}%
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-500">Saran VokaSync:</span>
-                  <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase border border-slate-200/70">
-                    {getActionBadge(selectedProduct.action_category).label}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-slate-500">Stok Tersisa Saat Ini:</span>
-                  <span
-                    className={`font-black px-2.5 py-0.5 rounded-md text-xs ${
-                      selectedProduct.is_stock_low
-                        ? 'bg-amber-100 text-amber-950 border border-amber-300'
-                        : 'bg-slate-100 text-slate-800 border border-slate-200'
-                    }`}
-                  >
-                    {selectedProduct.remaining_stock ?? 10} {selectedProduct.unit}
-                    {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Kulakan Segera)' : ' (Cukup)'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Dynamic AI Advisor Diagnostic Box */}
-              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-2 relative transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-700" />
-                    <span className="font-bold text-xs text-emerald-900">Catatan AI Advisor</span>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-300/60">
-                      Gemini 3.6 Flash
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    title="Minta diagnosis taktis baru dari Gemini AI"
-                    onClick={() => fetchAiAdvisorNote(selectedProduct, true)}
-                    disabled={isLoadingAiNote}
-                    className="text-[11px] flex items-center gap-1 text-emerald-700 hover:text-emerald-900 bg-white/80 hover:bg-white px-2 py-0.5 rounded-lg border border-emerald-200/60 font-semibold transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isLoadingAiNote ? 'animate-spin' : ''}`} />
-                    <span>{isLoadingAiNote ? 'Menganalisis...' : 'Cek Ulang'}</span>
-                  </button>
-                </div>
-
-                {isLoadingAiNote ? (
-                  <div className="py-2 flex items-center gap-2 text-xs text-emerald-800">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
-                    <span className="animate-pulse">
-                      Gemini AI sedang menghitung taktik margin untuk {selectedProduct.name}...
-                    </span>
-                  </div>
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs sticky top-24 overflow-hidden">
+              {/* Product Hero Image */}
+              <div className="relative w-full h-52 bg-slate-100 group">
+                {selectedProduct.image_url ? (
+                  <img
+                    src={selectedProduct.image_url}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <p className="text-xs text-slate-700 leading-relaxed font-normal">
-                    {currentAiNote}
-                  </p>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
+                    <ImageOff className="w-12 h-12 text-slate-300" />
+                    <p className="text-xs text-slate-400 font-medium">Belum ada foto produk</p>
+                  </div>
+                )}
+                {/* Overlay edit button */}
+                <button
+                  type="button"
+                  onClick={() => openEditModal(selectedProduct)}
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg hover:bg-white transition-all cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                  {selectedProduct.image_url ? 'Ganti Foto' : 'Tambah Foto'}
+                </button>
+                {selectedProduct.is_stock_low && (
+                  <div className="absolute top-3 left-3 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md">
+                    ⚠️ Stok Menipis — Perlu Kulakan Segera
+                  </div>
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsStudioOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-98"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>Buat Promosi WhatsApp Produk Ini</span>
-                </button>
+              <div className="p-6 space-y-6">
+                <div className="border-b border-slate-100 pb-4 flex items-start justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      DETAIL ANALISIS PRODUK
+                    </span>
+                    <h2 className="text-xl font-black text-slate-900 mt-1 tracking-tight">
+                      {selectedProduct.name}
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200/80">
+                      Satuan: {selectedProduct.unit}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(selectedProduct)}
+                      className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </button>
+                  </div>
+                </div>
 
-                <a
-                  href="/eksperimen"
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all active:scale-98"
-                >
-                  <FlaskConical className="w-4 h-4 text-slate-600" />
-                  <span>Coba & Pantau Perubahan Harga</span>
-                </a>
+                {/* Financial Breakdown Table */}
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Harga Beli dari Supplier:</span>
+                    <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                      Rp{selectedProduct.cost_price.toLocaleString('id-ID')} / {selectedProduct.unit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Harga Jual ke Pembeli:</span>
+                    <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                      Rp{selectedProduct.selling_price.toLocaleString('id-ID')} / {selectedProduct.unit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Untung per Satuan:</span>
+                    <span className="font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
+                      Rp{(selectedProduct.selling_price - selectedProduct.cost_price).toLocaleString('id-ID')} / {selectedProduct.unit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Persentase Untung:</span>
+                    <span
+                      className={`font-black px-2.5 py-0.5 rounded-md border ${
+                        selectedProduct.margin_percentage >= threshold
+                          ? 'text-emerald-800 bg-emerald-100/70 border-emerald-200'
+                          : 'text-rose-800 bg-rose-50 border-rose-200'
+                      }`}
+                    >
+                      {selectedProduct.margin_percentage}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span className="text-slate-500">Saran VokaSync:</span>
+                    <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase border border-slate-200/70">
+                      {getActionBadge(selectedProduct.action_category).label}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-500">Stok Tersisa Saat Ini:</span>
+                    <span
+                      className={`font-black px-2.5 py-0.5 rounded-md text-xs ${
+                        selectedProduct.is_stock_low
+                          ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                          : 'bg-slate-100 text-slate-800 border border-slate-200'
+                      }`}
+                    >
+                      {selectedProduct.remaining_stock ?? 10} {selectedProduct.unit}
+                      {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Kulakan Segera)' : ' (Cukup)'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dynamic AI Advisor Diagnostic Box */}
+                <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-2 relative transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-700" />
+                      <span className="font-bold text-xs text-emerald-900">Catatan AI Advisor</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded border border-emerald-300/60">
+                        Gemini 3.6 Flash
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      title="Minta diagnosis taktis baru dari Gemini AI"
+                      onClick={() => fetchAiAdvisorNote(selectedProduct, true)}
+                      disabled={isLoadingAiNote}
+                      className="text-[11px] flex items-center gap-1 text-emerald-700 hover:text-emerald-900 bg-white/80 hover:bg-white px-2 py-0.5 rounded-lg border border-emerald-200/60 font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isLoadingAiNote ? 'animate-spin' : ''}`} />
+                      <span>{isLoadingAiNote ? 'Menganalisis...' : 'Cek Ulang'}</span>
+                    </button>
+                  </div>
+
+                  {isLoadingAiNote ? (
+                    <div className="py-2 flex items-center gap-2 text-xs text-emerald-800">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
+                      <span className="animate-pulse">
+                        Gemini AI sedang menghitung taktik margin untuk {selectedProduct.name}...
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-700 leading-relaxed font-normal">
+                      {currentAiNote}
+                    </p>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsStudioOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-98"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Buat Promosi WhatsApp Produk Ini</span>
+                  </button>
+
+                  <a
+                    href="/eksperimen"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all active:scale-98"
+                  >
+                    <FlaskConical className="w-4 h-4 text-slate-600" />
+                    <span>Coba & Pantau Perubahan Harga</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
