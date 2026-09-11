@@ -1163,23 +1163,6 @@ export default function ProdukPage() {
                           Stok: <span className={`${p.is_stock_low ? 'text-amber-700 font-bold' : ''}`}>{p.remaining_stock ?? 10} {p.unit}</span>
                         </div>
                       </div>
-
-                      {/* Promotion Button */}
-                      <div className="pt-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedProduct(p);
-                            setIsStudioOpen(true);
-                          }}
-                          className="w-full min-h-[40px] flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
-                          title="Buat brosur dan pesan promosi WhatsApp untuk produk ini"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          <span>📸 Buat Promosi</span>
-                        </button>
-                      </div>
                     </div>
                   </div>
               );
