@@ -219,9 +219,10 @@ export default function CatatPage() {
         if (typeof window !== 'undefined') {
           try {
             if (saveResult.data) {
-              const currentLocal = JSON.parse(localStorage.getItem('vokasync_local_txs') || '[]');
+              const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+              const currentLocal = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
               currentLocal.unshift(saveResult.data);
-              localStorage.setItem('vokasync_local_txs', JSON.stringify(currentLocal.slice(0, 100)));
+              localStorage.setItem(`vokasync_local_txs_${userKey}`, JSON.stringify(currentLocal.slice(0, 100)));
             }
             sessionStorage.removeItem('vokasync_products_cache');
             sessionStorage.removeItem('vokasync_dash_cache');

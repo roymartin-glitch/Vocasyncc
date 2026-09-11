@@ -47,21 +47,19 @@ export async function GET(req: NextRequest) {
     const items = itemsRes.data || [];
     const stockBatches = batchesRes.data || [];
 
-    // Jika akun demo dan di DB belum ada produk, selalu tampilkan mockProducts lengkap bawaan
-    if (isDemo && products.length === 0) {
-      return NextResponse.json({
-        success: true,
-        threshold,
-        data: mockProducts,
+    // Jika di database belum ada produk, cari dari in-memory produk yang sesuai user_id
+    if (products.length === 0) {
+      const activeUserId = profile?.id;
+      const userMockProducts = mockProducts.filter((p: any) => {
+        if (activeUserId && p.user_id === activeUserId) return true;
+        if (isDemo && (p.user_id === 'user-001' || p.user_id === 'demo' || !p.user_id)) return true;
+        return false;
       });
-    }
 
-    // Jika akun pribadi baru dan belum ada produk di DB, kembalikan daftar kosong bersih
-    if (!isDemo && products.length === 0) {
       return NextResponse.json({
         success: true,
         threshold,
-        data: [],
+        data: userMockProducts,
       });
     }
 
@@ -149,6 +147,17 @@ export async function GET(req: NextRequest) {
         is_stock_low: isLow,
       };
     });
+
+    // Merge in-memory products created in demo mode
+    if (isDemo && mockProducts.length > 0) {
+      const existingIds = new Set(results.map((r) => r.id));
+      for (const mp of mockProducts) {
+        if (!existingIds.has(mp.id)) {
+          results.unshift(mp);
+          existingIds.add(mp.id);
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, threshold, data: results });
   } catch (err: any) {

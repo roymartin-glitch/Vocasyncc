@@ -67,9 +67,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    // Jika di database belum ada data transaksi, selalu gunakan mockTransactions agar riwayat tidak kosong
+    // Jika di database belum ada data transaksi, pisahkan per user_id agar data akun baru tidak tercampur
     if (!data || data.length === 0) {
-      let list = mockTransactions;
+      const activeUserId = profile?.id;
+      let list = mockTransactions.filter((t) => {
+        if (activeUserId) return t.user_id === activeUserId;
+        return isDemo && (t.user_id === 'user-001' || t.user_id === 'demo');
+      });
+
       if (type && (type === 'income' || type === 'expense')) {
         list = list.filter((t) => t.type === type);
       }
@@ -182,6 +187,7 @@ export async function POST(req: NextRequest) {
 
       if (existingDemoProd) {
         productId = existingDemoProd.id;
+        if (userId) existingDemoProd.user_id = userId;
         if (type === 'expense') {
           existingDemoProd.cost_price = Math.round(unitPrice);
           existingDemoProd.remaining_stock = (existingDemoProd.remaining_stock || 0) + qty;
@@ -198,6 +204,7 @@ export async function POST(req: NextRequest) {
 
         mockProducts.unshift({
           id: productId,
+          user_id: userId || (isDemo ? 'demo' : 'guest'),
           name: finalCleanName,
           unit: unit || 'kg',
           cost_price: costPrice,

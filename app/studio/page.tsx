@@ -15,7 +15,6 @@ import {
   ArrowLeft,
   Package,
 } from 'lucide-react';
-import { mockProducts } from '@/lib/mock-data';
 import { ProductAnalysisItem } from '@/types';
 
 export default function StudioPage() {
@@ -77,25 +76,32 @@ export default function StudioPage() {
           setProducts(data.data);
           handleSelectProduct(data.data[0]);
         } else {
-          setProducts(mockProducts);
-          handleSelectProduct(mockProducts[0]);
+          setProducts([]);
+          handleSelectProduct(null);
         }
       })
       .catch(() => {
-        setProducts(mockProducts);
-        handleSelectProduct(mockProducts[0]);
+        setProducts([]);
+        handleSelectProduct(null);
       });
   }, []);
 
-  const handleSelectProduct = (p: ProductAnalysisItem) => {
+  const handleSelectProduct = (p?: ProductAnalysisItem | null) => {
+    if (!p) {
+      setSelectedProduct(null);
+      setProductName('Produk Toko');
+      setPrice(25000);
+      setUnit('kg');
+      return;
+    }
     setSelectedProduct(p);
     setProductName(p.name);
-    setPrice(p.selling_price || 40000);
+    setPrice(p.selling_price || 25000);
     setUnit(p.unit || 'kg');
     if (p.image_url) {
       setUploadedImage(p.image_url);
     }
-    fetchAiCopy(p.name, p.selling_price || 40000, p.unit || 'kg', copyStyle);
+    fetchAiCopy(p.name, p.selling_price || 25000, p.unit || 'kg', copyStyle);
   };
 
   const fetchAiCopy = async (

@@ -218,7 +218,12 @@ export async function GET(req: NextRequest) {
           profile,
           metrics: mockDashboardMetrics,
           trendData: mockTrendData,
-          primaryInsight: mockInsights[0],
+          primaryInsight: mockInsights[0] || {
+            severity: 'green',
+            has_quick_action: false,
+            message: defaultMessage,
+            created_at: 'Hari ini',
+          },
           signals: mockInsights,
         },
         {

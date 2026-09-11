@@ -7,8 +7,13 @@ import { createClient } from './client';
 export function clearAllLocalSessions() {
   if (typeof window !== 'undefined') {
     try {
+      const savedAccounts = localStorage.getItem('vokasync_registered_users');
       localStorage.clear();
       sessionStorage.clear();
+      if (savedAccounts) {
+        localStorage.setItem('vokasync_registered_users', savedAccounts);
+      }
+      document.cookie = 'vokasync_user=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     } catch (e) {
       console.warn('Clear storage fallback:', e);
     }

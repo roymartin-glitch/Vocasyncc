@@ -50,8 +50,17 @@ export default function LoginPage() {
       clearAllLocalSessions();
       if (typeof window !== 'undefined') {
         localStorage.setItem('vokasync_is_demo', 'true');
+        localStorage.setItem('vokasync_user_id', 'demo-user-pak-budi');
         localStorage.setItem('vokasync_owner_name', 'Pak Budi');
         localStorage.setItem('vokasync_business_name', 'Kios Berkah Sayur');
+        document.cookie = `vokasync_user=${encodeURIComponent(
+          JSON.stringify({
+            id: 'demo-user-pak-budi',
+            owner_name: 'Pak Budi',
+            business_name: 'Kios Berkah Sayur',
+            email: 'demo@vokasync.id',
+          })
+        )}; path=/; max-age=86400`;
       }
       // Clear any prior active session so demo doesn't conflict
       await supabase.auth.signOut();

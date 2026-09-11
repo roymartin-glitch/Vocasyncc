@@ -136,7 +136,7 @@ export default function DashboardPage() {
       <StudioModal
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
-        productName={primaryInsight?.product_name || 'Bawang Merah Brebes'}
+        productName={primaryInsight?.product_name || 'Produk Pilihan'}
       />
 
       {/* Ringkasan Hari Ini Section */}

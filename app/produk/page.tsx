@@ -1091,7 +1091,7 @@ export default function ProdukPage() {
         </div>
 
         {/* Right Column: Selected Product Detail */}
-        {selectedProduct && (
+        {selectedProduct ? (
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs sticky top-24 overflow-hidden">
               {/* Product Hero Image */}
@@ -1270,6 +1270,16 @@ export default function ProdukPage() {
                 </div>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="hidden lg:flex lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xs flex-col items-center justify-center text-center space-y-3 min-h-[300px]">
+            <div className="p-3 bg-slate-100 rounded-2xl text-slate-400">
+              <Package className="w-8 h-8" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Belum Ada Produk Dipilih</h3>
+            <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+              Pilih produk di sebelah kiri atau tambah barang baru untuk melihat estimasi untung rugi dan saran bisnis cerdas dari AI.
+            </p>
           </div>
         )}
       </div>

@@ -100,7 +100,8 @@ export default function RiwayatPage() {
         let list = [...data.data];
         if (typeof window !== 'undefined') {
           try {
-            const localTxs = JSON.parse(localStorage.getItem('vokasync_local_txs') || '[]');
+            const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            const localTxs = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
             const existingIds = new Set(list.map((t: any) => t.id));
             for (const l of localTxs) {
               if (l && l.id && !existingIds.has(l.id)) {
