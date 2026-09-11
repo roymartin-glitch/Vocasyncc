@@ -3,9 +3,12 @@ import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {
-  title: 'VokaSync — Asisten Bisnis & Visual Marketing Pedagang Pasar & UMKM',
+  title: 'VokaSync — Asisten Bisnis Pedagang Pasar & UMKM',
   description:
     'Aplikasi pintar asisten bisnis dan visual marketing otomatis untuk pedagang pasar tradisional dan pelaku UMKM Indonesia (SDGs 9).',
+  icons: {
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
+  },
 };
 
 export default function RootLayout({

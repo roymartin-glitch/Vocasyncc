@@ -349,7 +349,7 @@ export function StudioModal({
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">AI Virtual Studio & WhatsApp Marketing</h3>
-              <p className="text-xs text-slate-500">Background removal client-side & copywriting Gemini 3.6 Flash</p>
+              <p className="text-xs text-slate-500">Background removal otomatis & copywriting AI pemasaran</p>
             </div>
           </div>
           <button

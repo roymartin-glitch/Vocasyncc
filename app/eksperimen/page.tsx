@@ -32,13 +32,18 @@ export default function EksperimenPage() {
   const [newProductName, setNewProductName] = useState('Bawang Merah Brebes');
   const [targetMargin, setTargetMargin] = useState('22');
 
-  const fetchExperiments = async () => {
-    setIsLoading(true);
+  const fetchExperiments = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const res = await fetch('/api/experiments');
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setExperiments(data.data);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('vokasync_exp_cache', JSON.stringify(data.data));
+          } catch (_) {}
+        }
       }
     } catch (e) {
       console.warn('Experiments fetch fallback:', e);
@@ -48,7 +53,21 @@ export default function EksperimenPage() {
   };
 
   useEffect(() => {
-    fetchExperiments();
+    let hasCache = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('vokasync_exp_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setExperiments(parsed);
+            setIsLoading(false);
+            hasCache = true;
+          }
+        }
+      } catch (_) {}
+    }
+    fetchExperiments(hasCache);
   }, []);
 
   const filteredExperiments = experiments.filter((exp) => {
