@@ -279,11 +279,6 @@ export default function StudioPage() {
       ctx.textAlign = 'left';
       ctx.fillText(`🛒 ${storeName.toUpperCase()}`, 80, 110);
 
-      ctx.textAlign = 'right';
-      ctx.fillStyle = selectedFrame === 'minimalis' ? '#059669' : '#34d399';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('⭐ KUALITAS TERBAIK', 1000, 110);
-
       // 4. Draw Product Image in Center with Studio Lighting & Contextual Stage
       const renderProductImage = () => {
         if (uploadedImage) {
@@ -623,7 +618,6 @@ export default function StudioPage() {
               {/* Header */}
               <div className="flex items-center justify-between text-xs font-black">
                 <span>🛒 {storeName.toUpperCase()}</span>
-                <span className="text-emerald-400">⭐ KUALITAS TERBAIK</span>
               </div>
 
               {/* Center Photo with Studio Spotlight & Pedestal */}
@@ -709,7 +703,7 @@ export default function StudioPage() {
                 {[
                   { id: 'pasar', label: 'Ramah Pasar' },
                   { id: 'fomo', label: 'Promo Kilat' },
-                  { id: 'elegan', label: 'Kualitas Pilihan' },
+                  { id: 'elegan', label: 'Elegan & Profesional' },
                 ].map((s) => (
                   <button
                     key={s.id}

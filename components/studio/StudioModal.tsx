@@ -283,37 +283,6 @@ export function StudioModal({
       ctx.font = 'bold 24px sans-serif';
       ctx.fillText(`🛒 ${effectiveStoreName.toUpperCase()}`, 90, 112);
 
-      // Guarantee badge on top right
-      ctx.fillStyle =
-        selectedFrame === 'neon'
-          ? '#ec4899'
-          : selectedFrame === 'royal'
-          ? '#f59e0b'
-          : selectedFrame === 'canva-pastel'
-          ? '#8b5cf6'
-          : selectedFrame === 'genz-aesthetic'
-          ? '#06b6d4'
-          : '#f59e0b';
-      ctx.beginPath();
-      ctx.roundRect(740, 70, 270, 64, 16);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(
-        selectedFrame === 'neon'
-          ? '⚡ PROMO KILAT'
-          : selectedFrame === 'royal'
-          ? '👑 PREMIUM GRADE'
-          : selectedFrame === 'canva-pastel'
-          ? '🌸 AESTHETIC VIBE'
-          : selectedFrame === 'genz-aesthetic'
-          ? '✨ GEN Z PICKS'
-          : '⭐ GARANSI SEGAR',
-        760,
-        112
-      );
-
       // 4. Draw Product Image in Center with Studio Lighting & Contextual Backdrop
       const renderProductImage = () => {
         if (uploadedImage) {
@@ -708,29 +677,6 @@ export function StudioModal({
                   >
                     {effectiveStoreName.toUpperCase()}
                   </span>
-                  <span
-                    className={`text-xs font-extrabold px-2.5 py-1 rounded-md shadow-sm ${
-                      selectedFrame === 'neon'
-                        ? 'bg-pink-500 text-white'
-                        : selectedFrame === 'royal'
-                        ? 'bg-amber-400 text-slate-900'
-                        : selectedFrame === 'canva-pastel'
-                        ? 'bg-violet-500 text-white'
-                        : selectedFrame === 'genz-aesthetic'
-                        ? 'bg-cyan-400 text-slate-950 font-black'
-                        : 'bg-amber-400 text-slate-900'
-                    }`}
-                  >
-                    {selectedFrame === 'neon'
-                      ? '⚡ PROMO KILAT'
-                      : selectedFrame === 'royal'
-                      ? '👑 PREMIUM GRADE'
-                      : selectedFrame === 'canva-pastel'
-                      ? '🌸 AESTHETIC VIBE'
-                      : selectedFrame === 'genz-aesthetic'
-                      ? '✨ GEN Z PICKS'
-                      : '⭐ GARANSI SEGAR'}
-                  </span>
                 </div>
 
                 <div className="flex items-center justify-between w-full">
@@ -835,7 +781,7 @@ export function StudioModal({
                 {[
                   { id: 'pasar', label: 'Ramah Pasar' },
                   { id: 'fomo', label: 'Promo Kilat' },
-                  { id: 'elegan', label: 'Kualitas Pilihan' },
+                  { id: 'elegan', label: 'Elegan & Profesional' },
                 ].map((s) => (
                   <button
                     key={s.id}

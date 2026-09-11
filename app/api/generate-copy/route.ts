@@ -56,20 +56,21 @@ function generateContextualAiCopy({
 
   if (style === 'elegan') {
     const hooks = [
-      `✨ *PILIHAN TERBAIK UNTUK DAPUR KELUARGA — ${storeName.toUpperCase()}* ✨`,
-      `🌿 *MUTU & KESEGARAN PRIMA: ${productName.toUpperCase()}* 🌿`,
-      `⭐ *KUALITAS GRADE A DARI ${storeName.toUpperCase()}* ⭐`,
+      `*PENJUALAN RESMI — ${storeName.toUpperCase()}*`,
+      `*PRODUK PILIHAN GRADE A — ${storeName.toUpperCase()}*`,
+      `*PASOKAN SEGAR: ${productName.toUpperCase()}*`,
     ];
     const hook = hooks[Math.floor(Math.random() * hooks.length)];
 
     return (
       `${hook}\n\n` +
-      `Menghadirkan standar mutu terbaik untuk kebutuhan masakan harian Anda:\n` +
-      `*${productName}* pilihan kualitas super (${trait}).\n\n` +
-      `Setiap kilogram dipilih secara teliti untuk memastikan keluarga Anda mendapatkan bahan pangan yang higienis, segar, dan berkelas.\n\n` +
-      (priceText ? `💎 *Penawaran Eksklusif:* ${priceText}\n` : '') +
-      `🛵 *Pesan Mudah & Nyaman:* Hubungi WhatsApp kami${phoneText}\n\n` +
-      `Kepuasan rasa dan kualitas hidangan Anda adalah kebanggaan kami. Pesan hari ini untuk pengantaran pagi/siang ini.`
+      `Tersedia hari ini: *${productName}*\n` +
+      `• *Kualitas:* ${trait}\n` +
+      (priceText ? `• *Harga:* ${priceText}\n` : '') +
+      `• *Standar:* Bersih, higienis, dan lolos sortir teliti\n` +
+      `• *Pengiriman:* Siap kirim langsung (same-day delivery)\n\n` +
+      `*Pemesanan Langsung:* Hubungi WhatsApp${phoneText}.\n` +
+      `Pesanan segera diproses dan dikirim.`
     );
   }
 
@@ -117,10 +118,10 @@ export async function POST(req: NextRequest) {
       style === 'fomo'
         ? 'Promo Terbatas / Kilat (mendesak, stok hampir habis hari ini)'
         : style === 'elegan'
-        ? 'Kualitas Premium & Pilihan Terbaik (segar, terjamin, higienis)'
+        ? 'Elegan & Profesional (ringkas, to the point, langsung ke inti spesifikasi & harga, tanpa basa-basi, formal berkelas)'
         : 'Ramah khas pasar tradisional (hangat, jujur, kekeluargaan)';
 
-    const prompt = `Tugas Anda: Buat 1 teks pesan siaran (broadcast) promosi WhatsApp yang persuasif, sopan, dan langsung menarik minat pembeli untuk pedagang pasar / UMKM Indonesia.
+    const prompt = `Tugas Anda: Buat 1 teks pesan siaran (broadcast) promosi WhatsApp untuk produk berikut.
 
 Detail Dagangan:
 - Nama Produk: ${productName}
@@ -129,11 +130,17 @@ ${priceText ? `- Harga: ${priceText}` : ''}
 ${phone ? `- WhatsApp Pemesanan: ${phone}` : ''}
 - Gaya Penyampaian: ${styleDesc}
 
-Aturan Penulisan:
-1. Gunakan format teks WhatsApp (*tebal* pada kata penting, baris baru yang rapi dan nyaman dibaca di layar HP).
+Aturan Penulisan Khusus:
+${
+  style === 'elegan'
+    ? `1. GAYA ELEGAN & TO THE POINT: Jangan bertele-tele dan jangan banyak basa-basi. Tulis pesan yang profesional, rapi, langsung ke inti (nama produk, kualitas/spesifikasi, harga, pengiriman).
+2. Gunakan bullet point rapi dengan simbol simpel (• atau ✨).
+3. Call to Action jelas dan singkat untuk memesan via WhatsApp.`
+    : `1. Gunakan format teks WhatsApp (*tebal* pada kata penting, baris baru yang rapi dan nyaman dibaca di layar HP).
 2. Gunakan emoji yang proporsional, wajar, dan relevan.
 3. Sebutkan keunggulan produk, kesegarannya, dan kemudahan pemesanan / pengantaran.
-4. Akhiri dengan ajakan bertindak (Call to Action) ramah untuk memesan sekarang.
+4. Akhiri dengan ajakan bertindak (Call to Action) ramah untuk memesan sekarang.`
+}
 5. Balas HANYA dengan isi pesan promosi langsung, tanpa tanda kutip pembuka/penutup dan tanpa basa-basi penjelasan AI.`;
 
     // 1. Coba panggil Gemini AI terlebih dahulu
