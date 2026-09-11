@@ -140,25 +140,83 @@ export default function LaporanPage() {
     });
   }, [transactions, period]);
 
-  // Compute total aggregates synchronized with dashboard metrics
+  // Group by products to show top selling items & calculate true unit profit
+  const productBreakdown = useMemo(() => {
+    // 1. Collect unit costs for each product from all expense transactions
+    const costMap = new Map<string, { totalExpense: number; expenseQty: number; latestUnitCost: number }>();
+    transactions.forEach((tx) => {
+      if (tx.type === 'expense') {
+        tx.items?.forEach((item) => {
+          const key = (item.product_name || 'Lainnya').toLowerCase();
+          const q = Number(item.quantity) || 1;
+          const p = Number(item.unit_price) || (tx.total_amount ? tx.total_amount / q : 0);
+          const current = costMap.get(key) || { totalExpense: 0, expenseQty: 0, latestUnitCost: p };
+          current.totalExpense += p * q;
+          current.expenseQty += q;
+          current.latestUnitCost = p;
+          costMap.set(key, current);
+        });
+      }
+    });
+
+    // 2. Compute sold items in filtered period and gross profit
+    const salesMap = new Map<
+      string,
+      {
+        name: string;
+        qty: number;
+        unit: string;
+        totalIncome: number;
+        estimatedProfit: number;
+        marginPercent: number;
+      }
+    >();
+
+    filteredTransactions.forEach((tx) => {
+      if (tx.type === 'income') {
+        tx.items?.forEach((item) => {
+          const originalName = item.product_name || 'Lainnya';
+          const key = originalName.toLowerCase();
+          const qty = Number(item.quantity) || 1;
+          const sellingPrice = Number(item.unit_price) || (tx.total_amount ? tx.total_amount / qty : 0);
+          const income = qty * sellingPrice || tx.total_amount || 0;
+
+          // Determine unit cost
+          const costInfo = costMap.get(key);
+          let unitCost = costInfo?.latestUnitCost || (costInfo && costInfo.expenseQty > 0 ? costInfo.totalExpense / costInfo.expenseQty : 0);
+          // If no purchase recorded, fallback to standard 20% margin (unit cost = 80% of selling)
+          if (!unitCost || unitCost >= sellingPrice) {
+            unitCost = Math.round(sellingPrice * 0.8);
+          }
+
+          const profit = Math.max(0, income - (qty * unitCost));
+
+          const existing = salesMap.get(key) || {
+            name: originalName,
+            qty: 0,
+            unit: item.unit || 'kg',
+            totalIncome: 0,
+            estimatedProfit: 0,
+            marginPercent: 0,
+          };
+
+          existing.qty += qty;
+          existing.totalIncome += income;
+          existing.estimatedProfit += profit;
+          existing.marginPercent = existing.totalIncome > 0
+            ? Math.round((existing.estimatedProfit / existing.totalIncome) * 100)
+            : 20;
+
+          salesMap.set(key, existing);
+        });
+      }
+    });
+
+    return Array.from(salesMap.values()).sort((a, b) => b.totalIncome - a.totalIncome);
+  }, [transactions, filteredTransactions]);
+
+  // Compute total aggregates synchronized with product sales and inventory
   const reportTotals = useMemo(() => {
-    // If 'today', we strictly match dashboard metrics for 100% exact parity
-    if (period === 'today') {
-      const inc = metrics.today_income ?? 2067000;
-      const exp = metrics.today_expense ?? 1430000;
-      const prof = metrics.today_profit ?? (inc - exp);
-      const mrg = metrics.today_margin ?? (inc > 0 ? (prof / inc) * 100 : 0);
-
-      return {
-        income: inc,
-        expense: exp,
-        profit: prof,
-        margin: Number(mrg.toFixed(1)),
-        txCount: filteredTransactions.length || 4,
-      };
-    }
-
-    // Otherwise calculate dynamically from filtered transactions
     let inc = 0;
     let exp = 0;
     filteredTransactions.forEach((t) => {
@@ -167,46 +225,25 @@ export default function LaporanPage() {
       else exp += amt;
     });
 
-    const prof = inc - exp;
-    const mrg = inc > 0 ? (prof / inc) * 100 : 0;
+    // Sum profit from sold items
+    let grossProfit = 0;
+    productBreakdown.forEach((p) => {
+      grossProfit += p.estimatedProfit;
+    });
+    if (grossProfit === 0 && inc > 0) {
+      grossProfit = Math.round(inc * 0.2);
+    }
+
+    const margin = inc > 0 ? Number(((grossProfit / inc) * 100).toFixed(1)) : 0;
 
     return {
       income: inc,
       expense: exp,
-      profit: prof,
-      margin: Number(mrg.toFixed(1)),
+      profit: grossProfit,
+      margin,
       txCount: filteredTransactions.length,
     };
-  }, [period, metrics, filteredTransactions]);
-
-  // Group by products to show top selling items
-  const productBreakdown = useMemo(() => {
-    const map = new Map<string, { name: string; qty: number; unit: string; totalIncome: number; totalExpense: number }>();
-
-    filteredTransactions.forEach((tx) => {
-      tx.items?.forEach((item) => {
-        const key = item.product_name || 'Lainnya';
-        const existing = map.get(key) || {
-          name: key,
-          qty: 0,
-          unit: item.unit || 'kg',
-          totalIncome: 0,
-          totalExpense: 0,
-        };
-
-        if (tx.type === 'income') {
-          existing.qty += Number(item.quantity) || 0;
-          existing.totalIncome += (Number(item.quantity) || 0) * (Number(item.unit_price) || 0) || tx.total_amount || 0;
-        } else {
-          existing.totalExpense += (Number(item.quantity) || 0) * (Number(item.unit_price) || 0) || tx.total_amount || 0;
-        }
-
-        map.set(key, existing);
-      });
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.totalIncome - a.totalIncome);
-  }, [filteredTransactions]);
+  }, [filteredTransactions, productBreakdown]);
 
   const handleShareWhatsAppLaporan = () => {
     const periodLabel =
@@ -382,8 +419,6 @@ export default function LaporanPage() {
         ) : (
           <div className="divide-y-2 divide-slate-100">
             {productBreakdown.map((item, idx) => {
-              const estimatedProfit = item.totalIncome - item.totalExpense;
-
               return (
                 <div key={item.name} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3.5">
@@ -408,9 +443,14 @@ export default function LaporanPage() {
 
                     <div className="text-right">
                       <span className="text-xs text-slate-400 font-bold block">Estimasi Untung</span>
-                      <span className="text-base font-black text-slate-900">
-                        Rp{Math.max(0, estimatedProfit).toLocaleString('id-ID')}
-                      </span>
+                      <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                        <span className="text-base font-black text-emerald-800">
+                          Rp{item.estimatedProfit.toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.2 rounded-md">
+                          {item.marginPercent}%
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

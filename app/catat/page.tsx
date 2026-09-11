@@ -235,6 +235,20 @@ export default function CatatPage() {
               currentLocal.unshift(txWithUser);
               localStorage.setItem(`vokasync_local_txs_${userKey}`, JSON.stringify(currentLocal.slice(0, 100)));
             }
+            if (saveResult.product) {
+              const currentProds = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
+              const pIdx = currentProds.findIndex(
+                (p: any) =>
+                  p.id === saveResult.product.id ||
+                  p.name.toLowerCase() === saveResult.product.name.toLowerCase()
+              );
+              if (pIdx !== -1) {
+                currentProds[pIdx] = { ...currentProds[pIdx], ...saveResult.product };
+              } else {
+                currentProds.unshift(saveResult.product);
+              }
+              localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(currentProds));
+            }
             sessionStorage.removeItem(`vokasync_products_cache_${userKey}`);
             sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
             sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);

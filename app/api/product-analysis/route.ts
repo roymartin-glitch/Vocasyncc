@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const activeUserId = profile?.id;
     const userMockProducts = mockProducts.filter((p: any) => {
       if (activeUserId && p.user_id === activeUserId) return true;
-      if (isDemo && (p.user_id === 'user-001' || p.user_id === 'demo' || !p.user_id)) return true;
+      if (isDemo && (p.user_id === 'user-001' || p.user_id === 'demo' || p.user_id === 'demo-user-pak-budi' || p.user_id === '00000000-0000-0000-0000-000000000001' || !p.user_id)) return true;
       return false;
     });
 

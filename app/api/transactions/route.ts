@@ -403,12 +403,49 @@ export async function POST(req: NextRequest) {
       mockTransactions.unshift(newTxRecord);
     }
 
+    // Pastikan komoditas selalu tersimpan / diperbarui di mockProducts & dikembalikan ke frontend
+    const costPrice = type === 'expense' ? Math.round(unitPrice) : Math.round(unitPrice * 0.8);
+    const sellPrice = type === 'income' ? Math.round(unitPrice) : Math.round(unitPrice * 1.25);
+    const margin = Math.round(((sellPrice - costPrice) / (sellPrice || 1)) * 100);
+
+    let productObj = mockProducts.find(
+      (p) => (p.user_id === userId || !p.user_id) && p.name.toLowerCase() === finalCleanName.toLowerCase()
+    );
+
+    if (productObj) {
+      if (type === 'expense') {
+        productObj.cost_price = Math.round(unitPrice);
+        productObj.remaining_stock = (productObj.remaining_stock || 0) + qty;
+      } else {
+        productObj.selling_price = Math.round(unitPrice);
+        productObj.remaining_stock = Math.max(0, (productObj.remaining_stock || 0) - qty);
+      }
+      productObj.total_revenue_7d = (productObj.total_revenue_7d || 0) + total;
+    } else {
+      productObj = {
+        id: productId || 'prod-' + Date.now(),
+        user_id: userId,
+        name: finalCleanName,
+        unit: unit || 'kg',
+        cost_price: costPrice,
+        selling_price: sellPrice,
+        margin_percentage: margin,
+        action_category: margin >= 20 ? 'dorong' : 'perbaiki',
+        avg_daily_volume: qty,
+        total_revenue_7d: total,
+        remaining_stock: qty,
+        is_stock_low: false,
+      };
+      mockProducts.unshift(productObj);
+    }
+
     return NextResponse.json({
       success: true,
       data: newTxRecord,
-      productId: productId || newTxRecord.items[0]?.product_id,
+      productId: productId || productObj.id,
       productName: finalCleanName,
-      isNewProduct,
+      isNewProduct: isNewProduct || true,
+      product: productObj,
       message: 'Transaksi dan barang berhasil dicatat.',
     });
   } catch (err: any) {
