@@ -1,479 +1,356 @@
 # TECHNICAL_SPEC.md — VokaSync
 
-Dokumen rancangan teknis aktual VokaSync. Menjelaskan **bagaimana** sistem dibangun — struktur folder nyata, data model, API routes, kalkulasi, dan arsitektur responsif — sesuai kondisi kode yang sudah ter-build sukses.
+**Dokumen Spesifikasi Teknis Arsitektur & Implementasi**  
+Proyek: VokaSync — AI Business Advisor & Visual Marketing untuk Pedagang Pasar & UMKM Indonesia  
+Kompetisi: EXASTI 2.0 — Web Application Competition 2026 (Universitas Negeri Jakarta)  
 
-> **STATUS**: ✅ `npm run build` sukses — 17 routes, 0 TypeScript error.
+> **STATUS SISTEM**: ✅ Production Build Sukses — 17+ Next.js routes, 0 TypeScript error, performa tinggi non-blocking dengan database real Supabase.
 
 ---
 
-## 1. Tech Stack Aktual
+## 1. Tech Stack Aktual & Versi Dependensi
 
-| Komponen | Teknologi | Versi | Peran |
+| Komponen | Teknologi | Versi | Peran Teknis & Alasan Pemilihan |
 |---|---|---|---|
-| Framework | Next.js App Router | `16.3.4` | SSR + API Routes. API key tidak bocor ke client. |
-| Runtime | React | `19.2.8` | UI client-side. |
-| TypeScript | TypeScript | `^5` | Tipe data seluruh entitas di `types/index.ts`. |
-| Styling | Tailwind CSS v4 | `^4` | Layout responsive. Design tokens di `app/globals.css`. |
-| Chart | Recharts | `^3.10.1` | BarChart tren 7 hari di `TrendChart.tsx`. |
-| Icon | lucide-react | `^1.42.0` | Ikon konsisten di seluruh UI. |
-| Database | Supabase PostgreSQL | `@supabase/supabase-js ^2.115.0` | Menyimpan semua data transaksi, produk, insight, eksperimen, profil. |
-| Auth | Supabase Auth | (bundled) | Mengelola sesi login, isolasi data antar pengguna. |
-| Supabase SSR | `@supabase/ssr` | `^0.12.6` | Helper browser client & server client di `lib/supabase/`. |
-| AI — Voice Parsing | Google Gemini Flash | Free Tier | Parsing transkrip → JSON di `/api/parse-voice`. Prompt di `lib/ai/prompts.ts`. |
-| AI — Insight | Google Gemini Flash | Free Tier | Narasi AI Advisor di `/api/insights`. |
-| AI — Copywriting | Google Gemini Flash | Free Tier | Teks promosi WhatsApp di `/api/generate-copy`. |
-| AI — Verdict | Google Gemini Flash | Free Tier | Evaluasi eksperimen di `/api/experiments` PATCH. |
-| Voice Recognition | Web Speech API | Native browser | Transkripsi ucapan di browser, gratis, tanpa upload audio. |
-| Background Removal | `@imgly/background-removal` | `^1.7.0` | 100% client-side di `StudioModal.tsx` — gambar tidak pernah ke server. |
-| WhatsApp | URL Scheme `wa.me` | — | WhatsApp Direct tanpa API berbayar. |
-| Deployment | Vercel | — | CD otomatis dari GitHub. |
-
-> ⚠️ **PENTING untuk AI coding agent**: Next.js versi ini (`16.3.4`) menggunakan App Router. Selalu baca `node_modules/next/dist/docs/` sebelum menulis kode. Lihat `AGENTS.md` di root project.
+| **Framework Fullstack** | Next.js App Router | `16.3.4` | SSR, Static Optimization, API Routes server-side aman untuk kunci API |
+| **Runtime UI** | React | `19.2.8` | Komponen reaktif, hook `useMemo`, `useState`, `useEffect` |
+| **Bahasa Pemrograman** | TypeScript | `^5` | Type-safety menyeluruh pada seluruh model data di `types/index.ts` |
+| **Styling & CSS** | Tailwind CSS v4 | `^4` | Atomic CSS responsif modern dengan palet warna emerald gelap profesional |
+| **Ikonografi** | Lucide React | `^1.42.0` | Set icon SVG konsisten di antarmuka web dan mobile |
+| **Visualisasi Data** | Recharts | `^3.10.1` | BarChart interaktif visualisasi tren pemasukan vs pengeluaran mingguan |
+| **Database & Auth** | Supabase PostgreSQL | `@supabase/supabase-js ^2.115.0` | Penyimpanan data relasional dengan RLS (Row-Level Security) aktif |
+| **Supabase SSR Helpers** | `@supabase/ssr` | `^0.12.6` | Otentikasi berbasis cookie untuk browser client dan server client |
+| **File / Image Storage** | Supabase Storage | Bucket `product-images` | Unggah foto produk & flyer promosi dengan RLS policies publik terisolasi |
+| **AI — Parsing Suara** | Google Gemini Flash | Free Tier | Ekstraksi transkrip bahasa alami menjadi JSON transaksi terstruktur |
+| **AI — Business Advisor** | Google Gemini Flash | Free Tier | Penyusunan narasi insight ramah awam dengan penjelasan akar masalah (*root-cause*) |
+| **AI — Copywriting Promosi** | Google Gemini Flash | Free Tier | Pembuat narasi promosi WhatsApp instan (gaya Pasar, FOMO, Elegan) |
+| **AI — Verdict Eksperimen** | Google Gemini Flash | Free Tier | Evaluasi dampak perubahan strategi harga/produk |
+| **Voice Recognition** | Web Speech API (`SpeechRecognition`) | Native Browser | Input suara Bahasa Indonesia langsung di browser (Rp0 biaya server audio) |
+| **Voice Audio Feedback (TTS)** | Web Speech API (`SpeechSynthesis`) | Native Browser | Asisten berbicara ramah mengonfirmasi transaksi tersimpan |
+| **Background Removal** | `@imgly/background-removal` | `^1.7.0` | Pemrosesan segmentasi gambar 100% lokal client-side via WebAssembly (WASM) |
+| **Integrasi WhatsApp** | URL Scheme `wa.me` | Browser Native | Pengiriman rekap keuangan dan pesan promosi langsung ke WhatsApp |
+| **Deployment & CI/CD** | Vercel | Production | Integrasi otomatis dengan branch GitHub |
 
 ---
 
-## 2. Arsitektur Responsif
+## 2. Arsitektur Responsif & Navigasi
 
-### Breakpoint
+### 2.1 Breakpoint Antarmuka
 
-| Breakpoint | Ukuran Layar | Navigasi | File |
+| Breakpoint | Ukuran Layar | Mode Navigasi | File Komponen |
 |---|---|---|---|
-| Mobile | ≤767px | Bottom nav 4 tab (Beranda, Catat, Produk, Eksperimen) | `components/layout/bottom-nav.tsx` |
-| Tablet | 768px–1023px | Sidebar kiri 64px icon-only | `components/layout/sidebar.tsx` |
-| Desktop | ≥1024px | Sidebar kiri 240px ikon + label teks | `components/layout/sidebar.tsx` |
+| **Mobile** | $\le 767\text{px}$ | Bottom Navigation 6 Tab (`Beranda`, `Catat`, `Barang`, `Laporan`, `Riwayat`, `Setelan`) | `components/layout/bottom-nav.tsx` |
+| **Tablet** | $768\text{px} - 1023\text{px}$ | Sidebar kiri 80px (`w-20`), icon-only mode terpusat | `components/layout/sidebar.tsx` |
+| **Desktop** | $\ge 1024\text{px}$ | Sidebar kiri 256px (`w-64`), navigasi lengkap + info toko + profil | `components/layout/sidebar.tsx` |
 
-### Shell Global — `components/layout/app-shell.tsx`
+### 2.2 Shell Global — `components/layout/app-shell.tsx`
 
-Membungkus semua halaman di `app/layout.tsx`. Menentukan mana yang tampil:
-- `<Sidebar />` — hanya desktop & tablet (hidden mobile)
-- `<Header />` — adaptif per breakpoint
-- `<BottomNav />` — hanya mobile (hidden desktop & tablet)
-
-### Sidebar Desktop — `components/layout/sidebar.tsx`
-
-- Background putih, border kanan tipis abu (`--border`).
-- Logo VokaSync di atas.
-- Menu items: Beranda (`/dashboard`), Catat (`/catat`), Produk (`/produk`), Eksperimen (`/eksperimen`), Riwayat (`/riwayat`), Settings (`/settings`).
-- Menu aktif: background `--primary-light`, teks & ikon `--primary`.
-- Ikon Logout di bagian paling bawah.
-- Lebar: 240px (desktop), 64px (tablet icon-only via Tailwind responsive class).
-
-### Header — `components/layout/header.tsx`
-
-- **Desktop**: sapaan "Selamat datang, [nama]" + date picker + tombol "+ Catat Transaksi".
-- **Mobile**: "VokaSync" di kiri + ikon notifikasi + ikon riwayat + ikon settings di kanan.
-
-### Bottom Nav — `components/layout/bottom-nav.tsx`
-
-- Fixed bottom, 4 tab: Beranda, Catat, Produk, Eksperimen.
-- Tab aktif: ikon + teks hijau; tab non-aktif: abu.
+Membungkus seluruh antarmuka aplikasi di `app/layout.tsx`:
+- Mengelola state sesi pengguna dan sinkronisasi cache profil toko via `sessionStorage` / `localStorage` untuk mencegah loading berulang (*zero-flicker*).
+- Menampilkan `<Sidebar />` pada layar desktop/tablet dan menyembunyikannya pada layar mobile.
+- Menampilkan `<Header />` adaptif yang menampilkan sapaan nama pemilik, status kios, notifikasi sinyal, dan pintasan transaksi.
+- Menampilkan `<BottomNav />` pada layar mobile untuk akses 1-tap jari jempol.
 
 ---
 
-## 3. Struktur Folder Aktual
+## 3. Struktur Folder Proyek Aktual
 
 ```
 SIMULASI-ANTIGRAVITY/
 ├── app/
 │   ├── (auth)/
-│   │   └── login/                    # Halaman login Supabase Auth
+│   │   └── login/                          # Halaman login & pendaftaran akun Supabase
 │   ├── api/
 │   │   ├── experiments/
-│   │   │   └── route.ts              # GET, POST, PATCH eksperimen
+│   │   │   └── route.ts                    # GET, POST, PATCH eksperimen bisnis
 │   │   ├── generate-copy/
-│   │   │   └── route.ts              # POST → Gemini → 3 variasi copywriting WA
+│   │   │   └── route.ts                    # POST: Generator copywriting WA via Gemini
 │   │   ├── insights/
-│   │   │   └── route.ts              # GET → hitung metrik + narasi Gemini + simpan ai_insights
+│   │   │   └── route.ts                    # GET: Metrik deterministik instan + AI insight
 │   │   ├── parse-voice/
-│   │   │   └── route.ts              # POST → Gemini → JSON transaksi terstruktur
+│   │   │   └── route.ts                    # POST: Smart voice parsing + noise filter
 │   │   ├── product-analysis/
-│   │   │   └── route.ts              # GET → margin & kategori aksi per produk
+│   │   │   └── route.ts                    # GET: Margin, aksi produk, & sisa stok FIFO
 │   │   ├── settings/
-│   │   │   └── route.ts              # GET & PATCH profil + margin_alert_threshold
-│   │   └── transactions/
-│   │       ├── route.ts              # GET (list+filter) & POST (simpan baru)
-│   │       └── [id]/
-│   │           └── route.ts          # PATCH (koreksi) & DELETE (hapus, cascade ke items)
+│   │   │   └── route.ts                    # GET, PATCH: Profil toko, stok fisik, & audio
+│   │   ├── transactions/
+│   │   │   ├── route.ts                    # GET: List/filter, POST: Simpan + auto-registrasi produk
+│   │   │   └── [id]/
+│   │   │       └── route.ts                # PATCH: Koreksi item, DELETE: Hapus + cascade
+│   │   ├── upload-product-image/
+│   │   │   └── route.ts                    # POST: Unggah foto produk ke Supabase Storage
+│   │   └── upload-studio-flyer/
+│   │       └── route.ts                    # POST: Unggah materi promosi AI studio
 │   ├── catat/
-│   │   └── page.tsx                  # Halaman Catat Transaksi (voice + manual)
+│   │   └── page.tsx                        # Form catat suara (TTS audio confirmation) + manual
 │   ├── dashboard/
-│   │   └── page.tsx                  # Halaman Beranda/Dashboard
+│   │   └── page.tsx                        # Dashboard metrik, share rekap WA, AI advisor
 │   ├── eksperimen/
-│   │   └── page.tsx                  # Halaman Eksperimen & Tracking
+│   │   └── page.tsx                        # Tracking inisiatif perbaikan toko & AI verdict
+│   ├── laporan/
+│   │   └── page.tsx                        # Laporan laba rugi, cetak rekap, & kirim WA
 │   ├── produk/
-│   │   └── page.tsx                  # Halaman Analisis Produk
+│   │   └── page.tsx                        # Manajemen barang, upload foto, & pantau stok
 │   ├── riwayat/
-│   │   └── page.tsx                  # Halaman Riwayat Transaksi
+│   │   └── page.tsx                        # Log transaksi lengkap, filter, pencarian, & edit
 │   ├── settings/
-│   │   └── page.tsx                  # Halaman Settings & Profil
-│   ├── globals.css                   # Design tokens (CSS custom properties)
-│   ├── layout.tsx                    # Root layout — mount AppShell
-│   └── page.tsx                      # Redirect ke /dashboard
+│   │   └── page.tsx                        # Pengaturan toko, ambang batas stok, & preferensi
+│   ├── globals.css                         # Design tokens palet emerald & CSS variables
+│   ├── layout.tsx                          # Root layout Next.js
+│   └── page.tsx                            # Root redirect menuju /dashboard
 │
 ├── components/
 │   ├── dashboard/
-│   │   ├── AdvisorCard.tsx           # Kartu AI Advisor + tombol Quick-Action
-│   │   ├── MetricCard.tsx            # Kartu metrik angka besar + badge % perubahan
-│   │   ├── RecentTransactions.tsx    # Tabel transaksi terbaru
-│   │   ├── SignalFeed.tsx            # Feed kronologis sinyal ai_insights
-│   │   └── TrendChart.tsx            # BarChart Recharts tren 7 hari
+│   │   ├── AdvisorCard.tsx                 # Kartu AI Advisor + tombol Quick-Action WA
+│   │   ├── MetricCard.tsx                  # 4 kartu metrik (Uang Masuk, Keluar, Untung, Margin)
+│   │   ├── RecentTransactions.tsx          # Tabel ringkas transaksi terbaru
+│   │   ├── SignalFeed.tsx                  # Feed kronologis sinyal peringatan bisnis
+│   │   └── TrendChart.tsx                  # Visualisasi BarChart Recharts tren 7 hari
 │   ├── layout/
-│   │   ├── app-shell.tsx             # Shell pembungkus navigasi global
-│   │   ├── bottom-nav.tsx            # Bottom navigation mobile
-│   │   ├── header.tsx                # Header adaptif desktop & mobile
-│   │   └── sidebar.tsx               # Sidebar desktop & tablet
+│   │   ├── app-shell.tsx                   # Layout shell pembungkus sesi & navigasi
+│   │   ├── bottom-nav.tsx                  # Navigasi bawah 6 tab mobile
+│   │   ├── header.tsx                      # Header adaptif nama toko & sapaan
+│   │   └── sidebar.tsx                     # Sidebar hijau emerald desktop/tablet
 │   └── studio/
-│       └── StudioModal.tsx           # Modal AI Virtual Studio (all-in-one)
+│       └── StudioModal.tsx                 # Modal AI Virtual Studio (BG removal + frames + WA)
 │
 ├── lib/
 │   ├── ai/
-│   │   ├── gemini.ts                 # Inisialisasi Gemini SDK, helper generateContent()
-│   │   └── prompts.ts                # Template prompt: parseVoice, dailyAdvisor,
-│   │                                 # experimentVerdict, marketingCopy
+│   │   ├── gemini.ts                       # Inisialisasi Google GenAI SDK & handler
+│   │   └── prompts.ts                      # Template prompt: parseVoice, dailyAdvisor, copy, verdict
 │   ├── calculations/
-│   │   └── financial.ts              # calculateMargin(), determineActionCategory(),
-│   │                                 # determineSeverity(), build7DayTrend()
+│   │   └── financial.ts                    # Kalkulasi deterministik margin, status aksi, & FIFO
 │   ├── mock-data/
-│   │   └── index.ts                  # Data statis fallback (tidak dipakai di production)
+│   │   └── index.ts                        # Fallback data offline saat transisi
 │   └── supabase/
-│       ├── client.ts                 # createBrowserClient() untuk komponen client-side
-│       └── server.ts                 # createServerClient() + createAdminClient() untuk API routes
+│       ├── client.ts                       # createBrowserClient() untuk browser React
+│       └── server.ts                       # createServerClient() & createAdminClient()
 │
 ├── supabase/
 │   └── schema/
-│       ├── 01_profiles.sql
-│       ├── 02_products.sql
-│       ├── 03_transactions.sql
-│       ├── 04_transaction_items.sql
-│       ├── 05_ai_insights.sql
-│       ├── 06_experiments.sql
-│       ├── 07_experiment_results.sql
-│       ├── full_schema.sql           # Schema lengkap (gabungan 01–07 + RLS)
-│       └── seed_data.sql             # Data demo Pak Budi untuk keperluan presentasi
+│       ├── 01_profiles.sql                 # Tabel profil & pengaturan toko
+│       ├── 02_products.sql                 # Master komoditas/produk
+│       ├── 03_transactions.sql             # Header transaksi penjualan & belanja modal
+│       ├── 04_transaction_items.sql        # Rincian item produk & harga per transaksi
+│       ├── 05_ai_insights.sql              # Riwayat insight & peringatan AI Advisor
+│       ├── 06_experiments.sql              # Inisiatif eksperimen bisnis
+│       ├── 07_experiment_results.sql       # Checkpoint hasil & evaluasi AI verdict
+│       ├── 08_stock_batches.sql            # Inventaris FIFO & sisa kuantitas modal
+│       ├── 09_extended_settings.sql        # Migrasi preferensi stok fisik & audio
+│       ├── 10_product_images.sql           # Dukungan kolom gambar produk
+│       ├── full_schema.sql                 # Skema master 8 tabel + Storage bucket + RLS
+│       └── seed_data.sql                   # Data percontohan realistis untuk demo juri
 │
 ├── types/
-│   └── index.ts                      # Seluruh TypeScript interface & type
-│
+│   └── index.ts                            # Definisi TypeScript komprehensif seluruh sistem
 ├── public/
-│   └── frames/                       # Aset PNG frame AI Virtual Studio
-│       ├── frame-minimalis.png
-│       ├── frame-pasar.png
-│       └── frame-kriya.png
-│
-├── .env.local                        # API keys (tidak di-commit, ada di .gitignore)
-├── .env.example                      # Template env untuk onboarding anggota baru
-├── next.config.ts
-├── package.json
-├── tsconfig.json
-└── AGENTS.md                         # Instruksi khusus untuk AI coding agent
+│   └── frames/                             # Bingkai PNG AI Virtual Studio
+├── next.config.ts                          # Konfigurasi Next.js (optimasi bundle & images)
+└── package.json                            # Manifest dependensi proyek
 ```
 
 ---
 
-## 4. Design Tokens — `app/globals.css`
+## 4. Model Data & Skema Database (Supabase PostgreSQL)
 
-```css
-:root {
-  --background: #f5f5f5;       /* Background halaman — abu sangat terang */
-  --foreground: #1e293b;       /* Teks utama */
-  --card: #ffffff;              /* Background kartu */
-  --card-foreground: #1e293b;
-  --primary: #1a7a4a;           /* Warna aksen hijau utama */
-  --primary-foreground: #ffffff;
-  --primary-light: #eaf6ee;    /* Badge aktif, highlight positif */
-  --primary-dark: #125734;
-  --muted: #64748b;             /* Teks label sekunder */
-  --muted-light: #f1f5f9;
-  --border: #e2e8f0;            /* Garis border kartu */
-}
+Database dirancang dengan prinsip **Single Source of Truth** untuk seluruh nilai keuangan dan integritas referensial ketat (*Foreign Keys* dengan `CASCADE DELETE`).
+
+### 4.1 Tabel 1: `profiles`
+Menyimpan identitas kios/pedagang dan preferensi sistem.
+```sql
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  business_name TEXT DEFAULT 'Kios Dagang Saya',
+  owner_name TEXT DEFAULT 'Pedagang',
+  business_type TEXT DEFAULT 'Sayur & Buah',
+  margin_alert_threshold NUMERIC DEFAULT 20,
+  low_stock_threshold NUMERIC DEFAULT 2,          -- Ambang batas stok fisik (kg/pcs)
+  supplier_cost_increase_threshold NUMERIC DEFAULT 5, -- Ambang batas kenaikan modal (%)
+  sound_alert_enabled BOOLEAN DEFAULT false,      -- Status suara asisten aktif/mati
+  sound_alert_volume NUMERIC DEFAULT 80,
+  text_size TEXT DEFAULT 'normal',                -- 'kecil' | 'normal' | 'besar' | 'sangat-besar'
+  theme TEXT DEFAULT 'terang',                    -- 'terang' | 'gelap'
+  default_unit TEXT DEFAULT 'kg',
+  analysis_period TEXT DEFAULT '7d',
+  app_settings JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
----
-
-## 5. TypeScript Types — `types/index.ts`
-
-Semua entitas diketik ketat. Berikut ringkasannya:
-
-```typescript
-// Profil pengguna
-interface Profile {
-  id: string;
-  business_name: string;
-  owner_name: string;                      // Untuk sapaan di Beranda
-  business_type: 'pasar'|'kuliner'|'kriya'|'kelontong'|'lainnya';
-  margin_alert_threshold: number;          // Default 20 (%)
-}
-
-// Transaksi header
-interface Transaction {
-  id: string;
-  user_id: string;
-  type: 'expense' | 'income';
-  transaction_date: string;
-  source: 'voice' | 'manual';
-  raw_voice_text?: string | null;
-  items: TransactionItem[];
-  total_amount?: number;                   // Computed, bukan disimpan
-}
-
-// Item rincian per produk dalam transaksi
-interface TransactionItem {
-  id: string;
-  transaction_id: string;
-  product_id: string;
-  product_name?: string;                   // Join dari products
-  quantity: number;
-  unit: string;
-  unit_price: number;                      // SATU-SATUNYA sumber harga
-  subtotal?: number;                       // Computed (quantity × unit_price)
-}
-
-// Insight AI
-interface AIInsight {
-  id: string;
-  user_id: string;
-  severity: 'red' | 'yellow' | 'green';  // Ditentukan server, bukan AI
-  message: string;                         // Narasi dari Gemini
-  has_quick_action: boolean;               // true jika severity = 'red'
-  metric_snapshot?: object;               // Angka saat insight dibuat (historis)
-  created_at: string;
-}
-
-// Eksperimen bisnis
-interface Experiment {
-  id: string;
-  status: 'running' | 'completed';
-  baseline_metric: ExperimentMetric;      // Snapshot permanen
-  target_metric?: ExperimentMetric | null;
-  results?: ExperimentResult[];
-}
-
-// Hasil kalkulasi per produk untuk Analisis Produk
-interface ProductAnalysisItem {
-  id: string;
-  name: string;
-  cost_price: number;
-  selling_price: number;
-  margin_percentage: number;
-  action_category: 'dorong'|'pertahankan'|'perbaiki'|'kurangi';
-  avg_daily_volume: number;
-  total_revenue_7d: number;
-}
-
-// Metrik harian untuk Dashboard
-interface DashboardMetrics {
-  today_income: number;
-  today_income_change: number;    // % vs kemarin
-  today_expense: number;
-  today_expense_change: number;
-  today_profit: number;
-  today_profit_change: number;
-  today_margin: number;
-  today_margin_change: number;
-}
-
-// Data satu hari untuk chart tren
-interface TrendDayData {
-  date: string;
-  dayName: string;                // 'Sen', 'Sel', dst.
-  income: number;
-  expense: number;
-}
+#### Trigger Registrasi Pengguna Baru (`handle_new_user`)
+Secara dinamis mengambil nama dan nama usaha dari metadata pendaftaran tanpa membocorkan data sampel ke akun baru:
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (
+    id, business_name, owner_name, business_type,
+    margin_alert_threshold, low_stock_threshold,
+    supplier_cost_increase_threshold, theme, text_size
+  )
+  VALUES (
+    new.id,
+    COALESCE(NULLIF(new.raw_user_meta_data->>'business_name', ''), 'Kios Dagang Saya'),
+    COALESCE(NULLIF(new.raw_user_meta_data->>'owner_name', ''), split_part(new.email, '@', 1)),
+    COALESCE(NULLIF(new.raw_user_meta_data->>'business_type', ''), 'Sayur & Buah'),
+    20, 2, 5, 'terang', 'normal'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    business_name = EXCLUDED.business_name,
+    owner_name = EXCLUDED.owner_name,
+    business_type = EXCLUDED.business_type;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
----
+### 4.2 Tabel 2: `products`
+Master data nama komoditas dan referensi foto produk:
+```sql
+CREATE TABLE IF NOT EXISTS public.products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  default_unit TEXT NOT NULL DEFAULT 'kg',
+  image_url TEXT DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-## 6. Database & Data Model
+### 4.3 Tabel 3: `transactions`
+Header kejadian transaksi penjualan barang atau belanja modal:
+```sql
+CREATE TABLE IF NOT EXISTS public.transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('expense', 'income')),
+  transaction_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('voice', 'manual')),
+  raw_voice_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-### Prinsip Desain
+### 4.4 Tabel 4: `transaction_items`
+Rincian per item komoditas yang menjadi **satu-satunya sumber kebenaran angka keuangan**:
+```sql
+CREATE TABLE IF NOT EXISTS public.transaction_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_id UUID NOT NULL REFERENCES public.transactions(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  quantity NUMERIC NOT NULL CHECK (quantity > 0),
+  unit TEXT NOT NULL DEFAULT 'kg',
+  unit_price NUMERIC NOT NULL CHECK (unit_price >= 0)
+);
+```
 
-- **Sumber kebenaran tunggal**: angka keuangan hanya di `transaction_items.unit_price` — tidak diduplikasi.
-- **Tidak menyimpan yang bisa dihitung ulang**: total harian, margin, kategori aksi — semua dihitung on-the-fly.
-- **Snapshot hanya untuk kebutuhan historis**: `baseline_metric` di eksperimen disimpan permanen karena merepresentasikan kondisi pada satu titik waktu.
-- **AI tidak pernah menjadi sumber angka**: tabel AI hanya menyimpan narasi teks.
-- **RLS wajib** pada semua tabel dengan `user_id`.
+### 4.5 Tabel 5: `stock_batches` (Inventaris FIFO)
+Melacak sisa stok fisik dan modal per batch belanja barang:
+```sql
+CREATE TABLE IF NOT EXISTS public.stock_batches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  transaction_id UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
+  initial_quantity NUMERIC NOT NULL CHECK (initial_quantity > 0),
+  remaining_quantity NUMERIC NOT NULL CHECK (remaining_quantity >= 0),
+  cost_price NUMERIC NOT NULL CHECK (cost_price >= 0),
+  unit TEXT NOT NULL DEFAULT 'kg',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'depleted')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
 
----
+### 4.6 Tabel 6: `ai_insights`
+Log histori narasi dan sinyal peringatan proaktif dari AI Advisor:
+```sql
+CREATE TABLE IF NOT EXISTS public.ai_insights (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('red', 'yellow', 'green')),
+  message TEXT NOT NULL,
+  has_quick_action BOOLEAN NOT NULL DEFAULT FALSE,
+  metric_snapshot JSONB DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-### 6.1 `profiles`
+### 4.7 Tabel 7 & 8: `experiments` & `experiment_results`
+Tracking inisiatif perbaikan toko dan pencatatan verdict evaluasi AI:
+```sql
+CREATE TABLE IF NOT EXISTS public.experiments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'completed')),
+  baseline_metric JSONB NOT NULL DEFAULT '{}'::JSONB,
+  target_metric JSONB DEFAULT '{}'::JSONB,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  target_end_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK, FK → `auth.users.id`) | Satu-ke-satu dengan Supabase Auth. |
-| `business_name` | text | Nama toko/usaha. |
-| `owner_name` | text | Nama pemilik — dipakai untuk sapaan personal di Beranda. |
-| `business_type` | text (nullable) | `pasar` / `kuliner` / `kriya` / `kelontong` / `lainnya`. |
-| `margin_alert_threshold` | numeric | Ambang batas margin (%) pemicu peringatan. Default: 20. |
-| `created_at` | timestamptz | — |
-| `updated_at` | timestamptz | Diupdate setiap PATCH `/api/settings`. |
+CREATE TABLE IF NOT EXISTS public.experiment_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  experiment_id UUID NOT NULL REFERENCES public.experiments(id) ON DELETE CASCADE,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  current_metric JSONB NOT NULL DEFAULT '{}'::JSONB,
+  evaluation_status TEXT CHECK (evaluation_status IN ('in_progress', 'success', 'partial', 'failed')),
+  ai_verdict_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-RLS: pengguna hanya baca/tulis baris miliknya (`id = auth.uid()`).
-
----
-
-### 6.2 `products`
-
-Master nama produk/bahan baku milik pengguna.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `user_id` | UUID (FK → `profiles.id`) | Pemilik. |
-| `name` | text | Nama produk/bahan baku. |
-| `default_unit` | text | Satuan default (kg, pcs, ikat) — nilai bantu form autocomplete. |
-| `created_at` | timestamptz | — |
-
-Tidak disimpan di sini: harga beli, harga jual, margin — semua dihitung dari `transaction_items`.
-
----
-
-### 6.3 `transactions`
-
-Header satu kejadian transaksi (satu kali input voice/manual).
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `user_id` | UUID (FK → `profiles.id`) | Pemilik. |
-| `type` | text | `expense` (pengeluaran/kulakan) atau `income` (pemasukan/penjualan). |
-| `transaction_date` | timestamptz | Waktu transaksi terjadi. |
-| `source` | text | `voice` atau `manual`. |
-| `raw_voice_text` | text (nullable) | Transkrip mentah dari Web Speech API (untuk audit). |
-| `created_at` | timestamptz | — |
-
-Tidak disimpan: total nominal — dihitung dari SUM `transaction_items`.
-
----
-
-### 6.4 `transaction_items`
-
-Rincian per produk dalam satu transaksi.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `transaction_id` | UUID (FK → `transactions.id`, CASCADE DELETE) | Transaksi induk. |
-| `product_id` | UUID (FK → `products.id`) | Produk terkait. |
-| `quantity` | numeric | Jumlah (mis. 20). |
-| `unit` | text | Satuan pada transaksi ini (mis. kg). |
-| `unit_price` | numeric | Harga per satuan — **satu-satunya sumber kebenaran harga**. |
-
-`subtotal` = `quantity × unit_price` — tidak disimpan, dihitung saat query.
-
-> CASCADE DELETE: hapus `transactions` → otomatis hapus semua `transaction_items` terkait.
-
----
-
-### 6.5 Harga Modal & Harga Jual (Tanpa Tabel Terpisah)
-
-Tidak ada tabel harga terpisah. Harga diturunkan dari `transaction_items` pada periode 7 hari terakhir:
-
-- **Harga modal terkini** = `unit_price` dari `transaction_items` dengan `transactions.type = 'expense'` terbaru untuk produk tersebut.
-- **Harga jual terkini** = `unit_price` dari `transaction_items` dengan `transactions.type = 'income'` terbaru untuk produk tersebut.
-- **Margin** = `(harga_jual − harga_modal) / harga_jual × 100%` — dihitung di `lib/calculations/financial.ts`.
-
----
-
-### 6.6 `ai_insights`
-
-Riwayat narasi insight dari AI Advisor.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `user_id` | UUID (FK → `profiles.id`) | Pemilik. |
-| `product_id` | UUID (FK → `products.id`, nullable) | Produk terkait jika insight spesifik produk. |
-| `severity` | text | `red` / `yellow` / `green` — **ditentukan deterministik oleh server**, bukan AI. |
-| `message` | text | Narasi dari Gemini (bahasa awam + root-cause). |
-| `has_quick_action` | boolean | `true` jika `severity = 'red'` — **ditentukan deterministik**, bukan AI. |
-| `metric_snapshot` | jsonb | Angka-angka dasar narasi saat dibuat (bukan sumber kebenaran aktif). |
-| `created_at` | timestamptz | Untuk label waktu relatif di SignalFeed. |
+### 4.8 Supabase Storage Bucket: `product-images`
+Bucket publik berkapasitas 5 MB per file khusus menyimpan format gambar `image/jpeg`, `image/png`, `image/webp` dengan izin upload khusus pengguna terotentikasi.
 
 ---
 
-### 6.7 `experiments`
-
-Tindakan yang direkomendasikan AI dan ditandai pengguna sebagai "dijalankan".
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `user_id` | UUID (FK → `profiles.id`) | Pemilik. |
-| `product_id` | UUID (FK → `products.id`, nullable) | Produk fokus eksperimen. |
-| `title` | text | Judul tindakan (mis. "Naikkan harga bawang Rp1.000/kg"). |
-| `status` | text | `running` atau `completed`. |
-| `baseline_metric` | jsonb | Snapshot kondisi sebelum — disimpan permanen. Format: `{ margin, price, daily_volume, daily_profit }`. |
-| `target_metric` | jsonb (nullable) | Target yang ingin dicapai. Format sama dengan baseline. |
-| `started_at` | timestamptz | Waktu mulai dijalankan. |
-| `target_end_at` | timestamptz (nullable) | Estimasi waktu evaluasi — untuk indikator "hari X/Y". |
-| `created_at` | timestamptz | — |
-
----
-
-### 6.8 `experiment_results`
-
-Checkpoint dan hasil evaluasi eksperimen.
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | UUID (PK) | — |
-| `experiment_id` | UUID (FK → `experiments.id`) | Eksperimen induk. |
-| `recorded_at` | timestamptz | Waktu checkpoint dicatat. |
-| `current_metric` | jsonb | Nilai metrik pada checkpoint ini. Format sama dengan baseline. |
-| `evaluation_status` | text (nullable) | `in_progress` / `success` / `partial` / `failed`. |
-| `ai_verdict_text` | text (nullable) | Narasi evaluasi dari Gemini (hanya teks). |
-| `created_at` | timestamptz | — |
-
----
-
-### 6.9 Ringkasan Tabel
-
-| Tabel | Sumber Kebenaran Untuk |
-|---|---|
-| `profiles` | Identitas, sapaan, ambang batas peringatan |
-| `products` | Master nama produk |
-| `transactions` | Header kejadian transaksi |
-| `transaction_items` | **Semua angka keuangan** |
-| `ai_insights` | Riwayat narasi AI (bukan angka) |
-| `experiments` | Definisi tindakan + baseline |
-| `experiment_results` | Checkpoint & evaluasi hasil |
-| Harga modal/jual | ❌ Tidak ada tabel — diturunkan dari `transaction_items` |
-| Ringkasan harian | ❌ Tidak ada tabel — dihitung on-the-fly |
-| Sesi AI Virtual Studio | ❌ Tidak ada tabel — ephemeral di state client |
-
----
-
-## 7. Relasi Antar Tabel (ERD)
+## 5. Relasi Antar Tabel (Entity Relationship Diagram)
 
 ```mermaid
 erDiagram
-    PROFILES ||--o{ PRODUCTS : owns
-    PROFILES ||--o{ TRANSACTIONS : owns
-    PROFILES ||--o{ AI_INSIGHTS : owns
-    PROFILES ||--o{ EXPERIMENTS : owns
+    PROFILES ||--o{ PRODUCTS : "memiliki"
+    PROFILES ||--o{ TRANSACTIONS : "mencatat"
+    PROFILES ||--o{ AI_INSIGHTS : "menerima"
+    PROFILES ||--o{ EXPERIMENTS : "menjalankan"
+    PROFILES ||--o{ STOCK_BATCHES : "memantau"
 
-    PRODUCTS ||--o{ TRANSACTION_ITEMS : "referenced by"
-    PRODUCTS ||--o{ AI_INSIGHTS : "related to (optional)"
-    PRODUCTS ||--o{ EXPERIMENTS : "related to (optional)"
+    PRODUCTS ||--o{ TRANSACTION_ITEMS : "dirinci dalam"
+    PRODUCTS ||--o{ STOCK_BATCHES : "dialokasikan ke"
+    PRODUCTS ||--o{ AI_INSIGHTS : "dianalisis"
+    PRODUCTS ||--o{ EXPERIMENTS : "diteliti"
 
-    TRANSACTIONS ||--|{ TRANSACTION_ITEMS : "contains (CASCADE DELETE)"
-    EXPERIMENTS ||--o{ EXPERIMENT_RESULTS : "tracked by"
+    TRANSACTIONS ||--|{ TRANSACTION_ITEMS : "memuat (CASCADE DELETE)"
+    TRANSACTIONS ||--o{ STOCK_BATCHES : "memicu batch belanja"
+    EXPERIMENTS ||--o{ EXPERIMENT_RESULTS : "dievaluasi berkala"
 
     PROFILES {
         uuid id PK
         text business_name
         text owner_name
-        text business_type
         numeric margin_alert_threshold
-        timestamptz created_at
-        timestamptz updated_at
+        numeric low_stock_threshold
+        boolean sound_alert_enabled
+        text text_size
     }
     PRODUCTS {
         uuid id PK
         uuid user_id FK
         text name
         text default_unit
-        timestamptz created_at
+        text image_url
+    }
+    STOCK_BATCHES {
+        uuid id PK
+        uuid product_id FK
+        numeric initial_quantity
+        numeric remaining_quantity
+        numeric cost_price
+        text status
     }
     TRANSACTIONS {
         uuid id PK
@@ -482,7 +359,6 @@ erDiagram
         timestamptz transaction_date
         text source
         text raw_voice_text
-        timestamptz created_at
     }
     TRANSACTION_ITEMS {
         uuid id PK
@@ -492,351 +368,140 @@ erDiagram
         text unit
         numeric unit_price
     }
-    AI_INSIGHTS {
-        uuid id PK
-        uuid user_id FK
-        uuid product_id FK
-        text severity
-        text message
-        boolean has_quick_action
-        jsonb metric_snapshot
-        timestamptz created_at
-    }
-    EXPERIMENTS {
-        uuid id PK
-        uuid user_id FK
-        uuid product_id FK
-        text title
-        text status
-        jsonb baseline_metric
-        jsonb target_metric
-        timestamptz started_at
-        timestamptz target_end_at
-        timestamptz created_at
-    }
-    EXPERIMENT_RESULTS {
-        uuid id PK
-        uuid experiment_id FK
-        timestamptz recorded_at
-        jsonb current_metric
-        text evaluation_status
-        text ai_verdict_text
-        timestamptz created_at
-    }
 ```
 
 ---
 
-## 8. Alur Sistem Utama
+## 6. Alur Sistem Terperinci
 
-```mermaid
-flowchart LR
-  U[User] -->|Aksi di UI| FE[Next.js Client]
-  FE -->|Request| SRV[Next.js API Routes]
-  SRV -->|Query/simpan| DB[(Supabase PostgreSQL)]
-  SRV -->|Teks saja, bukan gambar| AI[Gemini Flash\nparse-voice / insights / copy / verdict]
-  AI -->|Narasi/JSON| SRV
-  SRV -->|Response| FE
-  FE -->|Tampilkan| U
-
-  FE -->|Background removal lokal| BR[@imgly/background-removal]
-  BR -->|Foto tanpa background| FE
-  FE -->|wa.me URL scheme| WA[WhatsApp Direct]
-```
-
----
-
-## 9. Alur Voice Input — `app/catat/page.tsx`
+### 6.1 Alur Smart Voice Parsing & Auto-Registrasi Komoditas
 
 ```mermaid
 sequenceDiagram
-  actor User
-  participant App as Next.js Client (catat/page.tsx)
-  participant WSA as Web Speech API (browser native)
-  participant API as /api/parse-voice/route.ts
-  participant AI as Gemini Flash
-  participant DB as Supabase
+    actor Pedagang
+    participant Client as Web App (app/catat/page.tsx)
+    participant WSA as Web Speech API (Browser)
+    participant API as /api/parse-voice
+    participant AI as Gemini Flash (Parsing Prompt)
+    participant TX as /api/transactions
+    participant DB as Supabase PostgreSQL
+    participant TTS as Web Speech API (SpeechSynthesis)
 
-  User->>App: Tekan tombol mikrofon
-  App->>WSA: Start SpeechRecognition()
-  WSA-->>App: Callback: transkrip teks Bahasa Indonesia
-  App->>API: POST { transcript: "jual bawang 20 kg 80 ribu" }
-  API->>AI: getParseVoicePrompt(transcript) → Gemini
-  AI-->>API: JSON { product_name, quantity, unit, total_price, type }
-  API-->>App: Kembalikan JSON untuk konfirmasi
-  App-->>User: Tampilkan form konfirmasi (bisa diedit)
-  User->>App: Konfirmasi / koreksi → klik Simpan
-  App->>API: POST /api/transactions { type, items, source: "voice", raw_voice_text }
-  API->>DB: INSERT transactions + transaction_items
-  DB-->>API: OK
-  API-->>App: Success → refresh data Beranda
+    Pedagang->>Client: Tekan mikrofon & bicara natural ("Tolong catat dek barusan jual cabai 3 kg 90 ribu")
+    Client->>WSA: Rekam suara Bahasa Indonesia
+    WSA-->>Client: Transkrip mentah
+    Client->>API: POST { transcript }
+    API->>AI: getParseVoicePrompt(transcript) (Saring noise kata pengantar)
+    AI-->>API: JSON { product_name: "Cabai", quantity: 3, unit: "kg", total_price: 90000, type: "income" }
+    API-->>Client: Data transaksi siap konfirmasi
+    Client->>TX: POST /api/transactions
+    Note over TX,DB: Jika komoditas "Cabai" belum ada di DB, buat otomatis di tabel products!
+    TX->>DB: INSERT products (jika baru) + INSERT transactions + INSERT transaction_items
+    DB-->>TX: Berhasil disimpan
+    TX-->>Client: Success response
+    Client->>TTS: speakConfirmation("Catatan Jual Cabai 3 kg sebesar 90 ribu rupiah sudah tersimpan ya.")
+    TTS-->>Pedagang: Suara audio ramah asisten berbicara
 ```
 
----
-
-## 10. Alur AI Advisor — `app/dashboard/page.tsx` + `/api/insights`
+### 6.2 Alur Laporan Keuangan & 1-Klik Rekap WhatsApp
 
 ```mermaid
-sequenceDiagram
-  participant Page as dashboard/page.tsx
-  participant API as /api/insights/route.ts
-  participant Calc as lib/calculations/financial.ts
-  participant DB as Supabase
-  participant AI as Gemini Flash
-
-  Page->>API: GET /api/insights
-  API->>DB: Query transactions + items (today & yesterday & 7 hari)
-  DB-->>API: Raw data
-  API->>Calc: calculateMargin(), determineSeverity(), build7DayTrend()
-  Calc-->>API: { margin, severity, hasQuickAction, trendData }
-  API->>AI: getDailyAdvisorPrompt(ownerName, metrics) → Gemini
-  AI-->>API: Narasi teks (1 paragraf)
-  API->>DB: INSERT ai_insights { severity, message, has_quick_action, metric_snapshot }
-  DB-->>API: OK
-  API-->>Page: { metrics, trendData, insight, recentTransactions }
-  Page-->>Page: Render MetricCard, TrendChart, AdvisorCard, SignalFeed
+flowchart TD
+    A[Buka Halaman Laporan / Dashboard] --> B[Pilih Periode: Hari Ini / 7 Hari / Bulan Ini]
+    B --> C[Ambil Data Real-time dari Supabase API]
+    C --> D[Hitung Deterministik: Uang Masuk, Uang Keluar, Untung Bersih, Margin %]
+    D --> E[Tampilkan Tabel Rinci & Performa Komoditas]
+    
+    E --> F1[Tombol Cetak: window.print Media CSS]
+    E --> F2[Tombol Rekap WhatsApp: Generate Pesan Format Rapi]
+    F2 --> G[Buka URL Scheme: wa.me/?text=URL_ENCODED_MESSAGE]
+    G --> H[WhatsApp Terbuka Siap Kirim ke Mitra/Keluarga]
 ```
 
 ---
 
-## 11. Alur AI Virtual Studio — `components/studio/StudioModal.tsx`
+## 7. Daftar Endpoint API Routes
 
-```mermaid
-sequenceDiagram
-  actor User
-  participant Modal as StudioModal.tsx (client-side)
-  participant BR as @imgly/background-removal (WASM, client-side)
-  participant Canvas as Canvas API (browser)
-  participant API as /api/generate-copy/route.ts
-  participant AI as Gemini Flash
-  participant WA as WhatsApp
-
-  User->>Modal: Tekan "Buat Promosi WA" di AdvisorCard
-  Modal-->>User: Buka modal AI Virtual Studio
-  User->>Modal: Pilih foto dari galeri/kamera
-  Modal->>BR: removeBackground(imageFile)
-  BR-->>Modal: Blob foto tanpa background (100% lokal, tidak ke server)
-  Modal-->>User: Preview foto + pilih frame template
-  User->>Modal: Pilih frame (Minimalis/Pasar/Kriya)
-  Modal->>Canvas: Overlay frame PNG ke foto
-  Canvas-->>Modal: Preview hasil akhir
-  Modal->>API: POST { productName, storeName, style }
-  API->>AI: getMarketingCopyPrompt(productName, storeName, style) × 3 gaya
-  AI-->>API: 3 variasi teks copywriting WhatsApp
-  API-->>Modal: { copies: [pasar, fomo, elegan] }
-  Modal-->>User: Tampilkan preview copywriting (bisa diedit)
-  User->>Modal: Pilih copywriting → "Kirim ke WhatsApp"
-  Modal->>WA: window.open("wa.me/?text=" + encodeURIComponent(copy))
-```
-
----
-
-## 12. Logika Kalkulasi — `lib/calculations/financial.ts`
-
-### `calculateMargin(costPrice, sellingPrice)`
-
-```
-margin = (sellingPrice - costPrice) / sellingPrice × 100
-Jika sellingPrice = 0 → return 0
-Jika costPrice = 0 → return 100 (murni pemasukan)
-```
-
-### `determineActionCategory(margin, threshold = 20)`
-
-```
-margin >= 35%       → 'dorong'       (badge hijau)
-margin >= threshold → 'pertahankan'  (badge biru)
-margin >= 10%       → 'perbaiki'     (badge kuning)
-margin < 10%        → 'kurangi'      (badge merah)
-```
-
-### `determineSeverity(margin, threshold = 20)`
-
-```
-margin < threshold       → severity: 'red',    hasQuickAction: true
-margin < threshold + 5   → severity: 'yellow', hasQuickAction: false
-margin >= threshold + 5  → severity: 'green',  hasQuickAction: false
-```
-
-> `threshold` dibaca dari `profiles.margin_alert_threshold` milik pengguna.
-
-### `build7DayTrend(transactionsWithItems)`
-
-Membuat array 7 elemen (D-6 sampai D-0), lalu mengagregasi total income dan expense per hari berdasarkan `transaction_date`. Output langsung dikonsumsi oleh `TrendChart.tsx` (Recharts).
-
----
-
-## 13. AI Prompts — `lib/ai/prompts.ts`
-
-| Fungsi | Digunakan Di | Output |
-|---|---|---|
-| `getParseVoicePrompt(transcript)` | `/api/parse-voice` | JSON `{ product_name, quantity, unit, total_price, type }` |
-| `getDailyAdvisorPrompt(ownerName, metrics)` | `/api/insights` | 1 paragraf narasi Bahasa Indonesia (3-4 kalimat) |
-| `getExperimentVerdictPrompt(title, product, baseline, current, days)` | `/api/experiments` PATCH | 2-3 kalimat verdict evaluasi |
-| `getMarketingCopyPrompt(productName, storeName, style)` | `/api/generate-copy` | Teks promosi WhatsApp (1 variasi per panggilan, dipanggil 3× untuk 3 gaya) |
-
-**Gaya marketing copy**: `'pasar'` (hangat kekeluargaan) / `'fomo'` (promo kilat mendesak) / `'elegan'` (kualitas terpercaya).
-
----
-
-## 14. API Routes Lengkap
-
-| Route | Method | Auth | Fungsi |
+| Endpoint | Method | Autentikasi | Deskripsi & Operasi Database |
 |---|---|---|---|
-| `/api/parse-voice` | POST | Server (GEMINI_API_KEY) | Terima `{ transcript }` → Gemini → JSON transaksi. |
-| `/api/transactions` | GET | Supabase user session | List transaksi dengan filter `?date_from=&date_to=&type=&product_name=`. |
-| `/api/transactions` | POST | Supabase user session | Simpan transaksi + items baru ke DB. |
-| `/api/transactions/[id]` | PATCH | Supabase user session | Koreksi satu transaksi (update items). |
-| `/api/transactions/[id]` | DELETE | Supabase user session | Hapus transaksi + cascade ke items. |
-| `/api/insights` | GET | Supabase user session | Hitung metrik deterministik + narasi Gemini + INSERT `ai_insights`. |
-| `/api/product-analysis` | GET | Supabase user session | Margin & kategori aksi per produk (7 hari terakhir). |
-| `/api/experiments` | GET | Supabase user session | List semua eksperimen + `experiment_results` terbaru. |
-| `/api/experiments` | POST | Supabase user session | Buat eksperimen baru + simpan `baseline_metric`. |
-| `/api/experiments` | PATCH | Supabase user session + Gemini | Update status → buat `experiment_results` → narasi verdict Gemini. |
-| `/api/generate-copy` | POST | Server (GEMINI_API_KEY) | `{ productName, storeName, style }` → Gemini → teks copywriting. Tidak disimpan ke DB. |
-| `/api/settings` | GET | Supabase user session | Ambil profil pengguna dari `profiles`. |
-| `/api/settings` | PATCH | Supabase user session | Update `profiles` (business_name, owner_name, business_type, margin_alert_threshold). |
+| `/api/parse-voice` | `POST` | Server Key | Menerima transkrip ucapan, menyaring kata pengantar, mengembalikan JSON terstruktur via Gemini Flash |
+| `/api/transactions` | `GET` | User Session | Mengambil riwayat transaksi dengan filter tanggal, jenis (`income`/`expense`), dan pencarian |
+| `/api/transactions` | `POST` | User Session | Menyimpan header transaksi dan items, serta **mendaftarkan komoditas baru otomatis** jika belum ada |
+| `/api/transactions/[id]` | `PATCH` | User Session | Memperbarui item transaksi yang dikoreksi |
+| `/api/transactions/[id]` | `DELETE` | User Session | Menghapus transaksi secara permanen beserta seluruh rincian item (`CASCADE DELETE`) |
+| `/api/insights` | `GET` | User Session | Menghitung metrik finansial harian, mengidentifikasi komoditas kritis, dan menghasilkan narasi AI Advisor |
+| `/api/product-analysis` | `GET` | User Session | Menghitung margin historis 7 hari, volume penjualan harian, status aksi, dan sisa stok fisik FIFO |
+| `/api/experiments` | `GET` | User Session | Mengambil daftar inisiatif perbaikan toko beserta checkpoint evaluasi |
+| `/api/experiments` | `POST` | User Session | Mendaftarkan eksperimen baru dengan snapshot baseline |
+| `/api/experiments` | `PATCH` | User Session + AI | Menyelesaikan eksperimen dan memicu pembuatan verdict evaluasi otomatis oleh Gemini Flash |
+| `/api/generate-copy` | `POST` | Server Key | Menghasilkan 3 variasi copywriting promosi WhatsApp (Pasar, FOMO, Elegan) |
+| `/api/upload-product-image` | `POST` | Admin Client | Mengunggah foto produk ke bucket Supabase Storage `product-images` dan memperbarui `products.image_url` |
+| `/api/upload-studio-flyer` | `POST` | Admin Client | Menyimpan poster flyer promosi hasil AI Virtual Studio |
+| `/api/settings` | `GET` | User Session | Mengambil konfigurasi profil toko, ambang batas stok fisik, dan preferensi audio |
+| `/api/settings` | `PATCH` | User Session | Menyimpan perubahan data toko, ambang batas peringatan, status suara asisten, dan ukuran teks |
 
 ---
 
-## 15. Pemisahan Deterministik vs AI
+## 8. Logika Perhitungan Finansial Deterministik (`lib/calculations/financial.ts`)
 
-### ✅ Deterministik — Kode Server (`lib/calculations/financial.ts`)
+Seluruh angka keuangan dihitung secara deterministik di server/klien, **bukan ditebak oleh AI**:
 
-- Total pemasukan/pengeluaran harian.
-- Keuntungan bersih dan margin.
-- Margin per produk dan volume terjual.
-- Kategori aksi produk (Dorong/Pertahankan/Perbaiki/Kurangi) — aturan if-else `determineActionCategory()`.
-- `severity` insight (`red`/`yellow`/`green`) — fungsi `determineSeverity()`.
-- `has_quick_action` — `true` hanya jika `severity = 'red'`.
-- Data chart tren 7 hari — `build7DayTrend()`.
-- Perbandingan `current_metric` vs `baseline_metric`/`target_metric` di eksperimen.
-
-### 🤖 AI / Gemini — Hanya Narasi & Parsing
-
-- Parsing transkrip suara → JSON transaksi (`/api/parse-voice`).
-- Narasi insight berdasarkan angka yang sudah dihitung (`/api/insights`).
-- Verdict evaluasi eksperimen dalam bahasa awam (`/api/experiments` PATCH).
-- Copywriting promosi WhatsApp (`/api/generate-copy`).
-
-### 🖥️ Non-AI Client-side
-
-- Background removal foto (`@imgly/background-removal` WASM).
-- Overlay frame studio ke foto (Canvas API browser).
-- Voice recognition (`Web Speech API` browser native).
+1. **Margin Keuntungan**:
+   $$\text{Margin } (\%) = \frac{\text{Harga Jual} - \text{Harga Modal}}{\text{Harga Jual}} \times 100$$
+2. **Kategori Aksi Komoditas**:
+   - $\text{Margin} \ge 35\% \longrightarrow \textbf{Dorong}$ (Aksen Hijau)
+   - $\text{Margin} \ge \text{Threshold } (20\%) \longrightarrow \textbf{Pertahankan}$ (Aksen Biru)
+   - $\text{Margin} \ge 10\% \longrightarrow \textbf{Perbaiki}$ (Aksen Kuning)
+   - $\text{Margin} < 10\% \longrightarrow \textbf{Kurangi}$ (Aksen Merah)
+3. **Penentuan Severity AI Advisor**:
+   - $\text{Margin} < \text{Threshold} \longrightarrow \text{Severity: } \textbf{red}, \text{ HasQuickAction: } \textbf{true}$
+   - $\text{Margin} < \text{Threshold} + 5 \longrightarrow \text{Severity: } \textbf{yellow}, \text{ HasQuickAction: } \textbf{false}$
+   - $\text{Margin} \ge \text{Threshold} + 5 \longrightarrow \text{Severity: } \textbf{green}, \text{ HasQuickAction: } \textbf{false}$
+4. **Peringatan Sisa Stok Fisik (kg/pcs)**:
+   - Jika sisa kuantitas pada tabel `stock_batches` aktif $\le \text{low\_stock\_threshold}$ (default 2 kg/pcs), pemicu peringatan stok menipis ditampilkan di halaman produk dan kartu sinyal.
 
 ---
 
-## 16. Supabase Client Helpers — `lib/supabase/`
+## 9. Template Pesan 1-Klik WhatsApp
 
-### `client.ts` — Browser Client
+### 9.1 Format Rekap Harian Kios (Dashboard)
+```
+📊 *Rekap Keuangan Kios*
+📅 [Hari, DD MMMM YYYY]
 
-```typescript
-// Dipakai di komponen React client-side ('use client')
-import { createBrowserClient } from '@supabase/ssr'
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+• *Uang Masuk:* Rp[Nominal]
+• *Uang Keluar:* Rp[Nominal]
+• *Untung Bersih:* Rp[Nominal] ([Margin]%)
+
+_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._
 ```
 
-### `server.ts` — Server Client (API Routes)
+### 9.2 Format Laporan Berkala (Laporan)
+```
+📊 *Laporan Keuangan Toko*
+Periode: [Hari Ini / 7 Hari Terakhir / Bulan Ini / Semua Waktu]
 
-```typescript
-// Untuk API routes — membaca session dari cookies
-createServerClient(url, anonKey, { cookies })  // Regular user session
+• *Total Uang Masuk:* Rp[Nominal]
+• *Total Uang Keluar:* Rp[Nominal]
+• *Untung Bersih (Sisa):* Rp[Nominal] ([Margin]%)
+• *Jumlah Transaksi:* [Jumlah] catatan
 
-// Untuk operasi admin (bypass RLS jika diperlukan)
-createClient(url, serviceRoleKey)               // Admin client
+_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._
 ```
 
 ---
 
-## 17. Aturan Keamanan
+## 10. Konfigurasi Environment & Keamanan Data
 
-1. `GEMINI_API_KEY` **hanya di server** — tidak boleh ada di file dalam `components/` atau `app/` yang dirender client.
-2. `SUPABASE_SERVICE_ROLE_KEY` **hanya di server** — tidak pernah diekspos ke bundle client.
-3. RLS aktif pada semua tabel — setiap baris hanya dapat diakses oleh pemiliknya (`user_id = auth.uid()`).
-4. Gambar pengguna **tidak pernah dikirim ke server** — background removal sepenuhnya client-side WASM.
-5. `.env.local` wajib masuk `.gitignore` — tidak pernah di-commit ke GitHub.
-6. Semua env production diatur di Vercel dashboard, bukan di file yang di-commit.
-7. Gunakan `createServerClient` (dari `lib/supabase/server.ts`) di semua API routes — bukan `createBrowserClient`.
-
----
-
-## 18. Environment Variables
-
-### `.env.local` (lokal, tidak di-commit)
-
+### Environment Variables (`.env.local`)
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
 GEMINI_API_KEY=AIzaSy...
 ```
 
-### Keterangan Scope
-
-| Variable | Scope | Dipakai Di |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public (browser + server) | `lib/supabase/client.ts`, `lib/supabase/server.ts` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public (browser + server) | `lib/supabase/client.ts`, `lib/supabase/server.ts` |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Server only** | `lib/supabase/server.ts` (createAdminClient) |
-| `GEMINI_API_KEY` | **Server only** | `lib/ai/gemini.ts` |
-
----
-
-## 19. Setup Database Supabase
-
-Jalankan file SQL berikut di Supabase SQL Editor secara berurutan:
-
-```
-1. supabase/schema/full_schema.sql   → Buat semua tabel + RLS policies
-2. supabase/schema/seed_data.sql     → Insert data demo Pak Budi untuk presentasi
-```
-
-Atau jalankan per file secara berurutan:
-```
-01_profiles.sql → 02_products.sql → 03_transactions.sql →
-04_transaction_items.sql → 05_ai_insights.sql →
-06_experiments.sql → 07_experiment_results.sql
-```
-
----
-
-## 20. Deployment ke Vercel
-
-1. Push repository ke GitHub.
-2. Hubungkan ke project baru di Vercel dashboard.
-3. Set environment variables di Vercel dashboard (Settings → Environment Variables):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `GEMINI_API_KEY`
-4. Push ke branch utama → Vercel build dan deploy otomatis.
-5. Verifikasi Live URL dari perangkat mobile dan desktop.
-6. Akun uji coba dengan seed data Pak Budi sudah siap untuk demo juri.
-
----
-
-## 21. Development Lokal
-
-```bash
-# 1. Clone & install
-npm install
-
-# 2. Buat .env.local dari template
-cp .env.example .env.local
-# → isi 4 env variable
-
-# 3. Jalankan database schema + seed
-# (di Supabase SQL Editor: jalankan full_schema.sql lalu seed_data.sql)
-
-# 4. Jalankan dev server
-npm run dev
-# → buka http://localhost:3000
-
-# 5. Verifikasi production build
-npm run build
-# → harus sukses: 17 routes, 0 TypeScript error
-```
+### Prinsip Keamanan & Kepatuhan:
+1. `GEMINI_API_KEY` dan `SUPABASE_SERVICE_ROLE_KEY` terisolasi ketat di sisi server (API Routes) dan tidak pernah dipaparkan ke bundle client.
+2. Row-Level Security (RLS) PostgreSQL aktif pada seluruh tabel: pedagang hanya dapat membaca dan memodifikasi data milik `auth.uid()`.
+3. Seluruh foto yang diproses di AI Virtual Studio melalui proses penghapusan background langsung di memori browser pengguna (`@imgly/background-removal` WASM), menjaga kerahasiaan dan menghemat kuota internet pengguna.
