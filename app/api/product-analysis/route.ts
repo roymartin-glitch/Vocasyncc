@@ -336,3 +336,57 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+// DELETE: Hapus produk secara permanen beserta riwayat terkaitnya
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = createAdminClient();
+    const { searchParams } = new URL(req.url);
+    const productId = searchParams.get('id');
+
+    if (!productId) {
+      return NextResponse.json(
+        { success: false, error: 'Product ID wajib disertakan.' },
+        { status: 400 }
+      );
+    }
+
+    const { profile } = await getActiveUserProfile();
+    const userId = profile?.id;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Pengguna tidak ditemukan.' },
+        { status: 404 }
+      );
+    }
+
+    // Hapus child records yang berelasi dengan produk ini
+    try {
+      await supabase.from('stock_batches').delete().eq('product_id', productId);
+      await supabase.from('transaction_items').delete().eq('product_id', productId);
+      await supabase.from('ai_insights').delete().eq('product_id', productId);
+      await supabase.from('experiments').delete().eq('product_id', productId);
+    } catch (cleanupErr) {
+      console.warn('Child records deletion warning:', cleanupErr);
+    }
+
+    const { error: delErr } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (delErr) {
+      throw delErr;
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Produk berhasil dihapus.',
+    });
+  } catch (err: any) {
+    console.error('DELETE /api/product-analysis error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

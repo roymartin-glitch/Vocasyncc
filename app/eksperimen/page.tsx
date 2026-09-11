@@ -191,7 +191,7 @@ export default function EksperimenPage() {
                       >
                         {isCompleted ? (
                           <>
-                            <CheckCircle2 className="w-3 h-3" /> ✅ Sudah Dievaluasi
+                            <CheckCircle2 className="w-3 h-3" /> Sudah Dievaluasi
                           </>
                         ) : (
                           <>

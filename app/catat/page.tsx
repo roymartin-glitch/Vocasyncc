@@ -15,6 +15,9 @@ import {
   Minus,
   Plus,
   Volume2,
+  Sparkles,
+  Clock,
+  Check,
 } from 'lucide-react';
 import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
@@ -521,7 +524,8 @@ export default function CatatPage() {
           </div>
           {autoSavedInfo.isNewProduct && (
             <div className="inline-flex items-center gap-2 bg-emerald-800/80 px-3 py-1.5 rounded-xl text-xs font-black text-white border border-emerald-400/40">
-              <span>✨ Barang baru &apos;{autoSavedInfo.productName}&apos; otomatis ditambahkan ke daftar Barang Toko</span>
+              <Sparkles className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <span>Barang baru &apos;{autoSavedInfo.productName}&apos; otomatis ditambahkan ke daftar Barang Toko</span>
             </div>
           )}
           <p className="text-xs text-emerald-200 pt-1 font-medium">
@@ -646,14 +650,19 @@ export default function CatatPage() {
             )}
           </button>
 
-          <p className="text-base sm:text-lg font-black text-slate-900">
-            {isListening
-              ? '🟢 Sedang mendengarkan... Bicara dengan santai'
-              : isProcessingVoice
-              ? 'Sedang memahami ucapan Anda...'
-              : isAutoSaving
-              ? 'Menyimpan catatan...'
-              : 'Tekan lalu bicara'}
+          <p className="text-base sm:text-lg font-black text-slate-900 flex items-center justify-center gap-2">
+            {isListening ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                <span>Sedang mendengarkan... Bicara dengan santai</span>
+              </>
+            ) : isProcessingVoice ? (
+              'Sedang memahami ucapan Anda...'
+            ) : isAutoSaving ? (
+              'Menyimpan catatan...'
+            ) : (
+              'Tekan lalu bicara'
+            )}
           </p>
 
           {/* Transcript Display Box */}
@@ -666,9 +675,10 @@ export default function CatatPage() {
                 {rawVoiceText}
               </p>
               {silenceCountdown !== null && (
-                <p className="text-xs font-bold text-amber-700 pt-1">
-                  ⏳ Menyimpan otomatis dalam {silenceCountdown} detik... Atau tekan tombol di bawah jika sudah selesai.
-                </p>
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 pt-1">
+                  <Clock className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" />
+                  <span>Menyimpan otomatis dalam {silenceCountdown} detik... Atau tekan tombol di bawah jika sudah selesai.</span>
+                </div>
               )}
             </div>
           )}
@@ -679,9 +689,10 @@ export default function CatatPage() {
               <button
                 type="button"
                 onClick={finishAndSaveNow}
-                className="flex-1 bg-[#00875A] hover:bg-[#059669] text-white py-3 px-4 rounded-2xl font-black text-sm shadow-sm active:scale-95 transition-all cursor-pointer"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-[#00875A] hover:bg-[#059669] text-white py-3 px-4 rounded-2xl font-black text-sm shadow-sm active:scale-95 transition-all cursor-pointer"
               >
-                ✓ Selesai & Simpan
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Selesai & Simpan</span>
               </button>
               <button
                 type="button"

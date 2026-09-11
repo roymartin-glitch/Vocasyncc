@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Loader2,
   RefreshCw,
+  History,
+  Share2,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import {
@@ -218,7 +220,7 @@ export default function LaporanPage() {
     const prof = reportTotals.profit.toLocaleString('id-ID');
     const mrg = reportTotals.margin.toLocaleString('id-ID');
 
-    const message = `📊 *Laporan Keuangan Toko*\nPeriode: ${periodLabel}\n\n• *Total Uang Masuk:* Rp${inc}\n• *Total Uang Keluar:* Rp${exp}\n• *Untung Bersih (Sisa):* Rp${prof} (${mrg}%)\n• *Jumlah Transaksi:* ${reportTotals.txCount} catatan\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
+    const message = `*Laporan Keuangan Toko*\nPeriode: ${periodLabel}\n\n• *Total Uang Masuk:* Rp${inc}\n• *Total Uang Keluar:* Rp${exp}\n• *Untung Bersih (Sisa):* Rp${prof} (${mrg}%)\n• *Jumlah Transaksi:* ${reportTotals.txCount} catatan\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
 
     if (typeof window !== 'undefined') {
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
@@ -246,6 +248,15 @@ export default function LaporanPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <Link
+            href="/riwayat"
+            className="flex items-center gap-2 bg-white border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/60 text-emerald-900 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+            title="Buka Catatan Riwayat Lengkap"
+          >
+            <History className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
+            <span>Lihat Riwayat</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => fetchRealTimeData(false)}
@@ -259,9 +270,10 @@ export default function LaporanPage() {
           <button
             type="button"
             onClick={handleShareWhatsAppLaporan}
-            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
+            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
           >
-            <span>📲 Rekap WhatsApp</span>
+            <Share2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+            <span>Rekap WhatsApp</span>
           </button>
 
           <button

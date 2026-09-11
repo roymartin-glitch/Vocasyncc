@@ -584,19 +584,19 @@ export default function SettingsPage() {
                     id: 'terang',
                     label: 'Terang (Standar)',
                     note: 'Bersih, kontras tinggi ramah lansia',
-                    badge: '☀️ Siang',
+                    badge: 'Siang',
                   },
                   {
                     id: 'gelap',
                     label: 'Gelap (Malam)',
                     note: 'Latar hitam emerald, tidak silau',
-                    badge: '🌙 Malam',
+                    badge: 'Malam',
                   },
                   {
                     id: '3d',
                     label: 'Tampilan 3D',
                     note: 'Tombol timbul nyata membal disentuh',
-                    badge: '✨ Timbul',
+                    badge: 'Timbul 3D',
                   },
                 ].map((item) => (
                   <button

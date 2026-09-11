@@ -54,6 +54,10 @@ export default function ProdukPage() {
   const [editError, setEditError] = useState('');
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
+  // Delete Product State
+  const [productToDelete, setProductToDelete] = useState<ProductAnalysisItem | null>(null);
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
   // Image Upload State in Edit Modal
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -265,6 +269,36 @@ export default function ProdukPage() {
     setImageFile(null);
     setImagePreview(p.image_url || null);
     setIsEditModalOpen(true);
+  };
+
+  // Delete product action
+  const executeDeleteProduct = async (id: string) => {
+    setIsDeletingProduct(true);
+    try {
+      const res = await fetch(`/api/product-analysis?id=${id}`, {
+        method: 'DELETE',
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        if (selectedProduct?.id === id) {
+          setSelectedProduct(null);
+        }
+        setProductToDelete(null);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('vokasync_products_cache');
+            sessionStorage.removeItem('vokasync_dash_cache');
+          } catch (_) {}
+        }
+      } else {
+        alert(result.error || 'Gagal menghapus produk.');
+      }
+    } catch (e: any) {
+      alert('Terjadi kesalahan saat menghapus produk.');
+    } finally {
+      setIsDeletingProduct(false);
+    }
   };
 
   // Handle image file selection
@@ -776,6 +810,56 @@ export default function ProdukPage() {
         </div>
       )}
 
+      {/* ===== MODAL KONFIRMASI HAPUS PRODUK ===== */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-700">
+              <div className="p-2.5 bg-rose-100 text-rose-700 rounded-2xl flex-shrink-0">
+                <Trash2 className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Hapus Produk Ini?</h3>
+                <p className="text-xs text-slate-500">Tindakan ini akan menghapus produk dari toko Anda.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              Produk <strong>{productToDelete.name}</strong> beserta riwayat pencatatan stoknya akan dihapus permanen.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeletingProduct}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => executeDeleteProduct(productToDelete.id)}
+                disabled={isDeletingProduct}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeletingProduct ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Produk</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -912,8 +996,9 @@ export default function ProdukPage() {
                         </div>
                       )}
                       {p.is_stock_low && (
-                        <div className="absolute top-2 left-2 bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm">
-                          ⚠️ Tipis
+                        <div className="absolute top-2 left-2 bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                          <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5]" />
+                          <span>Tipis</span>
                         </div>
                       )}
                     </div>
@@ -944,6 +1029,16 @@ export default function ProdukPage() {
                               title="Edit produk dan foto"
                             >
                               <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setProductToDelete(p); }}
+                              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors cursor-pointer"
+                              title="Hapus produk dari toko"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
@@ -1023,8 +1118,9 @@ export default function ProdukPage() {
                   {selectedProduct.image_url ? 'Ganti Foto' : 'Tambah Foto'}
                 </button>
                 {selectedProduct.is_stock_low && (
-                  <div className="absolute top-3 left-3 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md">
-                    ⚠️ Stok Menipis — Perlu Belanja Stok Segera
+                  <div className="absolute top-3 left-3 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Stok Menipis — Perlu Belanja Stok Segera</span>
                   </div>
                 )}
               </div>
@@ -1050,6 +1146,15 @@ export default function ProdukPage() {
                     >
                       <Pencil className="w-3 h-3" />
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProductToDelete(selectedProduct)}
+                      className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                      title="Hapus produk"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Hapus
                     </button>
                   </div>
                 </div>
@@ -1102,7 +1207,7 @@ export default function ProdukPage() {
                       }`}
                     >
                       {selectedProduct.remaining_stock ?? 10} {selectedProduct.unit}
-                      {selectedProduct.is_stock_low ? ' ⚠️ (Perlu Belanja Stok)' : ' (Cukup)'}
+                      {selectedProduct.is_stock_low ? ' (Perlu Belanja Stok)' : ' (Aman)'}
                     </span>
                   </div>
                 </div>

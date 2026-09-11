@@ -92,8 +92,9 @@ export async function getActiveUserProfile() {
     return { user: null, profile: firstProfile };
   }
 
+  const demoUuid = '00000000-0000-0000-0000-000000000001';
   const defaultDemo = {
-    id: 'demo-user-pak-budi',
+    id: demoUuid,
     owner_name: 'Pak Budi',
     business_name: 'Kios Berkah Sayur',
     business_type: 'pasar',
@@ -108,6 +109,18 @@ export async function getActiveUserProfile() {
     analysis_period: '7d',
     app_settings: {},
   };
+
+  try {
+    const { data: upserted } = await adminClient
+      .from('profiles')
+      .upsert(defaultDemo)
+      .select()
+      .maybeSingle();
+
+    if (upserted) {
+      return { user: null, profile: upserted };
+    }
+  } catch (_) {}
 
   return { user: null, profile: defaultDemo };
 }
