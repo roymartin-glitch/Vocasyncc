@@ -143,6 +143,16 @@ export default function ProdukPage() {
         setSelectedProduct(null);
       }
     });
+
+    const handleSettingsChanged = (e: any) => {
+      if (e?.detail?.margin_alert_threshold) {
+        setThreshold(e.detail.margin_alert_threshold);
+      }
+      loadProducts(false);
+    };
+
+    window.addEventListener('vokasync-settings-changed', handleSettingsChanged);
+    return () => window.removeEventListener('vokasync-settings-changed', handleSettingsChanged);
   }, [loadProducts]);
 
   // Fetch or generate dynamic Gemini AI note for selected product

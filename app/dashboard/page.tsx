@@ -107,6 +107,19 @@ export default function DashboardPage() {
 
     // 2. Fetch fresh data in background
     fetchDashboardData();
+
+    // 3. Listen to settings changed event for real-time reactivity across pages
+    const handleSettingsChanged = () => {
+      const userKey = typeof window !== 'undefined'
+        ? (localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest'))
+        : 'guest';
+      sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
+      sessionStorage.removeItem('vokasync_dash_cache');
+      fetchDashboardData();
+    };
+
+    window.addEventListener('vokasync-settings-changed', handleSettingsChanged);
+    return () => window.removeEventListener('vokasync-settings-changed', handleSettingsChanged);
   }, []);
 
   const handleShareWhatsAppRekap = () => {

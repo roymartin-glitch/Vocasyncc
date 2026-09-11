@@ -52,7 +52,9 @@ export function StudioModal({
   const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal'>('pasar');
+  const [selectedFrame, setSelectedFrame] = useState<
+    'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal' | 'canva-pastel' | 'genz-aesthetic'
+  >('pasar');
   const [copyStyle, setCopyStyle] = useState<'pasar' | 'fomo' | 'elegan'>('pasar');
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
@@ -206,6 +208,14 @@ export function StudioModal({
         bgGradient.addColorStop(0, '#14532d'); // Green-900
         bgGradient.addColorStop(0.5, '#15803d'); // Green-700
         bgGradient.addColorStop(1, '#052e16'); // Forest-950
+      } else if (selectedFrame === 'canva-pastel') {
+        bgGradient.addColorStop(0, '#fce7f3'); // Soft Pink-100
+        bgGradient.addColorStop(0.5, '#ede9fe'); // Soft Lavender-100
+        bgGradient.addColorStop(1, '#e0f2fe'); // Soft Sky-100
+      } else if (selectedFrame === 'genz-aesthetic') {
+        bgGradient.addColorStop(0, '#0f172a'); // Slate-900
+        bgGradient.addColorStop(0.5, '#831843'); // Pink-900
+        bgGradient.addColorStop(1, '#312e81'); // Indigo-900
       } else {
         // 'royal' gold & burgundy
         bgGradient.addColorStop(0, '#4a044e'); // Fuchsia-950
@@ -225,8 +235,12 @@ export function StudioModal({
           ? '#86efac'
           : selectedFrame === 'royal'
           ? '#fbbf24'
+          : selectedFrame === 'canva-pastel'
+          ? '#f472b6'
+          : selectedFrame === 'genz-aesthetic'
+          ? '#a855f7'
           : 'rgba(52, 211, 153, 0.35)';
-      ctx.lineWidth = selectedFrame === 'royal' || selectedFrame === 'neon' ? 10 : 8;
+      ctx.lineWidth = selectedFrame === 'royal' || selectedFrame === 'neon' || selectedFrame === 'genz-aesthetic' ? 10 : 8;
       ctx.strokeRect(36, 36, 1008, 1008);
 
       // Inner subtle border
@@ -237,6 +251,10 @@ export function StudioModal({
           ? 'rgba(168, 85, 247, 0.4)'
           : selectedFrame === 'royal'
           ? 'rgba(251, 191, 36, 0.4)'
+          : selectedFrame === 'canva-pastel'
+          ? 'rgba(244, 114, 182, 0.35)'
+          : selectedFrame === 'genz-aesthetic'
+          ? 'rgba(56, 189, 248, 0.5)'
           : 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 2;
       ctx.strokeRect(48, 48, 984, 984);
@@ -249,27 +267,52 @@ export function StudioModal({
           ? '#06b6d4'
           : selectedFrame === 'royal'
           ? '#d97706'
+          : selectedFrame === 'canva-pastel'
+          ? '#db2777'
+          : selectedFrame === 'genz-aesthetic'
+          ? '#9333ea'
           : '#10b981';
       ctx.beginPath();
       ctx.roundRect(70, 70, 520, 64, 16);
       ctx.fill();
 
       ctx.fillStyle =
-        selectedFrame === 'minimalis' || selectedFrame === 'neon' || selectedFrame === 'royal'
+        selectedFrame === 'minimalis' || selectedFrame === 'neon' || selectedFrame === 'royal' || selectedFrame === 'canva-pastel' || selectedFrame === 'genz-aesthetic'
           ? '#ffffff'
           : '#022c22';
       ctx.font = 'bold 24px sans-serif';
       ctx.fillText(`🛒 ${effectiveStoreName.toUpperCase()}`, 90, 112);
 
       // Guarantee badge on top right
-      ctx.fillStyle = selectedFrame === 'neon' ? '#ec4899' : selectedFrame === 'royal' ? '#f59e0b' : '#f59e0b';
+      ctx.fillStyle =
+        selectedFrame === 'neon'
+          ? '#ec4899'
+          : selectedFrame === 'royal'
+          ? '#f59e0b'
+          : selectedFrame === 'canva-pastel'
+          ? '#8b5cf6'
+          : selectedFrame === 'genz-aesthetic'
+          ? '#06b6d4'
+          : '#f59e0b';
       ctx.beginPath();
       ctx.roundRect(740, 70, 270, 64, 16);
       ctx.fill();
 
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(selectedFrame === 'neon' ? '⚡ PROMO KILAT' : selectedFrame === 'royal' ? '👑 PREMIUM GRADE' : '⭐ GARANSI SEGAR', 760, 112);
+      ctx.fillText(
+        selectedFrame === 'neon'
+          ? '⚡ PROMO KILAT'
+          : selectedFrame === 'royal'
+          ? '👑 PREMIUM GRADE'
+          : selectedFrame === 'canva-pastel'
+          ? '🌸 AESTHETIC VIBE'
+          : selectedFrame === 'genz-aesthetic'
+          ? '✨ GEN Z PICKS'
+          : '⭐ GARANSI SEGAR',
+        760,
+        112
+      );
 
       // 4. Draw Product Image in Center
       const renderProductImage = () => {
@@ -315,17 +358,34 @@ export function StudioModal({
       const finishDrawingTypography = () => {
         // 5. Product Title
         ctx.textAlign = 'center';
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#ffffff';
+        ctx.fillStyle =
+          selectedFrame === 'minimalis'
+            ? '#0f172a'
+            : selectedFrame === 'canva-pastel'
+            ? '#831843'
+            : '#ffffff';
         ctx.font = 'bold 54px sans-serif';
         ctx.fillText(activeProductName, 540, 760);
 
         // Subtitle
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#cbd5e1';
+        ctx.fillStyle =
+          selectedFrame === 'minimalis'
+            ? '#64748b'
+            : selectedFrame === 'canva-pastel'
+            ? '#701a75'
+            : '#cbd5e1';
         ctx.font = '30px sans-serif';
         ctx.fillText('Kualitas Super • Segar Langsung dari Petani', 540, 810);
 
         // 6. Price Badge Banner
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#059669' : '#10b981';
+        ctx.fillStyle =
+          selectedFrame === 'minimalis'
+            ? '#059669'
+            : selectedFrame === 'canva-pastel'
+            ? '#db2777'
+            : selectedFrame === 'genz-aesthetic'
+            ? '#9333ea'
+            : '#10b981';
         ctx.beginPath();
         ctx.roundRect(310, 850, 460, 80, 24);
         ctx.fill();
@@ -335,7 +395,12 @@ export function StudioModal({
         ctx.fillText(`Harga: ${formattedPrice}`, 540, 905);
 
         // 7. Footer Contact WhatsApp
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#334155' : 'rgba(255, 255, 255, 0.9)';
+        ctx.fillStyle =
+          selectedFrame === 'minimalis'
+            ? '#334155'
+            : selectedFrame === 'canva-pastel'
+            ? '#475569'
+            : 'rgba(255, 255, 255, 0.9)';
         ctx.font = 'bold 28px sans-serif';
         ctx.fillText(`💬 Pesan Langsung WA: ${phone}`, 540, 990);
         ctx.textAlign = 'left';
@@ -528,6 +593,10 @@ export function StudioModal({
                   ? 'bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-cyan-300 border-2 border-cyan-500/50'
                   : selectedFrame === 'panen'
                   ? 'bg-gradient-to-br from-green-800 via-emerald-700 to-green-950 text-white'
+                  : selectedFrame === 'canva-pastel'
+                  ? 'bg-gradient-to-br from-pink-100 via-purple-100 to-sky-100 text-slate-800 border-4 border-pink-300/80 shadow-md'
+                  : selectedFrame === 'genz-aesthetic'
+                  ? 'bg-gradient-to-br from-slate-950 via-pink-950 to-indigo-950 text-pink-200 border-2 border-purple-500/80 shadow-indigo-500/20'
                   : 'bg-gradient-to-br from-fuchsia-950 via-purple-950 to-indigo-950 text-amber-100 border-2 border-amber-400/60'
               }`}
             >
@@ -542,6 +611,10 @@ export function StudioModal({
                     ? 'border-emerald-300/60'
                     : selectedFrame === 'royal'
                     ? 'border-amber-400/70'
+                    : selectedFrame === 'canva-pastel'
+                    ? 'border-pink-400/60'
+                    : selectedFrame === 'genz-aesthetic'
+                    ? 'border-purple-400/70 ring-1 ring-pink-400/40'
                     : 'border-emerald-300/40'
                 }`}
               >
@@ -554,6 +627,10 @@ export function StudioModal({
                         ? 'bg-cyan-950 text-cyan-300 border border-cyan-500'
                         : selectedFrame === 'royal'
                         ? 'bg-amber-500 text-purple-950 font-black'
+                        : selectedFrame === 'canva-pastel'
+                        ? 'bg-pink-600 text-white'
+                        : selectedFrame === 'genz-aesthetic'
+                        ? 'bg-purple-600 text-white border border-pink-400'
                         : 'bg-emerald-950/80 text-emerald-200'
                     }`}
                   >
@@ -565,17 +642,35 @@ export function StudioModal({
                         ? 'bg-pink-500 text-white'
                         : selectedFrame === 'royal'
                         ? 'bg-amber-400 text-slate-900'
+                        : selectedFrame === 'canva-pastel'
+                        ? 'bg-violet-500 text-white'
+                        : selectedFrame === 'genz-aesthetic'
+                        ? 'bg-cyan-400 text-slate-950 font-black'
                         : 'bg-amber-400 text-slate-900'
                     }`}
                   >
-                    {selectedFrame === 'neon' ? '⚡ PROMO KILAT' : selectedFrame === 'royal' ? '👑 PREMIUM GRADE' : '⭐ GARANSI SEGAR'}
+                    {selectedFrame === 'neon'
+                      ? '⚡ PROMO KILAT'
+                      : selectedFrame === 'royal'
+                      ? '👑 PREMIUM GRADE'
+                      : selectedFrame === 'canva-pastel'
+                      ? '🌸 AESTHETIC VIBE'
+                      : selectedFrame === 'genz-aesthetic'
+                      ? '✨ GEN Z PICKS'
+                      : '⭐ GARANSI SEGAR'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between w-full">
                   <span className="text-xs font-bold opacity-80">Pesanan WA: {phone}</span>
                   <span className="text-xs font-bold uppercase tracking-wider opacity-80">
-                    {selectedFrame === 'royal' ? 'Pilihan Sultan' : 'Kualitas Pilihan'}
+                    {selectedFrame === 'royal'
+                      ? 'Pilihan Sultan'
+                      : selectedFrame === 'canva-pastel'
+                      ? 'Trendy & Aesthetic'
+                      : selectedFrame === 'genz-aesthetic'
+                      ? 'Viral & Stylish'
+                      : 'Kualitas Pilihan'}
                   </span>
                 </div>
               </div>
@@ -617,6 +712,8 @@ export function StudioModal({
                 {[
                   { id: 'pasar', label: 'Pasar Tradisional' },
                   { id: 'minimalis', label: 'Minimalis Elegan' },
+                  { id: 'canva-pastel', label: '🌸 Canva Pastel' },
+                  { id: 'genz-aesthetic', label: '✨ Gen Z Y2K' },
                   { id: 'kriya', label: 'Kuliner & Kriya' },
                   { id: 'neon', label: 'Neon Midnight' },
                   { id: 'panen', label: 'Panen Kebun' },

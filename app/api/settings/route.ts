@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
+// In-memory demo profile state so changes made in demo mode persist across calls
+let inMemoryDemoSettings: Record<string, any> = {
+  id: '00000000-0000-0000-0000-000000000001',
+  owner_name: 'Pak Budi',
+  business_name: 'Kios Berkah Sayur',
+  business_type: 'pasar',
+  margin_alert_threshold: 20,
+  low_stock_threshold: 2,
+  supplier_cost_increase_threshold: 5,
+  sound_alert_enabled: false,
+  sound_alert_volume: 80,
+  text_size: 'normal',
+  theme: 'terang',
+  default_unit: 'kg',
+  analysis_period: '7d',
+  app_settings: {},
+};
+
 export async function GET(req: NextRequest) {
   try {
     const { user, profile } = await getActiveUserProfile();
@@ -9,23 +27,7 @@ export async function GET(req: NextRequest) {
 
     // Early return untuk mode demo
     if (isDemo) {
-      const demoProfile = {
-        id: '00000000-0000-0000-0000-000000000001',
-        owner_name: 'Pak Budi',
-        business_name: 'Kios Berkah Sayur',
-        business_type: 'pasar',
-        margin_alert_threshold: 20,
-        low_stock_threshold: 20,
-        supplier_cost_increase_threshold: 5,
-        sound_alert_enabled: false,
-        sound_alert_volume: 80,
-        text_size: 'normal',
-        theme: 'terang',
-        default_unit: 'kg',
-        analysis_period: '7d',
-        app_settings: {},
-      };
-      return NextResponse.json({ success: true, data: demoProfile });
+      return NextResponse.json({ success: true, data: { ...inMemoryDemoSettings } });
     }
 
     if (!profile) {
@@ -36,7 +38,8 @@ export async function GET(req: NextRequest) {
     const appSettings = profile?.app_settings || {};
     const merged = {
       ...profile,
-      low_stock_threshold: profile?.low_stock_threshold ?? appSettings.low_stock_threshold ?? 20,
+      margin_alert_threshold: profile?.margin_alert_threshold ?? 20,
+      low_stock_threshold: profile?.low_stock_threshold ?? appSettings.low_stock_threshold ?? 2,
       supplier_cost_increase_threshold: profile?.supplier_cost_increase_threshold ?? appSettings.supplier_cost_increase_threshold ?? 5,
       sound_alert_enabled: profile?.sound_alert_enabled ?? appSettings.sound_alert_enabled ?? false,
       sound_alert_volume: profile?.sound_alert_volume ?? appSettings.sound_alert_volume ?? 80,
@@ -76,23 +79,20 @@ export async function PATCH(req: NextRequest) {
 
     // Early return untuk mode demo
     if (isDemo) {
-      const demoUpdated = {
-        id: '00000000-0000-0000-0000-000000000001',
-        owner_name: owner_name ?? 'Pak Budi',
-        business_name: business_name ?? 'Kios Berkah Sayur',
-        business_type: business_type ?? 'pasar',
-        margin_alert_threshold: margin_alert_threshold !== undefined ? parseFloat(margin_alert_threshold) || 20 : 20,
-        low_stock_threshold: low_stock_threshold !== undefined ? parseFloat(low_stock_threshold) || 20 : 20,
-        supplier_cost_increase_threshold: supplier_cost_increase_threshold !== undefined ? parseFloat(supplier_cost_increase_threshold) || 5 : 5,
-        sound_alert_enabled: sound_alert_enabled !== undefined ? Boolean(sound_alert_enabled) : false,
-        sound_alert_volume: sound_alert_volume !== undefined ? parseFloat(sound_alert_volume) || 80 : 80,
-        text_size: text_size ?? 'normal',
-        theme: theme ?? 'terang',
-        default_unit: default_unit ?? 'kg',
-        analysis_period: analysis_period ?? '7d',
-        app_settings: {},
-      };
-      return NextResponse.json({ success: true, data: demoUpdated });
+      if (owner_name !== undefined) inMemoryDemoSettings.owner_name = owner_name;
+      if (business_name !== undefined) inMemoryDemoSettings.business_name = business_name;
+      if (business_type !== undefined) inMemoryDemoSettings.business_type = business_type;
+      if (margin_alert_threshold !== undefined) inMemoryDemoSettings.margin_alert_threshold = parseFloat(margin_alert_threshold) || 20;
+      if (low_stock_threshold !== undefined) inMemoryDemoSettings.low_stock_threshold = parseFloat(low_stock_threshold) || 2;
+      if (supplier_cost_increase_threshold !== undefined) inMemoryDemoSettings.supplier_cost_increase_threshold = parseFloat(supplier_cost_increase_threshold) || 5;
+      if (sound_alert_enabled !== undefined) inMemoryDemoSettings.sound_alert_enabled = Boolean(sound_alert_enabled);
+      if (sound_alert_volume !== undefined) inMemoryDemoSettings.sound_alert_volume = parseFloat(sound_alert_volume) || 80;
+      if (text_size !== undefined) inMemoryDemoSettings.text_size = text_size;
+      if (theme !== undefined) inMemoryDemoSettings.theme = theme;
+      if (default_unit !== undefined) inMemoryDemoSettings.default_unit = default_unit;
+      if (analysis_period !== undefined) inMemoryDemoSettings.analysis_period = analysis_period;
+
+      return NextResponse.json({ success: true, data: { ...inMemoryDemoSettings } });
     }
 
     const supabase = createAdminClient();

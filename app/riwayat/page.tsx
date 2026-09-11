@@ -361,9 +361,9 @@ export default function RiwayatPage() {
 
         {/* Custom Date Range & Advanced Filters */}
         {isFilterExpanded && (
-          <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end animate-in fade-in duration-150">
+          <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 items-end animate-in fade-in duration-150">
             <div>
-              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">
                 Dari Tanggal:
               </label>
               <input
@@ -373,12 +373,12 @@ export default function RiwayatPage() {
                   setDatePreset('custom');
                   setStartDate(e.target.value);
                 }}
-                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">
                 Sampai Tanggal:
               </label>
               <input
@@ -388,19 +388,19 @@ export default function RiwayatPage() {
                   setDatePreset('custom');
                   setEndDate(e.target.value);
                 }}
-                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
               />
             </div>
 
             {/* Type Filter */}
-            <div>
-              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">
                 Jenis Transaksi:
               </label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#00875A] outline-hidden cursor-pointer"
               >
                 <option value="all">Semua Jenis</option>
                 <option value="income">Uang Masuk (Penjualan)</option>
@@ -409,18 +409,18 @@ export default function RiwayatPage() {
             </div>
 
             {/* Desktop Search Input */}
-            <div className="hidden sm:block">
-              <label className="block text-xs font-bold text-slate-500 mb-1">
+            <div className="hidden lg:block">
+              <label className="block text-[11px] font-bold text-slate-500 mb-1">
                 Cari Nama Barang:
               </label>
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Contoh: Bawang..."
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
                 />
               </div>
             </div>

@@ -285,59 +285,179 @@ export default function LaporanPage() {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-            <FileText className="w-8 h-8 text-[#00875A] stroke-[2.5]" />
-            <span>Laporan Keuangan Toko</span>
+      {/* =========================================================
+          PRINT-ONLY EXCEL SPREADSHEET VIEW
+          ========================================================= */}
+      <div className="hidden print:block space-y-6 text-black">
+        <div className="border-b-2 border-slate-900 pb-3">
+          <h1 className="text-2xl font-black uppercase tracking-wide">
+            LAPORAN KEUANGAN & BUKU KAS
           </h1>
-          <p className="text-sm font-semibold text-slate-500 mt-1">
-            Buku kas dan rangkuman keuntungan yang selalu sinkron dengan Beranda & Catatan Anda.
+          <p className="text-sm font-bold text-slate-700 mt-1">
+            VokaSync Financial Ledger System • Dicetak pada: {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+          <p className="text-xs text-slate-600">
+            Periode: {period === 'today' ? 'Hari Ini' : period === 'week' ? '7 Hari Terakhir' : period === 'month' ? 'Bulan Ini' : 'Semua Catatan'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          <Link
-            href="/riwayat"
-            className="flex items-center gap-2 bg-white border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/60 text-emerald-900 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
-            title="Buka Catatan Riwayat Lengkap"
-          >
-            <History className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
-            <span>Lihat Riwayat</span>
-          </Link>
+        {/* Excel Summary Table */}
+        <div>
+          <h2 className="text-sm font-black uppercase tracking-wider mb-1">I. Ringkasan Eksekutif Keuangan</h2>
+          <table className="excel-print-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40%' }}>Indikator Keuangan</th>
+                <th style={{ width: '30%', textAlign: 'right' }}>Nilai (Rupiah / Persen)</th>
+                <th style={{ width: '30%' }}>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total Uang Masuk (Penjualan)</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{reportTotals.income.toLocaleString('id-ID')}</td>
+                <td>Penerimaan bruto dari pembeli</td>
+              </tr>
+              <tr>
+                <td>Total Uang Keluar (Belanja Modal & Operasional)</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{reportTotals.expense.toLocaleString('id-ID')}</td>
+                <td>Total kulakan & belanja stok</td>
+              </tr>
+              <tr style={{ backgroundColor: '#e2e8f0', fontWeight: 'bold' }}>
+                <td>Untung Bersih (Sisa Uang)</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{reportTotals.profit.toLocaleString('id-ID')}</td>
+                <td>Laba bersih usaha</td>
+              </tr>
+              <tr>
+                <td>Persentase Margin Keuntungan</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{reportTotals.margin}%</td>
+                <td>Efisiensi keuntungan usaha</td>
+              </tr>
+              <tr>
+                <td>Total Catatan Transaksi</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{reportTotals.txCount} transaksi</td>
+                <td>Aktivitas tercatat pada periode ini</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-          <button
-            type="button"
-            onClick={() => fetchRealTimeData(false)}
-            className="flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
-            title="Perbarui Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Segarkan</span>
-          </button>
+        {/* Excel Product Table */}
+        <div className="pt-3">
+          <h2 className="text-sm font-black uppercase tracking-wider mb-1">II. Rincian Penjualan Komoditas & Barang Dagangan</h2>
+          <table className="excel-print-table">
+            <thead>
+              <tr>
+                <th style={{ width: '8%', textAlign: 'center' }}>No</th>
+                <th style={{ width: '35%' }}>Nama Barang / Produk</th>
+                <th style={{ width: '17%', textAlign: 'right' }}>Volume Terjual</th>
+                <th style={{ width: '20%', textAlign: 'right' }}>Total Omzet</th>
+                <th style={{ width: '20%', textAlign: 'right' }}>Estimasi Laba Bersih</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productBreakdown.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '12px' }}>Tidak ada transaksi penjualan barang pada periode ini.</td>
+                </tr>
+              ) : (
+                productBreakdown.map((item, idx) => (
+                  <tr key={item.name}>
+                    <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ fontWeight: 'bold' }}>{item.name}</td>
+                    <td style={{ textAlign: 'right' }}>{item.qty} {item.unit}</td>
+                    <td style={{ textAlign: 'right' }}>Rp{item.totalIncome.toLocaleString('id-ID')}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{item.estimatedProfit.toLocaleString('id-ID')} ({item.marginPercent}%)</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-          <button
-            type="button"
-            onClick={handleShareWhatsAppLaporan}
-            className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
-          >
-            <Share2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            <span>Rekap WhatsApp</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white px-5 py-2.5 rounded-2xl text-sm font-black transition-all cursor-pointer shadow-sm active:scale-95"
-          >
-            <Printer className="w-4 h-4 stroke-[2.5]" />
-            <span>Cetak Laporan</span>
-          </button>
+        {/* Excel Daily Trend Table */}
+        <div className="pt-3">
+          <h2 className="text-sm font-black uppercase tracking-wider mb-1">III. Rekapitulasi Arus Kas Harian</h2>
+          <table className="excel-print-table">
+            <thead>
+              <tr>
+                <th style={{ width: '25%' }}>Hari / Tanggal</th>
+                <th style={{ width: '25%', textAlign: 'right' }}>Uang Masuk</th>
+                <th style={{ width: '25%', textAlign: 'right' }}>Uang Keluar</th>
+                <th style={{ width: '25%', textAlign: 'right' }}>Sisa Arus Kas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trendData.map((d) => (
+                <tr key={d.dayName}>
+                  <td style={{ fontWeight: 'bold' }}>{d.dayName}</td>
+                  <td style={{ textAlign: 'right' }}>Rp{(d.income || 0).toLocaleString('id-ID')}</td>
+                  <td style={{ textAlign: 'right' }}>Rp{(d.expense || 0).toLocaleString('id-ID')}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{((d.income || 0) - (d.expense || 0)).toLocaleString('id-ID')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Period Selector Tabs */}
+      {/* =========================================================
+          SCREEN INTERACTIVE UI (HIDDEN DURING PRINT)
+          ========================================================= */}
+      <div className="print:hidden space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <FileText className="w-8 h-8 text-[#00875A] stroke-[2.5]" />
+              <span>Laporan Keuangan Toko</span>
+            </h1>
+            <p className="text-sm font-semibold text-slate-500 mt-1">
+              Buku kas dan rangkuman keuntungan yang selalu sinkron dengan Beranda & Catatan Anda.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            <Link
+              href="/riwayat"
+              className="flex items-center gap-2 bg-white border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/60 text-emerald-900 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Buka Catatan Riwayat Lengkap"
+            >
+              <History className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
+              <span>Lihat Riwayat</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => fetchRealTimeData(false)}
+              className="flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+              title="Perbarui Data"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Segarkan</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareWhatsAppLaporan}
+              className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
+            >
+              <Share2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+              <span>Rekap WhatsApp</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white px-5 py-2.5 rounded-2xl text-sm font-black transition-all cursor-pointer shadow-sm active:scale-95"
+            >
+              <Printer className="w-4 h-4 stroke-[2.5]" />
+              <span>Cetak Laporan</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Period Selector Tabs */}
       <div className="bg-white p-4 rounded-3xl border-2 border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-[#00875A] stroke-[2.5]" />
@@ -513,6 +633,7 @@ export default function LaporanPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -79,9 +79,18 @@ export default function SettingsPage() {
 
   // Load existing settings
   useEffect(() => {
-    // 1. Check local storage for instant sync
+    // 1. Instant check local storage for instant sync
     const cachedTheme = localStorage.getItem('vokasync_theme') as AppThemeSetting;
     if (cachedTheme) setTheme(cachedTheme);
+
+    const cachedMargin = localStorage.getItem('vokasync_margin_threshold');
+    if (cachedMargin) setMarginThreshold(cachedMargin);
+
+    const cachedLowStock = localStorage.getItem('vokasync_low_stock_threshold');
+    if (cachedLowStock) setLowStockThreshold(cachedLowStock);
+
+    const cachedSupplierCost = localStorage.getItem('vokasync_supplier_cost_threshold');
+    if (cachedSupplierCost) setSupplierCostThreshold(cachedSupplierCost);
 
     fetch('/api/settings')
       .then((res) => res.json())
@@ -103,12 +112,22 @@ export default function SettingsPage() {
             else if (p.business_type === 'kriya') setBusinessType('Kriya & Fashion');
             else setBusinessType(p.business_type);
           }
-          if (p.margin_alert_threshold !== undefined) setMarginThreshold(p.margin_alert_threshold.toString());
+          if (p.margin_alert_threshold !== undefined) {
+            const val = p.margin_alert_threshold.toString();
+            setMarginThreshold(val);
+            localStorage.setItem('vokasync_margin_threshold', val);
+          }
           if (p.low_stock_threshold !== undefined) {
             const rawVal = Number(p.low_stock_threshold);
-            setLowStockThreshold(rawVal > 15 ? '2' : rawVal.toString());
+            const val = rawVal > 15 ? '2' : rawVal.toString();
+            setLowStockThreshold(val);
+            localStorage.setItem('vokasync_low_stock_threshold', val);
           }
-          if (p.supplier_cost_increase_threshold !== undefined) setSupplierCostThreshold(p.supplier_cost_increase_threshold.toString());
+          if (p.supplier_cost_increase_threshold !== undefined) {
+            const val = p.supplier_cost_increase_threshold.toString();
+            setSupplierCostThreshold(val);
+            localStorage.setItem('vokasync_supplier_cost_threshold', val);
+          }
           if (p.sound_alert_enabled !== undefined) {
             const isEnabled = Boolean(p.sound_alert_enabled);
             setSoundAlertEnabled(isEnabled);
@@ -381,7 +400,23 @@ export default function SettingsPage() {
                   min="1"
                   max="99"
                   value={marginThreshold}
-                  onChange={(e) => setMarginThreshold(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMarginThreshold(val);
+                    if (val) {
+                      localStorage.setItem('vokasync_margin_threshold', val);
+                      window.dispatchEvent(
+                        new CustomEvent('vokasync-settings-changed', {
+                          detail: { margin_alert_threshold: parseFloat(val) || 20 },
+                        })
+                      );
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value) || 20;
+                    saveSettingsPatch({ margin_alert_threshold: num });
+                    showSuccess(`Batas untung minimal diperbarui ke ${num}%`);
+                  }}
                   className="w-24 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
                 />
                 <span className="text-xs font-bold text-slate-500">%</span>
@@ -406,7 +441,23 @@ export default function SettingsPage() {
                   min="1"
                   max="99"
                   value={lowStockThreshold}
-                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLowStockThreshold(val);
+                    if (val) {
+                      localStorage.setItem('vokasync_low_stock_threshold', val);
+                      window.dispatchEvent(
+                        new CustomEvent('vokasync-settings-changed', {
+                          detail: { low_stock_threshold: parseFloat(val) || 2 },
+                        })
+                      );
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value) || 2;
+                    saveSettingsPatch({ low_stock_threshold: num });
+                    showSuccess(`Pengingat sisa stok diperbarui ke ${num}`);
+                  }}
                   className="w-20 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
                 />
                 <span className="text-xs font-bold text-slate-700 bg-slate-200/80 px-2.5 py-1.5 rounded-xl">
@@ -432,7 +483,23 @@ export default function SettingsPage() {
                   min="1"
                   max="99"
                   value={supplierCostThreshold}
-                  onChange={(e) => setSupplierCostThreshold(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSupplierCostThreshold(val);
+                    if (val) {
+                      localStorage.setItem('vokasync_supplier_cost_threshold', val);
+                      window.dispatchEvent(
+                        new CustomEvent('vokasync-settings-changed', {
+                          detail: { supplier_cost_increase_threshold: parseFloat(val) || 5 },
+                        })
+                      );
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value) || 5;
+                    saveSettingsPatch({ supplier_cost_increase_threshold: num });
+                    showSuccess(`Batas kenaikan harga beli diperbarui ke ${num}%`);
+                  }}
                   className="w-24 text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:outline-emerald-600 text-center"
                 />
                 <span className="text-xs font-bold text-slate-500">%</span>

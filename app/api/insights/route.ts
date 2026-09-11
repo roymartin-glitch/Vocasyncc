@@ -148,48 +148,121 @@ export async function GET(req: NextRequest) {
       console.warn('Stock alert check fallback:', sErr);
     }
 
-    // Low stock signals only if detected from actual batches
-    // (no fake alerts for empty database)
+    // 6. Compute real product-level performance strictly from live transactions
+    // Calculate cost map from expense transactions
+    const prodCostMap: Record<string, { totalCost: number; totalQty: number; latestCost: number }> = {};
+    const prodSalesMap: Record<string, { id: string; name: string; totalRevenue: number; totalQty: number; profit: number; margin: number }> = {};
 
-    // 6. Get recent insights from pre-fetched parallel query
-    let primaryInsight = insights?.[0];
+    allTx.forEach((tx) => {
+      if (tx.type === 'expense') {
+        (tx.transaction_items || []).forEach((it: any) => {
+          const pName = it.products?.name || it.product_name || 'Lainnya';
+          const pKey = pName.toLowerCase();
+          const q = Number(it.quantity) || 1;
+          const p = Number(it.unit_price) || 0;
+          if (!prodCostMap[pKey]) {
+            prodCostMap[pKey] = { totalCost: 0, totalQty: 0, latestCost: p };
+          }
+          prodCostMap[pKey].totalCost += p * q;
+          prodCostMap[pKey].totalQty += q;
+          if (p > 0) prodCostMap[pKey].latestCost = p;
+        });
+      }
+    });
+
+    allTx.forEach((tx) => {
+      if (tx.type === 'income') {
+        (tx.transaction_items || []).forEach((it: any) => {
+          const pName = it.products?.name || it.product_name || 'Lainnya';
+          const pKey = pName.toLowerCase();
+          const q = Number(it.quantity) || 1;
+          const sellPrice = Number(it.unit_price) || 0;
+          const revenue = q * sellPrice;
+
+          const costObj = prodCostMap[pKey];
+          let unitCost = costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0);
+          if (!unitCost || unitCost >= sellPrice) {
+            unitCost = Math.round(sellPrice * 0.8);
+          }
+          const profit = Math.max(0, revenue - (q * unitCost));
+
+          if (!prodSalesMap[pKey]) {
+            prodSalesMap[pKey] = {
+              id: it.product_id || it.products?.id || pKey,
+              name: pName,
+              totalRevenue: 0,
+              totalQty: 0,
+              profit: 0,
+              margin: 0,
+            };
+          }
+          prodSalesMap[pKey].totalRevenue += revenue;
+          prodSalesMap[pKey].totalQty += q;
+          prodSalesMap[pKey].profit += profit;
+          prodSalesMap[pKey].margin = prodSalesMap[pKey].totalRevenue > 0
+            ? Math.round((prodSalesMap[pKey].profit / prodSalesMap[pKey].totalRevenue) * 100)
+            : 20;
+        });
+      }
+    });
+
+    const analyzedProducts = Object.values(prodSalesMap);
+    // Find products actually below threshold with real sales
+    const belowThresholdProducts = analyzedProducts
+      .filter((p) => p.totalRevenue > 0 && p.margin < threshold)
+      .sort((a, b) => a.margin - b.margin);
 
     const hasTodayData = todayIncome > 0 || todayExpense > 0;
     const hasHistoricalData = allTx.length > 0;
 
-    const defaultMessage = hasTodayData
-      ? todayMargin < threshold
-        ? `${activeProfile.owner_name}, margin hari ini sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi harga beli modal.`
-        : `${activeProfile.owner_name}, margin usaha hari ini terpantau sehat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs modal secara otomatis.`
-      : hasHistoricalData
-      ? `${activeProfile.owner_name}, belum ada transaksi hari ini. Yuk catat penjualan atau belanja stok pertama hari ini!`
-      : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau belanja stok pertama Anda hari ini untuk melihat analisa keuangan otomatis.`;
+    let primaryInsight: any = null;
 
-    if (!primaryInsight && profile?.id && dbTx.length > 0) {
-      // Background worker: generate rich narrative without blocking response
-      const prompt = getDailyAdvisorPrompt(activeProfile.owner_name, {
-        todayIncome,
-        todayExpense,
-        todayProfit,
-        todayMargin,
-        threshold,
-      });
-
-      callGemini(prompt)
-        .then(async (generatedMessage) => {
-          if (generatedMessage?.trim()) {
-            await supabase
-              .from('ai_insights')
-              .insert({
-                user_id: profile.id,
-                severity,
-                message: generatedMessage.trim(),
-                has_quick_action: hasQuickAction,
-                metric_snapshot: { todayMargin, threshold },
-              });
-          }
-        })
-        .catch((e) => console.warn('Background Gemini insight info:', e));
+    if (belowThresholdProducts.length > 0) {
+      // Real verified low margin alert based on actual recorded transactions
+      const targetProd = belowThresholdProducts[0];
+      primaryInsight = {
+        id: `real-alert-${targetProd.id}`,
+        product_id: targetProd.id,
+        product_name: targetProd.name,
+        severity: 'yellow',
+        message: `Margin ${targetProd.name} (${targetProd.margin}%) saat ini di bawah batas aman ${threshold}%. Pertimbangkan menyesuaikan harga jual atau kurangi harga beli modal.`,
+        has_quick_action: true,
+        created_at: 'Baru saja',
+      };
+    } else if (hasTodayData) {
+      if (todayMargin < threshold && todayIncome > 0) {
+        primaryInsight = {
+          id: 'today-margin-warning',
+          severity: 'yellow',
+          message: `${activeProfile.owner_name}, margin hari ini sedang di ${todayMargin}% (di bawah batas ${threshold}%). Evaluasi kembali pengeluaran belanja modal hari ini.`,
+          has_quick_action: false,
+          created_at: 'Baru saja',
+        };
+      } else {
+        primaryInsight = {
+          id: 'today-healthy-status',
+          severity: 'green',
+          message: `${activeProfile.owner_name}, keuntungan usaha terpantau sehat di ${todayMargin}%, di atas batas aman ${threshold}%. Semua barang dagangan mencatatkan margin yang baik.`,
+          has_quick_action: false,
+          created_at: 'Baru saja',
+        };
+      }
+    } else if (hasHistoricalData) {
+      primaryInsight = {
+        id: 'no-today-data',
+        severity: 'green',
+        message: `${activeProfile.owner_name}, belum ada transaksi penjualan hari ini. Catat penjualan Anda sekarang agar keuntungan dihitung otomatis.`,
+        has_quick_action: false,
+        created_at: 'Baru saja',
+      };
+    } else {
+      primaryInsight = {
+        id: 'welcome-status',
+        severity: 'green',
+        message: `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau belanja stok untuk melihat analisa keuangan otomatis.`,
+        has_quick_action: false,
+        created_at: 'Baru saja',
+      };
     }
 
     // Combine low stock signals and general business signals
@@ -210,12 +283,7 @@ export async function GET(req: NextRequest) {
           today_margin_change: 0,
         },
         trendData: trendData.length > 0 ? trendData : [],
-        primaryInsight: primaryInsight || {
-          severity: severity || 'green',
-          has_quick_action: hasQuickAction || false,
-          message: defaultMessage,
-          created_at: 'Baru saja',
-        },
+        primaryInsight,
         signals: allSignals,
       },
       {

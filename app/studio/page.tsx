@@ -48,7 +48,9 @@ export default function StudioPage() {
   const [storeName, setStoreName] = useState('Kios Berkah Sayur');
   const [phone, setPhone] = useState('0812-3456-7890');
 
-  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal'>('pasar');
+  const [selectedFrame, setSelectedFrame] = useState<
+    'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal' | 'canva-pastel' | 'genz-aesthetic'
+  >('pasar');
   const [copyStyle, setCopyStyle] = useState<'pasar' | 'fomo' | 'elegan'>('pasar');
 
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -233,6 +235,14 @@ export default function StudioPage() {
         bgGradient.addColorStop(0, '#14532d');
         bgGradient.addColorStop(0.5, '#15803d');
         bgGradient.addColorStop(1, '#052e16');
+      } else if (selectedFrame === 'canva-pastel') {
+        bgGradient.addColorStop(0, '#fce7f3'); // Soft Pink-100
+        bgGradient.addColorStop(0.5, '#ede9fe'); // Soft Lavender-100
+        bgGradient.addColorStop(1, '#e0f2fe'); // Soft Sky-100
+      } else if (selectedFrame === 'genz-aesthetic') {
+        bgGradient.addColorStop(0, '#0f172a'); // Slate-900
+        bgGradient.addColorStop(0.5, '#831843'); // Pink-900
+        bgGradient.addColorStop(1, '#312e81'); // Indigo-900
       } else {
         // 'royal' gold & burgundy
         bgGradient.addColorStop(0, '#4a044e');
@@ -469,10 +479,12 @@ export default function StudioPage() {
           {/* Template Frame Selection */}
           <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-sm space-y-3">
             <h3 className="text-sm font-black text-slate-900">Pilih Tema Bingkai Poster</h3>
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[
                 { id: 'pasar', label: 'Pasar', desc: 'Emerald Mewah' },
                 { id: 'minimalis', label: 'Minimalis', desc: 'Putih Bersih' },
+                { id: 'canva-pastel', label: '🌸 Canva Pastel', desc: 'Soft & Aesthetic' },
+                { id: 'genz-aesthetic', label: '✨ Gen Z Y2K', desc: 'Cyber Glow' },
                 { id: 'kriya', label: 'Kuliner', desc: 'Warm Earth' },
                 { id: 'neon', label: 'Neon', desc: 'Midnight Glow' },
                 { id: 'panen', label: 'Panen', desc: 'Hijau Kebun' },
@@ -530,6 +542,10 @@ export default function StudioPage() {
                   ? 'bg-gradient-to-br from-emerald-900 via-slate-900 to-teal-950 text-white border-emerald-500/40'
                   : selectedFrame === 'minimalis'
                   ? 'bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900 border-slate-300'
+                  : selectedFrame === 'canva-pastel'
+                  ? 'bg-gradient-to-br from-pink-100 via-purple-100 to-sky-100 text-slate-800 border-pink-300/80 shadow-md'
+                  : selectedFrame === 'genz-aesthetic'
+                  ? 'bg-gradient-to-br from-slate-950 via-pink-950 to-indigo-950 text-pink-200 border-purple-500/80'
                   : 'bg-gradient-to-br from-orange-950 via-stone-900 to-amber-950 text-amber-50 border-amber-600/40'
               }`}
             >
