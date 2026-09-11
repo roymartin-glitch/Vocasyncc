@@ -267,103 +267,133 @@ export default function StudioPage() {
       ctx.strokeRect(36, 36, 1008, 1008);
 
       // 3. Header Store Banner
-      ctx.fillStyle =
-        selectedFrame === 'minimalis'
-          ? '#0f172a'
-          : selectedFrame === 'neon'
-          ? '#06b6d4'
-          : selectedFrame === 'royal'
-          ? '#d97706'
-          : '#ffffff';
-      ctx.font = 'bold 38px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(`🛒 ${storeName.toUpperCase()}`, 80, 110);
+      // 3. Header Store Branding (Clean, Centered, Professional)
+      ctx.textAlign = 'center';
+      const headerBg = ctx.createLinearGradient(340, 70, 740, 70);
+      if (selectedFrame === 'minimalis') {
+        headerBg.addColorStop(0, '#0f172a');
+        headerBg.addColorStop(1, '#1e293b');
+      } else if (selectedFrame === 'canva-pastel') {
+        headerBg.addColorStop(0, '#db2777');
+        headerBg.addColorStop(1, '#9333ea');
+      } else if (selectedFrame === 'neon') {
+        headerBg.addColorStop(0, '#06b6d4');
+        headerBg.addColorStop(1, '#8b5cf6');
+      } else if (selectedFrame === 'royal') {
+        headerBg.addColorStop(0, '#d97706');
+        headerBg.addColorStop(1, '#b45309');
+      } else {
+        headerBg.addColorStop(0, '#059669');
+        headerBg.addColorStop(1, '#047857');
+      }
 
-      // 4. Draw Product Image in Center with Studio Lighting & Contextual Stage
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = headerBg;
+      drawRoundedRect(ctx, 320, 70, 440, 68, 34);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(`🛒  ${storeName.toUpperCase()}`, 540, 113);
+
+      // 4. Draw Product Image in Center with Studio Stage & Proportional Scaling
       const renderProductImage = () => {
         if (uploadedImage) {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
-            // A. Radial soft spotlight behind product
-            const stageCenterX = 540;
-            const stageCenterY = 430;
-            const spotLight = ctx.createRadialGradient(
-              stageCenterX,
-              stageCenterY - 40,
-              40,
-              stageCenterX,
-              stageCenterY,
-              260
-            );
-            if (selectedFrame === 'minimalis') {
-              spotLight.addColorStop(0, 'rgba(255, 255, 255, 1)');
-              spotLight.addColorStop(0.7, 'rgba(241, 245, 249, 0.9)');
-              spotLight.addColorStop(1, 'rgba(226, 232, 240, 0.4)');
-            } else if (selectedFrame === 'canva-pastel') {
-              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-              spotLight.addColorStop(0.6, 'rgba(253, 242, 248, 0.7)');
-              spotLight.addColorStop(1, 'rgba(243, 232, 255, 0.2)');
-            } else if (selectedFrame === 'neon') {
-              spotLight.addColorStop(0, 'rgba(34, 211, 238, 0.35)');
-              spotLight.addColorStop(0.6, 'rgba(147, 51, 234, 0.2)');
-              spotLight.addColorStop(1, 'rgba(15, 23, 42, 0)');
-            } else {
-              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-              spotLight.addColorStop(0.6, 'rgba(16, 185, 129, 0.15)');
-              spotLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            }
+            const centerX = 540;
+            const centerY = 410;
 
-            // Draw Card / Studio Stage Box
+            // A. Radial Ambient Spotlight
             ctx.save();
-            ctx.fillStyle = spotLight;
-            drawRoundedRect(ctx, 290, 180, 500, 500, 36);
+            const spotGlow = ctx.createRadialGradient(centerX, centerY, 50, centerX, centerY, 320);
+            if (selectedFrame === 'minimalis') {
+              spotGlow.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+              spotGlow.addColorStop(1, 'rgba(241, 245, 249, 0)');
+            } else if (selectedFrame === 'canva-pastel') {
+              spotGlow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+              spotGlow.addColorStop(0.5, 'rgba(253, 230, 242, 0.5)');
+              spotGlow.addColorStop(1, 'rgba(240, 249, 255, 0)');
+            } else if (selectedFrame === 'neon') {
+              spotGlow.addColorStop(0, 'rgba(6, 182, 212, 0.3)');
+              spotGlow.addColorStop(0.6, 'rgba(168, 85, 247, 0.15)');
+              spotGlow.addColorStop(1, 'rgba(2, 6, 23, 0)');
+            } else {
+              spotGlow.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+              spotGlow.addColorStop(0.6, 'rgba(16, 185, 129, 0.15)');
+              spotGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+            ctx.fillStyle = spotGlow;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 320, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // B. Circular Studio Stage / Disc Base
+            ctx.save();
+            const discGrad = ctx.createLinearGradient(centerX - 240, centerY + 180, centerX + 240, centerY + 240);
+            if (selectedFrame === 'minimalis') {
+              discGrad.addColorStop(0, '#ffffff');
+              discGrad.addColorStop(1, '#e2e8f0');
+            } else if (selectedFrame === 'canva-pastel') {
+              discGrad.addColorStop(0, '#ffffff');
+              discGrad.addColorStop(1, '#fbcfe8');
+            } else if (selectedFrame === 'neon') {
+              discGrad.addColorStop(0, '#1e1b4b');
+              discGrad.addColorStop(1, '#0f172a');
+            } else {
+              discGrad.addColorStop(0, '#065f46');
+              discGrad.addColorStop(1, '#022c22');
+            }
+            ctx.fillStyle = discGrad;
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY + 195, 260, 48, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Inner border
+            // Disc edge highlight
             ctx.strokeStyle =
-              selectedFrame === 'minimalis'
-                ? '#cbd5e1'
-                : selectedFrame === 'canva-pastel'
-                ? '#f472b6'
+              selectedFrame === 'canva-pastel'
+                ? 'rgba(244, 114, 182, 0.5)'
                 : selectedFrame === 'neon'
                 ? '#22d3ee'
-                : 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 3;
+                : 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2.5;
             ctx.stroke();
             ctx.restore();
 
-            // B. Studio Pedestal Ground Shadow
+            // C. Realistic Ground Contact Shadow
             ctx.save();
-            const pedestalY = 620;
-            const shadowGrad = ctx.createRadialGradient(540, pedestalY, 15, 540, pedestalY, 210);
-            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
-            shadowGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
-            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = shadowGrad;
+            const contactShadow = ctx.createRadialGradient(centerX, centerY + 185, 10, centerX, centerY + 185, 200);
+            contactShadow.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+            contactShadow.addColorStop(0.4, 'rgba(0, 0, 0, 0.25)');
+            contactShadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = contactShadow;
             ctx.beginPath();
-            ctx.ellipse(540, pedestalY, 210, 34, 0, 0, Math.PI * 2);
+            ctx.ellipse(centerX, centerY + 185, 200, 28, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
 
-            // C. Draw Product Image with Vibrant Lighting & Sharp Contrast Filter
+            // D. Draw Product Image (Proportionally fitted)
             ctx.save();
-            drawRoundedRect(ctx, 300, 190, 480, 480, 32);
-            ctx.clip();
+            const maxBoxSize = 460;
+            const imgAspect = (img.width || 1) / (img.height || 1);
+            let drawW = maxBoxSize;
+            let drawH = maxBoxSize;
+            if (imgAspect > 1) {
+              drawH = maxBoxSize / imgAspect;
+            } else {
+              drawW = maxBoxSize * imgAspect;
+            }
+            const drawX = centerX - drawW / 2;
+            const drawY = centerY - drawH / 2 + 10;
 
-            // AI Color & Lighting filter
-            ctx.filter = 'contrast(1.08) saturate(1.16) brightness(1.04)';
-            ctx.drawImage(img, 300, 190, 480, 480);
-            ctx.restore();
-
-            // D. Studio Glass Highlights
-            ctx.save();
-            const gloss = ctx.createLinearGradient(300, 190, 500, 350);
-            gloss.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-            gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            ctx.fillStyle = gloss;
-            drawRoundedRect(ctx, 300, 190, 480, 160, 32);
-            ctx.fill();
+            ctx.filter = 'contrast(1.08) saturate(1.18) brightness(1.03)';
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
             ctx.restore();
 
             finishDrawingTypography();
@@ -371,15 +401,16 @@ export default function StudioPage() {
           img.onerror = () => finishDrawingTypography();
           img.src = uploadedImage;
         } else {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-          drawRoundedRect(ctx, 290, 180, 500, 500, 36);
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+          drawRoundedRect(ctx, 320, 200, 440, 440, 36);
           ctx.fill();
 
           ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#94a3b8';
           ctx.font = 'bold 36px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('📦 Foto Produk', 540, 450);
-          ctx.textAlign = 'left';
+          ctx.fillText('📦 Foto Produk', 540, 430);
+          ctx.restore();
 
           finishDrawingTypography();
         }
@@ -389,27 +420,50 @@ export default function StudioPage() {
         // 5. Product Title
         ctx.textAlign = 'center';
         ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#ffffff';
-        ctx.font = 'bold 52px sans-serif';
-        ctx.fillText(productName, 540, 755);
+        ctx.font = 'bold 56px sans-serif';
+        ctx.fillText(productName, 540, 745);
 
         // Subtitle
         ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#cbd5e1';
-        ctx.font = '28px sans-serif';
-        ctx.fillText('Segar Pilihan • Timbangan Pas & Amanah', 540, 805);
+        ctx.font = '600 28px sans-serif';
+        ctx.fillText('Segar Pilihan • Timbangan Pas & Amanah', 540, 792);
 
         // 6. Price Badge Banner
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#059669' : '#10b981';
-        drawRoundedRect(ctx, 300, 845, 480, 85, 24);
+        ctx.save();
+        const priceBg = ctx.createLinearGradient(290, 830, 790, 915);
+        if (selectedFrame === 'minimalis') {
+          priceBg.addColorStop(0, '#059669');
+          priceBg.addColorStop(1, '#047857');
+        } else if (selectedFrame === 'canva-pastel') {
+          priceBg.addColorStop(0, '#ec4899');
+          priceBg.addColorStop(1, '#db2777');
+        } else if (selectedFrame === 'neon') {
+          priceBg.addColorStop(0, '#9333ea');
+          priceBg.addColorStop(1, '#6366f1');
+        } else if (selectedFrame === 'royal') {
+          priceBg.addColorStop(0, '#f59e0b');
+          priceBg.addColorStop(1, '#d97706');
+        } else {
+          priceBg.addColorStop(0, '#10b981');
+          priceBg.addColorStop(1, '#059669');
+        }
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
+        ctx.shadowBlur = 18;
+        ctx.shadowOffsetY = 8;
+        ctx.fillStyle = priceBg;
+        drawRoundedRect(ctx, 290, 830, 500, 86, 26);
         ctx.fill();
+        ctx.restore();
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 42px sans-serif';
-        ctx.fillText(`Harga: ${formattedPrice}`, 540, 902);
+        ctx.font = 'bold 44px sans-serif';
+        ctx.fillText(`Harga: ${formattedPrice}`, 540, 890);
 
         // 7. Footer Contact WhatsApp
-        ctx.fillStyle = selectedFrame === 'minimalis' ? '#334155' : 'rgba(255, 255, 255, 0.9)';
+        ctx.fillStyle = selectedFrame === 'minimalis' ? '#334155' : 'rgba(255, 255, 255, 0.95)';
         ctx.font = 'bold 28px sans-serif';
-        ctx.fillText(`Pesan via WhatsApp: ${phone}`, 540, 985);
+        ctx.fillText(`💬  Pesan via WhatsApp: ${phone}`, 540, 985);
         ctx.textAlign = 'left';
 
         resolve(canvas.toDataURL('image/png'));
