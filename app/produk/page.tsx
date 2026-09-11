@@ -1180,12 +1180,12 @@ export default function ProdukPage() {
                   <div className="p-4 sm:p-5 flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center justify-center flex-shrink-0 font-black overflow-hidden">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center justify-center flex-shrink-0 font-black overflow-hidden shadow-2xs">
                             {p.image_url ? (
                               <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                             ) : (
-                              <Package className="w-5 h-5" />
+                              <Package className="w-7 h-7 sm:w-8 sm:h-8" />
                             )}
                           </div>
                           <div className="min-w-0">
@@ -1285,12 +1285,12 @@ export default function ProdukPage() {
               {/* Product Header Banner */}
               <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 p-6 text-white relative">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white flex-shrink-0 overflow-hidden">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/25 flex items-center justify-center text-white flex-shrink-0 overflow-hidden shadow-sm">
                       {selectedProduct.image_url ? (
                         <img src={selectedProduct.image_url} alt={selectedProduct.name} className="w-full h-full object-cover" />
                       ) : (
-                        <Package className="w-6 h-6" />
+                        <Package className="w-8 h-8 sm:w-10 sm:h-10" />
                       )}
                     </div>
                     <div>

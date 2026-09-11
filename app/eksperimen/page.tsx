@@ -23,8 +23,30 @@ export default function EksperimenPage() {
 
   // Form state
   const [newTitle, setNewTitle] = useState('');
-  const [newProductName, setNewProductName] = useState('Bawang Merah Brebes');
-  const [targetMargin, setTargetMargin] = useState('22');
+  const [newProductName, setNewProductName] = useState('');
+  const [targetMargin, setTargetMargin] = useState('25');
+  const [userProducts, setUserProducts] = useState<any[]>([]);
+
+  const fetchUserProducts = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        const localSaved = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
+        if (Array.isArray(localSaved) && localSaved.length > 0) {
+          setUserProducts(localSaved);
+        }
+      }
+
+      const res = await fetch('/api/product-analysis');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setUserProducts(data.data);
+        if (!newProductName) {
+          setNewProductName(data.data[0].name);
+        }
+      }
+    } catch (_) {}
+  };
 
   const fetchExperiments = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -47,6 +69,7 @@ export default function EksperimenPage() {
   };
 
   useEffect(() => {
+    fetchUserProducts();
     let hasCache = false;
     if (typeof window !== 'undefined') {
       try {
@@ -325,49 +348,96 @@ export default function EksperimenPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-          <div className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">
-            <h4 className="font-bold text-xs text-slate-900">
-              Paket Bundling Bumbu Dapur (Bawang 250gr + Cabai 100gr)
-            </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Jual paket Rp15.000 untuk pembeli rumah tangga sore hari. Potensi margin 32% (mengangkat margin bawang merah yang sedang tergerus).
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setNewTitle('Paket Bundling Bumbu Dapur (Bawang 250gr + Cabai 100gr)');
-                setNewProductName('Bawang Merah Brebes');
-                setTargetMargin('32');
-                setIsNewExpModalOpen(true);
-              }}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>Coba Tindakan Ini</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {userProducts && userProducts.length > 0 ? (
+            userProducts.slice(0, 2).map((prod, idx) => {
+              const recTitle = idx === 0
+                ? `Optimalkan Margin ${prod.name} (Naikkan Rp1.000/${prod.unit})`
+                : `Paket Hemat Pembeli: ${prod.name} + Komoditas Pelengkap`;
+              const currentMargin = prod.margin_percentage || 20;
+              const targetMarginVal = currentMargin < 20 ? 25 : Math.round(currentMargin + 8);
+              const recDesc = idx === 0
+                ? `Komoditas ${prod.name} saat ini memiliki margin ${currentMargin}%. Naikkan harga jual Rp1.000 per ${prod.unit} untuk mencapai margin ${targetMarginVal}% tanpa menurunkan volume harian.`
+                : `Gabungkan ${prod.name} dalam bundling hemat rumah tangga untuk meningkatkan perputaran barang dan mengangkat laba toko ke target ${targetMarginVal}%.`;
 
-          <div className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">
-            <h4 className="font-bold text-xs text-slate-900">
-              Naikkan Harga Bawang Putih Kating Rp1.000/kg
-            </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Bawang putih memiliki loyalitas pembeli tinggi dan elastisitas rendah. Kenaikan Rp1.000 diperkirakan menambah laba bersih Rp15.000/hari tanpa kehilangan pelanggan.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setNewTitle('Naikkan Harga Bawang Putih Kating Rp1.000/kg');
-                setNewProductName('Bawang Putih Kating');
-                setTargetMargin('45');
-                setIsNewExpModalOpen(true);
-              }}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>Coba Tindakan Ini</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+              return (
+                <div key={prod.id || idx} className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Target {targetMarginVal}%
+                    </span>
+                    <span className="text-xs font-bold text-slate-500">
+                      • {prod.name} ({prod.unit})
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-xs text-slate-900 leading-snug">
+                    {recTitle}
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {recDesc}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewTitle(recTitle);
+                      setNewProductName(prod.name);
+                      setTargetMargin(String(targetMarginVal));
+                      setIsNewExpModalOpen(true);
+                    }}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Coba Tindakan Ini</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <>
+              <div className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">
+                <h4 className="font-bold text-xs text-slate-900">
+                  Paket Bundling Bumbu Dapur (Bawang 250gr + Cabai 100gr)
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Jual paket Rp15.000 untuk pembeli rumah tangga sore hari. Potensi margin 32% (mengangkat margin bawang merah yang sedang tergerus).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle('Paket Bundling Bumbu Dapur (Bawang 250gr + Cabai 100gr)');
+                    setNewProductName('Bawang Merah');
+                    setTargetMargin('32');
+                    setIsNewExpModalOpen(true);
+                  }}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Coba Tindakan Ini</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">
+                <h4 className="font-bold text-xs text-slate-900">
+                  Naikkan Harga Bawang Putih Kating Rp1.000/kg
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bawang putih memiliki loyalitas pembeli tinggi dan elastisitas rendah. Kenaikan Rp1.000 diperkirakan menambah laba bersih Rp15.000/hari tanpa kehilangan pelanggan.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTitle('Naikkan Harga Bawang Putih Kating Rp1.000/kg');
+                    setNewProductName('Bawang Putih');
+                    setTargetMargin('45');
+                    setIsNewExpModalOpen(true);
+                  }}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Coba Tindakan Ini</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -406,13 +476,37 @@ export default function EksperimenPage() {
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Produk Fokus</label>
-                <input
-                  type="text"
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  required
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-900"
-                />
+                {userProducts.length > 0 ? (
+                  <select
+                    value={newProductName}
+                    onChange={(e) => {
+                      setNewProductName(e.target.value);
+                      const selectedProd = userProducts.find(p => p.name === e.target.value);
+                      if (selectedProd && selectedProd.price > 0 && selectedProd.buyPrice > 0) {
+                        const curMargin = Math.round(((selectedProd.price - selectedProd.buyPrice) / selectedProd.price) * 100);
+                        setTargetMargin(String(Math.min(90, Math.max(15, curMargin + 5))));
+                      }
+                    }}
+                    required
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-900"
+                  >
+                    <option value="">-- Pilih Produk dari Toko Anda --</option>
+                    {userProducts.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name} {p.price ? `(Jual: Rp${p.price.toLocaleString('id-ID')})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    placeholder="mis: Bawang Merah, Telur Ayam"
+                    required
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-900"
+                  />
+                )}
               </div>
 
               <div>

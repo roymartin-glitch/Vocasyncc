@@ -512,6 +512,28 @@ export default function CatatPage() {
 
       const result = await res.json();
       if (result.success) {
+        // Clear session caches and save to local transactions to guarantee instant fresh data in Riwayat, Laporan, Beranda
+        if (typeof window !== 'undefined') {
+          try {
+            const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            if (result.data) {
+              const currentLocal = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
+              const txWithUser = { ...result.data, user_id: userKey };
+              currentLocal.unshift(txWithUser);
+              localStorage.setItem(`vokasync_local_txs_${userKey}`, JSON.stringify(currentLocal.slice(0, 100)));
+            }
+
+            sessionStorage.removeItem(`vokasync_tx_cache_${userKey}`);
+            sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
+            sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);
+            sessionStorage.removeItem(`vokasync_products_cache_${userKey}`);
+            sessionStorage.removeItem('vokasync_tx_cache');
+            sessionStorage.removeItem('vokasync_dash_cache');
+            sessionStorage.removeItem('vokasync_laporan_cache');
+            sessionStorage.removeItem('vokasync_products_cache');
+          } catch (_) {}
+        }
+
         setShowSuccessToast(true);
         speakConfirmation(productName, quantity, unit, totalAmount, type === 'income');
         setTimeout(() => {
