@@ -43,6 +43,8 @@ export default function ProdukPage() {
   const [newProductCost, setNewProductCost] = useState('');
   const [newProductSelling, setNewProductSelling] = useState('');
   const [newProductStock, setNewProductStock] = useState('10');
+  const [newProductImage, setNewProductImage] = useState<string | null>(null);
+  const [isUploadingNewPhoto, setIsUploadingNewPhoto] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -260,6 +262,7 @@ export default function ProdukPage() {
             costPrice: cost,
             sellingPrice: selling,
             stock: stockQty,
+            imageUrl: newProductImage,
           }),
         });
 
@@ -279,6 +282,7 @@ export default function ProdukPage() {
           id: 'prod-' + Date.now(),
           name: newProductName.trim(),
           unit: newProductUnit,
+          image_url: newProductImage || null,
           cost_price: Math.round(cost),
           selling_price: Math.round(selling),
           margin_percentage: marginVal,
@@ -296,6 +300,7 @@ export default function ProdukPage() {
       setNewProductCost('');
       setNewProductSelling('');
       setNewProductStock('10');
+      setNewProductImage(null);
       setIsAddModalOpen(false);
 
       // Instant state update & local persistence for seamless UX
@@ -388,6 +393,53 @@ export default function ProdukPage() {
     setEditImageUrl(p.image_url || null);
     setEditError('');
     setIsEditModalOpen(true);
+  };
+
+  // Upload photo handler for Tambah Produk modal
+  const handleNewProductPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAddError('Pilih file gambar yang valid (JPG, PNG, atau WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAddError('Ukuran gambar maksimal 5 MB.');
+      return;
+    }
+
+    setIsUploadingNewPhoto(true);
+    setAddError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload-product-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await res.json();
+      if (result.success && result.url) {
+        setNewProductImage(result.url);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setNewProductImage(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (_) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewProductImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingNewPhoto(false);
+    }
   };
 
   // Upload photo handler for edit modal
@@ -640,6 +692,58 @@ export default function ProdukPage() {
             )}
 
             <form onSubmit={handleAddProduct} className="space-y-4">
+              {/* Foto Produk Baru */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Foto Produk / Komoditas <span className="text-slate-400 font-normal">(Opsional)</span>
+                </label>
+                <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-200/90 rounded-2xl">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                    {newProductImage ? (
+                      <img
+                        src={newProductImage}
+                        alt="Preview Produk"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Package className="w-7 h-7 text-slate-300" />
+                    )}
+                    {isUploadingNewPhoto && (
+                      <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 shadow-xs transition-colors cursor-pointer active:scale-95">
+                        <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>{newProductImage ? 'Ganti Foto' : 'Unggah Foto'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleNewProductPhotoUpload}
+                          disabled={isUploadingNewPhoto}
+                          className="hidden"
+                        />
+                      </label>
+                      {newProductImage && (
+                        <button
+                          type="button"
+                          onClick={() => setNewProductImage(null)}
+                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 cursor-pointer"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Format JPG, PNG, atau WEBP (Maks. 5 MB)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nama Produk <span className="text-rose-500">*</span>

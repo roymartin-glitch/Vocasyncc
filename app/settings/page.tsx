@@ -175,6 +175,19 @@ export default function SettingsPage() {
     window.speechSynthesis.speak(utterance);
   };
 
+  // Helper to immediately persist settings changes to Supabase in real-time
+  const saveSettingsPatch = async (partialUpdates: Record<string, any>) => {
+    try {
+      await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(partialUpdates),
+      });
+    } catch (e) {
+      console.warn('Real-time settings sync fallback:', e);
+    }
+  };
+
   // Save all settings
   const handleSaveAllSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +218,17 @@ export default function SettingsPage() {
         localStorage.setItem('vokasync_sound_alert', soundAlertEnabled ? 'true' : 'false');
         localStorage.setItem('vokasync_business_name', businessName);
         localStorage.setItem('vokasync_owner_name', ownerName);
-        showSuccess('Semua pengaturan berhasil disimpan ke database!');
+
+        // Invalidate caches across app so all pages reflect new threshold and store profile immediately
+        const userKey = typeof window !== 'undefined'
+          ? (localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest'))
+          : 'guest';
+        sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
+        sessionStorage.removeItem('vokasync_dash_cache');
+        sessionStorage.removeItem(`vokasync_products_cache_${userKey}`);
+        sessionStorage.removeItem('vokasync_products_cache');
+
+        showSuccess('Semua pengaturan berhasil disimpan ke database Supabase!');
         // Broadcast updates to Header and Sidebar
         window.dispatchEvent(
           new CustomEvent('vokasync-settings-changed', {
@@ -215,6 +238,7 @@ export default function SettingsPage() {
               text_size: textSize,
               theme: theme,
               sound_alert_enabled: soundAlertEnabled,
+              margin_alert_threshold: parseFloat(marginThreshold) || 20,
             },
           })
         );
@@ -440,6 +464,8 @@ export default function SettingsPage() {
                 onClick={() => {
                   setSoundAlertEnabled(true);
                   localStorage.setItem('vokasync_sound_alert', 'true');
+                  saveSettingsPatch({ sound_alert_enabled: true });
+                  showSuccess('Pengaturan suara asisten aktif disimpan ke Supabase!');
                   window.dispatchEvent(
                     new CustomEvent('vokasync-settings-changed', {
                       detail: { sound_alert_enabled: true },
@@ -478,6 +504,8 @@ export default function SettingsPage() {
                 onClick={() => {
                   setSoundAlertEnabled(false);
                   localStorage.setItem('vokasync_sound_alert', 'false');
+                  saveSettingsPatch({ sound_alert_enabled: false });
+                  showSuccess('Pengaturan suara hening disimpan ke Supabase!');
                   window.dispatchEvent(
                     new CustomEvent('vokasync-settings-changed', {
                       detail: { sound_alert_enabled: false },

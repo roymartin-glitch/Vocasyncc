@@ -52,7 +52,7 @@ export function StudioModal({
   const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya'>('pasar');
+  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal'>('pasar');
   const [copyStyle, setCopyStyle] = useState<'pasar' | 'fomo' | 'elegan'>('pasar');
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
@@ -134,12 +134,19 @@ export function StudioModal({
     }
   };
 
-  // Client-side background removal processing
+  // Client-side AI background removal processing with accelerated configuration
   const processBackgroundRemoval = async (file: File, fallbackUrl: string) => {
     setIsRemovingBg(true);
     try {
       const imgly = await import('@imgly/background-removal');
-      const blob = await imgly.removeBackground(file);
+      // Use optimized quantized model for rapid background segmentation
+      const blob = await imgly.removeBackground(file, {
+        model: 'isnet_quint8',
+        output: {
+          format: 'image/webp',
+          quality: 0.9,
+        },
+      });
       const cleanUrl = URL.createObjectURL(blob);
       setUploadedImage(cleanUrl);
     } catch (err) {
@@ -187,43 +194,82 @@ export function StudioModal({
       } else if (selectedFrame === 'minimalis') {
         bgGradient.addColorStop(0, '#f8fafc'); // Slate-50
         bgGradient.addColorStop(1, '#e2e8f0'); // Slate-200
-      } else {
+      } else if (selectedFrame === 'kriya') {
         bgGradient.addColorStop(0, '#7c2d12'); // Orange-900
         bgGradient.addColorStop(0.7, '#1c1917'); // Stone-900
         bgGradient.addColorStop(1, '#451a03'); // Amber-950
+      } else if (selectedFrame === 'neon') {
+        bgGradient.addColorStop(0, '#090d16'); // Dark Void
+        bgGradient.addColorStop(0.5, '#1e1b4b'); // Indigo-950
+        bgGradient.addColorStop(1, '#020617'); // Slate-950
+      } else if (selectedFrame === 'panen') {
+        bgGradient.addColorStop(0, '#14532d'); // Green-900
+        bgGradient.addColorStop(0.5, '#15803d'); // Green-700
+        bgGradient.addColorStop(1, '#052e16'); // Forest-950
+      } else {
+        // 'royal' gold & burgundy
+        bgGradient.addColorStop(0, '#4a044e'); // Fuchsia-950
+        bgGradient.addColorStop(0.6, '#2e1065'); // Purple-950
+        bgGradient.addColorStop(1, '#1e1b4b'); // Indigo-950
       }
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, 1080, 1080);
 
       // 2. Decorative Outer Border
-      ctx.strokeStyle = selectedFrame === 'minimalis' ? '#cbd5e1' : 'rgba(52, 211, 153, 0.35)';
-      ctx.lineWidth = 8;
+      ctx.strokeStyle =
+        selectedFrame === 'minimalis'
+          ? '#cbd5e1'
+          : selectedFrame === 'neon'
+          ? '#06b6d4'
+          : selectedFrame === 'panen'
+          ? '#86efac'
+          : selectedFrame === 'royal'
+          ? '#fbbf24'
+          : 'rgba(52, 211, 153, 0.35)';
+      ctx.lineWidth = selectedFrame === 'royal' || selectedFrame === 'neon' ? 10 : 8;
       ctx.strokeRect(36, 36, 1008, 1008);
 
       // Inner subtle border
-      ctx.strokeStyle = selectedFrame === 'minimalis' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.15)';
+      ctx.strokeStyle =
+        selectedFrame === 'minimalis'
+          ? '#e2e8f0'
+          : selectedFrame === 'neon'
+          ? 'rgba(168, 85, 247, 0.4)'
+          : selectedFrame === 'royal'
+          ? 'rgba(251, 191, 36, 0.4)'
+          : 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 2;
       ctx.strokeRect(48, 48, 984, 984);
 
       // 3. Header Store Banner
-      ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#10b981';
+      ctx.fillStyle =
+        selectedFrame === 'minimalis'
+          ? '#0f172a'
+          : selectedFrame === 'neon'
+          ? '#06b6d4'
+          : selectedFrame === 'royal'
+          ? '#d97706'
+          : '#10b981';
       ctx.beginPath();
       ctx.roundRect(70, 70, 520, 64, 16);
       ctx.fill();
 
-      ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : '#022c22';
+      ctx.fillStyle =
+        selectedFrame === 'minimalis' || selectedFrame === 'neon' || selectedFrame === 'royal'
+          ? '#ffffff'
+          : '#022c22';
       ctx.font = 'bold 24px sans-serif';
       ctx.fillText(`🛒 ${effectiveStoreName.toUpperCase()}`, 90, 112);
 
       // Guarantee badge on top right
-      ctx.fillStyle = '#f59e0b';
+      ctx.fillStyle = selectedFrame === 'neon' ? '#ec4899' : selectedFrame === 'royal' ? '#f59e0b' : '#f59e0b';
       ctx.beginPath();
       ctx.roundRect(740, 70, 270, 64, 16);
       ctx.fill();
 
-      ctx.fillStyle = '#1e293b';
+      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('⭐ GARANSI SEGAR', 760, 112);
+      ctx.fillText(selectedFrame === 'neon' ? '⚡ PROMO KILAT' : selectedFrame === 'royal' ? '👑 PREMIUM GRADE' : '⭐ GARANSI SEGAR', 760, 112);
 
       // 4. Draw Product Image in Center
       const renderProductImage = () => {
@@ -476,7 +522,13 @@ export function StudioModal({
                   ? 'bg-gradient-to-br from-emerald-800 via-teal-900 to-slate-900 text-white'
                   : selectedFrame === 'minimalis'
                   ? 'bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 border-4 border-slate-300'
-                  : 'bg-gradient-to-br from-amber-800 via-orange-900 to-stone-900 text-amber-50'
+                  : selectedFrame === 'kriya'
+                  ? 'bg-gradient-to-br from-amber-800 via-orange-900 to-stone-900 text-amber-50'
+                  : selectedFrame === 'neon'
+                  ? 'bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-cyan-300 border-2 border-cyan-500/50'
+                  : selectedFrame === 'panen'
+                  ? 'bg-gradient-to-br from-green-800 via-emerald-700 to-green-950 text-white'
+                  : 'bg-gradient-to-br from-fuchsia-950 via-purple-950 to-indigo-950 text-amber-100 border-2 border-amber-400/60'
               }`}
             >
               {/* Studio Frame Overlay Graphic */}
@@ -484,6 +536,12 @@ export function StudioModal({
                 className={`absolute inset-3 border-2 rounded-2xl pointer-events-none flex flex-col justify-between p-3.5 ${
                   selectedFrame === 'minimalis'
                     ? 'border-slate-400/40'
+                    : selectedFrame === 'neon'
+                    ? 'border-cyan-400/60'
+                    : selectedFrame === 'panen'
+                    ? 'border-emerald-300/60'
+                    : selectedFrame === 'royal'
+                    ? 'border-amber-400/70'
                     : 'border-emerald-300/40'
                 }`}
               >
@@ -492,20 +550,32 @@ export function StudioModal({
                     className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-md shadow-sm ${
                       selectedFrame === 'minimalis'
                         ? 'bg-slate-900 text-white'
+                        : selectedFrame === 'neon'
+                        ? 'bg-cyan-950 text-cyan-300 border border-cyan-500'
+                        : selectedFrame === 'royal'
+                        ? 'bg-amber-500 text-purple-950 font-black'
                         : 'bg-emerald-950/80 text-emerald-200'
                     }`}
                   >
-                    {effectiveStoreName.toUpperCase()} • PASAR TRADISIONAL
+                    {effectiveStoreName.toUpperCase()}
                   </span>
-                  <span className="text-xs font-extrabold bg-amber-400 text-slate-900 px-2.5 py-1 rounded-md shadow-sm">
-                    GARANSI SEGAR
+                  <span
+                    className={`text-xs font-extrabold px-2.5 py-1 rounded-md shadow-sm ${
+                      selectedFrame === 'neon'
+                        ? 'bg-pink-500 text-white'
+                        : selectedFrame === 'royal'
+                        ? 'bg-amber-400 text-slate-900'
+                        : 'bg-amber-400 text-slate-900'
+                    }`}
+                  >
+                    {selectedFrame === 'neon' ? '⚡ PROMO KILAT' : selectedFrame === 'royal' ? '👑 PREMIUM GRADE' : '⭐ GARANSI SEGAR'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between w-full">
                   <span className="text-xs font-bold opacity-80">Pesanan WA: {phone}</span>
                   <span className="text-xs font-bold uppercase tracking-wider opacity-80">
-                    Kualitas Pilihan
+                    {selectedFrame === 'royal' ? 'Pilihan Sultan' : 'Kualitas Pilihan'}
                   </span>
                 </div>
               </div>
@@ -548,14 +618,17 @@ export function StudioModal({
                   { id: 'pasar', label: 'Pasar Tradisional' },
                   { id: 'minimalis', label: 'Minimalis Elegan' },
                   { id: 'kriya', label: 'Kuliner & Kriya' },
+                  { id: 'neon', label: 'Neon Midnight' },
+                  { id: 'panen', label: 'Panen Kebun' },
+                  { id: 'royal', label: 'Royal Gold' },
                 ].map((fr) => (
                   <button
                     key={fr.id}
                     type="button"
                     onClick={() => setSelectedFrame(fr.id as any)}
-                    className={`min-h-[40px] px-4 py-2 rounded-xl border font-bold transition-all cursor-pointer text-sm ${
+                    className={`min-h-[40px] px-3.5 py-2 rounded-xl border font-bold transition-all cursor-pointer text-xs sm:text-sm ${
                       selectedFrame === fr.id
-                        ? 'border-emerald-700 bg-emerald-50 text-emerald-800 shadow-sm'
+                        ? 'border-emerald-700 bg-emerald-50 text-emerald-800 shadow-sm ring-2 ring-emerald-600/20'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >

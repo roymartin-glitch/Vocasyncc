@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createAdminClient();
     const body = await req.json();
-    const { name, unit = 'kg', costPrice, sellingPrice, stock = 10 } = body;
+    const { name, unit = 'kg', costPrice, sellingPrice, stock = 10, imageUrl } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -176,20 +176,39 @@ export async function POST(req: NextRequest) {
 
     let newProd: any = null;
 
-    // 1. Coba simpan ke database Supabase
+    // 1. Coba simpan ke database Supabase (dengan fallback jika kolom image_url belum dibuat)
     try {
+      const insertPayload: Record<string, any> = {
+        user_id: userId,
+        name: name.trim(),
+        default_unit: unit,
+      };
+      if (imageUrl) {
+        insertPayload.image_url = imageUrl;
+      }
+
       const { data, error: prodErr } = await supabase
         .from('products')
-        .insert({
-          user_id: userId,
-          name: name.trim(),
-          default_unit: unit,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
       if (!prodErr && data) {
         newProd = data;
+      } else if (imageUrl) {
+        // Retry without image_url if schema column does not exist
+        const { data: retryData, error: retryErr } = await supabase
+          .from('products')
+          .insert({
+            user_id: userId,
+            name: name.trim(),
+            default_unit: unit,
+          })
+          .select()
+          .single();
+        if (!retryErr && retryData) {
+          newProd = { ...retryData, image_url: imageUrl };
+        }
       }
     } catch (dbErr: any) {
       console.warn('Supabase product insert fallback to in-memory store:', dbErr.message);
@@ -279,6 +298,7 @@ export async function POST(req: NextRequest) {
       id: newProd.id,
       name: newProd.name,
       unit: newProd.default_unit || unit,
+      image_url: newProd.image_url || imageUrl || null,
       cost_price: Math.round(cost),
       selling_price: Math.round(selling),
       margin_percentage: margin,

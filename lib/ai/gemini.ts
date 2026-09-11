@@ -7,43 +7,62 @@ export async function callGemini(
     throw new Error('GEMINI_API_KEY is not configured in server environment.');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+  const modelsToTry = [
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-flash-latest',
+  ];
 
-  const body = {
-    contents: [
-      {
-        parts: [
+  let lastError: any = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const body = {
+        contents: [
           {
-            text: `${systemInstruction}\n\n${prompt}`,
+            parts: [
+              {
+                text: `${systemInstruction}\n\n${prompt}`,
+              },
+            ],
           },
         ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 1000,
-    },
-  };
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        },
+      };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Gemini API Error:', errorText);
-    throw new Error(`Gemini API returned status ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const text = parts
+          .map((p: any) => p.text)
+          .filter(Boolean)
+          .join('\n');
+        if (text && text.trim()) {
+          return text.trim();
+        }
+      } else {
+        const errorText = await response.text();
+        lastError = new Error(`Gemini ${model} status ${response.status}: ${errorText}`);
+      }
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  const data = await response.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  const text = parts
-    .map((p: any) => p.text)
-    .filter(Boolean)
-    .join('\n');
-  return text || '';
+  console.error('All Gemini models failed:', lastError);
+  throw lastError || new Error('Gemini API call failed');
 }

@@ -7,11 +7,12 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const productId = formData.get("productId") as string | null;
+    const rawProductId = formData.get("productId") as string | null;
+    const productId = rawProductId || `new_${Date.now()}`;
 
-    if (!file || !productId) {
+    if (!file) {
       return NextResponse.json(
-        { success: false, error: "File dan productId wajib diisi." },
+        { success: false, error: "File gambar wajib diisi." },
         { status: 400 }
       );
     }

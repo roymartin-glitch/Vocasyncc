@@ -48,7 +48,7 @@ export default function StudioPage() {
   const [storeName, setStoreName] = useState('Kios Berkah Sayur');
   const [phone, setPhone] = useState('0812-3456-7890');
 
-  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya'>('pasar');
+  const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya' | 'neon' | 'panen' | 'royal'>('pasar');
   const [copyStyle, setCopyStyle] = useState<'pasar' | 'fomo' | 'elegan'>('pasar');
 
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -180,11 +180,17 @@ export default function StudioPage() {
     const originalUrl = URL.createObjectURL(file);
     setUploadedImage(originalUrl);
 
-    // Attempt client-side AI background removal (100% local, no server required)
+    // Attempt client-side AI background removal with accelerated configuration
     setIsRemovingBg(true);
     try {
       const imgly = await import('@imgly/background-removal');
-      const cleanBlob = await imgly.removeBackground(file);
+      const cleanBlob = await imgly.removeBackground(file, {
+        model: 'isnet_quint8',
+        output: {
+          format: 'image/webp',
+          quality: 0.9,
+        },
+      });
       const cleanUrl = URL.createObjectURL(cleanBlob);
       setUploadedImage(cleanUrl);
     } catch (err) {
@@ -215,21 +221,50 @@ export default function StudioPage() {
       } else if (selectedFrame === 'minimalis') {
         bgGradient.addColorStop(0, '#f8fafc');
         bgGradient.addColorStop(1, '#e2e8f0');
-      } else {
+      } else if (selectedFrame === 'kriya') {
         bgGradient.addColorStop(0, '#7c2d12');
         bgGradient.addColorStop(0.7, '#1c1917');
         bgGradient.addColorStop(1, '#451a03');
+      } else if (selectedFrame === 'neon') {
+        bgGradient.addColorStop(0, '#090d16');
+        bgGradient.addColorStop(0.5, '#1e1b4b');
+        bgGradient.addColorStop(1, '#020617');
+      } else if (selectedFrame === 'panen') {
+        bgGradient.addColorStop(0, '#14532d');
+        bgGradient.addColorStop(0.5, '#15803d');
+        bgGradient.addColorStop(1, '#052e16');
+      } else {
+        // 'royal' gold & burgundy
+        bgGradient.addColorStop(0, '#4a044e');
+        bgGradient.addColorStop(0.6, '#2e1065');
+        bgGradient.addColorStop(1, '#1e1b4b');
       }
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, 1080, 1080);
 
       // 2. Decorative Outer Border
-      ctx.strokeStyle = selectedFrame === 'minimalis' ? '#cbd5e1' : 'rgba(52, 211, 153, 0.4)';
-      ctx.lineWidth = 8;
+      ctx.strokeStyle =
+        selectedFrame === 'minimalis'
+          ? '#cbd5e1'
+          : selectedFrame === 'neon'
+          ? '#06b6d4'
+          : selectedFrame === 'panen'
+          ? '#86efac'
+          : selectedFrame === 'royal'
+          ? '#fbbf24'
+          : 'rgba(52, 211, 153, 0.4)';
+      ctx.lineWidth = selectedFrame === 'royal' || selectedFrame === 'neon' ? 10 : 8;
       ctx.strokeRect(36, 36, 1008, 1008);
 
       // 3. Header Store Banner
-      ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#ffffff';
+      ctx.fillStyle =
+        selectedFrame === 'minimalis'
+          ? '#0f172a'
+          : selectedFrame === 'neon'
+          ? '#06b6d4'
+          : selectedFrame === 'royal'
+          ? '#d97706'
+          : '#ffffff';
       ctx.font = 'bold 38px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`🛒 ${storeName.toUpperCase()}`, 80, 110);
@@ -438,7 +473,10 @@ export default function StudioPage() {
               {[
                 { id: 'pasar', label: 'Pasar', desc: 'Emerald Mewah' },
                 { id: 'minimalis', label: 'Minimalis', desc: 'Putih Bersih' },
-                { id: 'kriya', label: 'Kriya', desc: 'Warm Earth' },
+                { id: 'kriya', label: 'Kuliner', desc: 'Warm Earth' },
+                { id: 'neon', label: 'Neon', desc: 'Midnight Glow' },
+                { id: 'panen', label: 'Panen', desc: 'Hijau Kebun' },
+                { id: 'royal', label: 'Royal', desc: 'Sultan Gold' },
               ].map((f) => (
                 <button
                   key={f.id}
