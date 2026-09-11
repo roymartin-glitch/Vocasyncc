@@ -361,7 +361,17 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Hapus child records yang berelasi dengan produk ini
+    // Bersihkan dari mockProducts jika ID ditemukan (untuk demo / in-memory produk)
+    const mockIdx = mockProducts.findIndex((p) => p.id === productId);
+    if (mockIdx !== -1) {
+      mockProducts.splice(mockIdx, 1);
+      return NextResponse.json({
+        success: true,
+        message: 'Produk berhasil dihapus.',
+      });
+    }
+
+    // Hapus child records yang berelasi dengan produk ini di database
     try {
       await supabase.from('stock_batches').delete().eq('product_id', productId);
       await supabase.from('transaction_items').delete().eq('product_id', productId);

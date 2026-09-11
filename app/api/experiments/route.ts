@@ -27,12 +27,12 @@ export async function GET(req: NextRequest) {
           id,
           name
         ),
-        experiment_logs (
+        experiment_results (
           id,
-          day_number,
-          recorded_date,
-          metric_value,
-          notes
+          recorded_at,
+          current_metric,
+          evaluation_status,
+          ai_verdict_text
         )
       `)
       .order('started_at', { ascending: false });

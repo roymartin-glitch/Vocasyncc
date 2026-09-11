@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getFIFOCostPrice } from '@/lib/calculations/financial';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
-import { mockTransactions } from '@/lib/mock-data';
+import { mockTransactions, mockProducts } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
@@ -148,14 +148,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Get active user profile
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
     const userId = profile?.id;
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Pengguna tidak ditemukan.' },
-        { status: 404 }
-      );
-    }
+    const isDemo = !user;
 
     // 2. Clean product name & check or create product scoped to this user
     let productId = '';
@@ -174,6 +169,88 @@ export async function POST(req: NextRequest) {
           .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ')
       : 'Barang Dagangan';
+
+    const qty = parseFloat(quantity) || 1;
+    const total = parseFloat(totalAmount) || 0;
+    const unitPrice = total / qty;
+
+    // A. Demo Mode Handler: Dukung penuh pencatatan transaksi & auto-tambah barang baru tanpa login
+    if (isDemo) {
+      const existingDemoProd = mockProducts.find(
+        (p) => p.name.toLowerCase() === finalCleanName.toLowerCase()
+      );
+
+      if (existingDemoProd) {
+        productId = existingDemoProd.id;
+        if (type === 'expense') {
+          existingDemoProd.cost_price = Math.round(unitPrice);
+          existingDemoProd.remaining_stock = (existingDemoProd.remaining_stock || 0) + qty;
+        } else {
+          existingDemoProd.selling_price = Math.round(unitPrice);
+          existingDemoProd.remaining_stock = Math.max(0, (existingDemoProd.remaining_stock || 0) - qty);
+        }
+      } else {
+        isNewProduct = true;
+        productId = 'prod-' + Date.now();
+        const costPrice = type === 'expense' ? Math.round(unitPrice) : Math.round(unitPrice * 0.8);
+        const sellPrice = type === 'income' ? Math.round(unitPrice) : Math.round(unitPrice * 1.25);
+        const margin = Math.round(((sellPrice - costPrice) / sellPrice) * 100);
+
+        mockProducts.unshift({
+          id: productId,
+          name: finalCleanName,
+          unit: unit || 'kg',
+          cost_price: costPrice,
+          selling_price: sellPrice,
+          margin_percentage: margin,
+          action_category: margin >= 20 ? 'dorong' : 'perbaiki',
+          avg_daily_volume: qty,
+          total_revenue_7d: total,
+          remaining_stock: qty,
+          is_stock_low: false,
+        });
+      }
+
+      const newTxId = 'tx-' + Date.now();
+      const newDemoTx = {
+        id: newTxId,
+        user_id: userId || '00000000-0000-0000-0000-000000000001',
+        type,
+        transaction_date: new Date().toISOString(),
+        source,
+        raw_voice_text: rawVoiceText || null,
+        total_amount: total,
+        items: [
+          {
+            id: 'txi-' + Date.now(),
+            transaction_id: newTxId,
+            product_id: productId,
+            product_name: finalCleanName,
+            quantity: qty,
+            unit,
+            unit_price: Math.round(unitPrice),
+            subtotal: total,
+          },
+        ],
+      };
+      mockTransactions.unshift(newDemoTx);
+
+      return NextResponse.json({
+        success: true,
+        data: newDemoTx,
+        productId,
+        productName: finalCleanName,
+        isNewProduct,
+        message: 'Transaksi dan barang berhasil dicatat.',
+      });
+    }
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'Pengguna tidak ditemukan.' },
+        { status: 404 }
+      );
+    }
 
     const { data: existingProduct } = await supabase
       .from('products')
@@ -218,10 +295,6 @@ export async function POST(req: NextRequest) {
     if (txErr) throw txErr;
 
     // 4. Create transaction item
-    const qty = parseFloat(quantity) || 1;
-    const total = parseFloat(totalAmount) || 0;
-    const unitPrice = total / qty;
-
     const { error: itemErr } = await supabase.from('transaction_items').insert({
       transaction_id: newTx.id,
       product_id: productId,
