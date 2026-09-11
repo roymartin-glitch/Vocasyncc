@@ -20,6 +20,9 @@ import {
   Pencil,
   Check,
   Trash2,
+  Camera,
+  Upload,
+  ImageIcon,
 } from 'lucide-react';
 import { ProductAnalysisItem, ProductActionCategory } from '@/types';
 import { StudioModal } from '@/components/studio/StudioModal';
@@ -50,6 +53,8 @@ export default function ProdukPage() {
   const [editUnit, setEditUnit] = useState('kg');
   const [editSelling, setEditSelling] = useState('');
   const [editStock, setEditStock] = useState('10');
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [editError, setEditError] = useState('');
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
@@ -380,8 +385,59 @@ export default function ProdukPage() {
     setEditUnit(p.unit);
     setEditSelling(String(p.selling_price));
     setEditStock(String(p.remaining_stock ?? 10));
+    setEditImageUrl(p.image_url || null);
     setEditError('');
     setIsEditModalOpen(true);
+  };
+
+  // Upload photo handler for edit modal
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editProduct) return;
+
+    if (!file.type.startsWith('image/')) {
+      setEditError('Pilih file gambar yang valid (JPG, PNG, atau WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setEditError('Ukuran gambar maksimal 5 MB.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setEditError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('productId', editProduct.id);
+
+      const res = await fetch('/api/upload-product-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await res.json();
+      if (result.success && result.url) {
+        setEditImageUrl(result.url);
+      } else {
+        // Fallback locally via base64 preview so user experience is uninterrupted
+        const reader = new FileReader();
+        reader.onload = () => {
+          setEditImageUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (_) {
+      // Offline / network fallback with data URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        setEditImageUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   // Delete product action
@@ -449,6 +505,7 @@ export default function ProdukPage() {
         unit: editUnit,
         sellingPrice: selling,
         stock: stockQty,
+        imageUrl: editImageUrl,
       };
 
       const res = await fetch('/api/product-analysis', {
@@ -472,6 +529,7 @@ export default function ProdukPage() {
               selling_price: selling,
               remaining_stock: stockQty,
               is_stock_low: stockQty <= 2,
+              image_url: editImageUrl,
             }
             : p
         );
@@ -497,6 +555,7 @@ export default function ProdukPage() {
             selling_price: selling,
             remaining_stock: stockQty,
             is_stock_low: stockQty <= 2,
+            image_url: editImageUrl,
           }
           : prev
       );
@@ -766,6 +825,58 @@ export default function ProdukPage() {
               )}
 
               <form onSubmit={handleEditProduct} className="space-y-4">
+                {/* Foto Produk */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Foto Produk / Komoditas
+                  </label>
+                  <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-200/90 rounded-2xl">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                      {editImageUrl ? (
+                        <img
+                          src={editImageUrl}
+                          alt={editName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Package className="w-7 h-7 text-slate-300" />
+                      )}
+                      {isUploadingPhoto && (
+                        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 shadow-xs transition-colors cursor-pointer active:scale-95">
+                          <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>{editImageUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            disabled={isUploadingPhoto}
+                            className="hidden"
+                          />
+                        </label>
+                        {editImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditImageUrl(null)}
+                            className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-tight">
+                        Format JPG, PNG, atau WEBP (Maks. 5 MB)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Nama Produk <span className="text-rose-500">*</span>
@@ -1070,8 +1181,12 @@ export default function ProdukPage() {
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center justify-center flex-shrink-0 font-black">
-                            <Package className="w-5 h-5" />
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center justify-center flex-shrink-0 font-black overflow-hidden">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Package className="w-5 h-5" />
+                            )}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -1171,8 +1286,12 @@ export default function ProdukPage() {
               <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 p-6 text-white relative">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white flex-shrink-0">
-                      <Package className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white flex-shrink-0 overflow-hidden">
+                      {selectedProduct.image_url ? (
+                        <img src={selectedProduct.image_url} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Package className="w-6 h-6" />
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300">

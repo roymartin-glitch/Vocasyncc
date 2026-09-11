@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const supabase = createAdminClient();
     const userId = profile?.id;
 
-    let productsQuery = supabase.from('products').select('id, name, default_unit').order('name');
+    let productsQuery = supabase.from('products').select('id, name, default_unit, image_url').order('name');
     if (userId) {
       productsQuery = productsQuery.eq('user_id', userId);
     }
@@ -35,11 +35,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Parallelize all database queries concurrently for maximum speed
-    const [productsRes, itemsRes, batchesRes] = await Promise.all([
+    let [productsRes, itemsRes, batchesRes] = await Promise.all([
       productsQuery,
       itemsQuery,
       batchesQuery,
     ]);
+
+    // Graceful fallback if image_url column doesn't exist yet in DB
+    if (productsRes.error && productsRes.error.message?.includes('image_url')) {
+      let fallbackQuery = supabase.from('products').select('id, name, default_unit').order('name');
+      if (userId) fallbackQuery = fallbackQuery.eq('user_id', userId);
+      productsRes = (await fallbackQuery) as any;
+    }
 
     const threshold = Number(profile?.margin_alert_threshold) || 20;
     const products = productsRes.data || [];
@@ -57,12 +64,12 @@ export async function GET(req: NextRequest) {
     // Compute cost price, selling price, and stock per product
     const productStats: Record<string, any> = {};
 
-    (products || []).forEach((p) => {
+    (products || []).forEach((p: any) => {
       productStats[p.id] = {
         id: p.id,
         name: p.name,
         unit: p.default_unit || 'kg',
-        image_url: null, // image_url column not yet in DB schema
+        image_url: p.image_url || null,
         latestCost: 0,
         latestCostDate: '',
         latestSelling: 0,
@@ -127,7 +134,7 @@ export async function GET(req: NextRequest) {
         id: stat.id,
         name: stat.name,
         unit: stat.unit,
-        image_url: null, // image_url column not yet in DB schema
+        image_url: stat.image_url || null,
         cost_price: Math.round(cost),
         selling_price: Math.round(selling),
         margin_percentage: margin,
@@ -299,7 +306,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const supabase = createAdminClient();
     const body = await req.json();
-    const { id, name, unit, sellingPrice, stock } = body;
+    const { id, name, unit, sellingPrice, stock, imageUrl } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -313,6 +320,7 @@ export async function PATCH(req: NextRequest) {
     if (mockIdx !== -1) {
       if (name !== undefined && name.trim()) mockProducts[mockIdx].name = name.trim();
       if (unit !== undefined && unit.trim()) mockProducts[mockIdx].unit = unit.trim();
+      if (imageUrl !== undefined) mockProducts[mockIdx].image_url = imageUrl;
       if (stock !== undefined) {
         const parsedStock = Number(stock);
         mockProducts[mockIdx].remaining_stock = parsedStock;
@@ -331,6 +339,7 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, any> = {};
     if (name !== undefined && name.trim()) updates.name = name.trim();
     if (unit !== undefined && unit.trim()) updates.default_unit = unit.trim();
+    if (imageUrl !== undefined) updates.image_url = imageUrl;
 
     let updatedProd: any = mockIdx !== -1 ? mockProducts[mockIdx] : null;
 
@@ -344,6 +353,11 @@ export async function PATCH(req: NextRequest) {
 
       if (data && !updateErr) {
         updatedProd = data;
+      } else if (updateErr && imageUrl !== undefined && updateErr.message?.includes('image_url')) {
+        // Retry without image_url if schema migration 10 hasn't been run in Supabase yet
+        delete updates.image_url;
+        const retry = await supabase.from('products').update(updates).eq('id', id).select().maybeSingle();
+        if (retry.data) updatedProd = { ...retry.data, image_url: imageUrl };
       }
     } catch (_) {}
 
