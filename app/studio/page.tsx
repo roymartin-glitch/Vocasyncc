@@ -170,11 +170,28 @@ export default function StudioPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setUploadedImage(url);
+    if (!file) return;
+
+    // Immediately show original photo while AI processes background removal
+    const originalUrl = URL.createObjectURL(file);
+    setUploadedImage(originalUrl);
+
+    // Attempt client-side AI background removal (100% local, no server required)
+    setIsRemovingBg(true);
+    try {
+      const imgly = await import('@imgly/background-removal');
+      const cleanBlob = await imgly.removeBackground(file);
+      const cleanUrl = URL.createObjectURL(cleanBlob);
+      setUploadedImage(cleanUrl);
+    } catch (err) {
+      console.info('Background removal fallback to original photo:', err);
+      // Keep originalUrl which is already set
+    } finally {
+      setIsRemovingBg(false);
     }
   };
 
@@ -486,7 +503,12 @@ export default function StudioPage() {
 
               {/* Center Photo */}
               <div className="my-auto py-2">
-                {uploadedImage ? (
+                {isRemovingBg ? (
+                  <div className="w-44 h-44 mx-auto rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-emerald-400/60 bg-emerald-950/30 gap-2">
+                    <Loader2 className="w-8 h-8 text-emerald-300 animate-spin" />
+                    <span className="text-[10px] font-bold text-emerald-200 text-center px-2">AI hapus latar belakang foto...</span>
+                  </div>
+                ) : uploadedImage ? (
                   <div className="w-44 h-44 mx-auto rounded-2xl overflow-hidden shadow-md border-2 border-white/40 bg-white/10">
                     <img
                       src={uploadedImage}
@@ -495,8 +517,13 @@ export default function StudioPage() {
                     />
                   </div>
                 ) : (
-                  <div className="w-44 h-44 mx-auto rounded-2xl flex items-center justify-center border-2 border-dashed border-white/30 text-white/70">
-                    <span className="text-xs font-bold">Foto Produk</span>
+                  <div
+                    className="w-44 h-44 mx-auto rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-white/30 text-white/70 cursor-pointer hover:border-emerald-400/60 hover:bg-white/5 transition-all gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Klik untuk unggah foto produk"
+                  >
+                    <Upload className="w-6 h-6 opacity-70" />
+                    <span className="text-xs font-bold">Ketuk untuk\nUnggah Foto</span>
                   </div>
                 )}
               </div>
