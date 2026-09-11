@@ -354,15 +354,15 @@ export default function LoginPage() {
       {/* Main Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg">
         <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-slate-200/80 shadow-sm space-y-6">
-          {/* Quick Demo Access Banner for Judges */}
+          {/* Quick Demo Access Banner */}
           <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/40 border border-emerald-300/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-emerald-700 text-white rounded-xl shadow-xs">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-extrabold text-xs text-emerald-950">Akses Cepat Pengujian (Juri)</h4>
-                <p className="text-[11px] text-emerald-800">Masuk langsung dengan data seed Pak Budi</p>
+                <h4 className="font-extrabold text-xs text-emerald-950">Akses Cepat Akun Demo</h4>
+                <p className="text-[11px] text-emerald-800">Coba langsung sistem dengan akun Pak Budi (Kios Berkah Sayur)</p>
               </div>
             </div>
             <button
