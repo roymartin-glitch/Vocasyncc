@@ -65,7 +65,22 @@ export default function LaporanPage() {
       }
 
       if (txRes.status === 'fulfilled' && txRes.value.success) {
-        const txList = txRes.value.data || [];
+        let txList = [...(txRes.value.data || [])];
+        if (typeof window !== 'undefined') {
+          try {
+            const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            const localTxs = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
+            const existingIds = new Set(txList.map((t: any) => t.id));
+            for (const l of localTxs) {
+              if (l && l.id && !existingIds.has(l.id)) {
+                if (l.user_id && l.user_id === userKey) {
+                  txList.unshift(l);
+                  existingIds.add(l.id);
+                }
+              }
+            }
+          } catch (_) {}
+        }
         setTransactions(txList);
         nextTx = txList;
       }

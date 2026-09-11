@@ -29,6 +29,7 @@ export default function RiwayatPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Edit Modal State
@@ -305,26 +306,37 @@ export default function RiwayatPage() {
       </div>
 
       {/* Date Filter & Preset Controls */}
-      <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-base font-black text-slate-900">
-          <Calendar className="w-5 h-5 text-[#00875A] stroke-[2.5]" />
-          <span>Pilih Waktu & Tanggal:</span>
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border-2 border-slate-200 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm sm:text-base font-black text-slate-900">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-[#00875A] stroke-[2.5]" />
+            <span>Periode Waktu</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+            className="text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200/80 flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Filter className="w-3.5 h-3.5 text-[#00875A]" />
+            <span>{isFilterExpanded ? 'Sembunyikan Filter' : 'Filter Kustom'}</span>
+          </button>
         </div>
 
-        {/* Date Presets Pills */}
-        <div className="flex flex-wrap gap-2.5">
+        {/* Date Presets Pills - Horizontal swipeable on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 sm:pb-0 scrollbar-none">
           {[
-            { id: 'all', label: 'Semua Waktu' },
+            { id: 'all', label: 'Semua' },
             { id: 'today', label: 'Hari Ini' },
             { id: 'yesterday', label: 'Kemarin' },
-            { id: 'week', label: '7 Hari Terakhir' },
+            { id: 'week', label: '7 Hari' },
             { id: 'month', label: 'Bulan Ini' },
           ].map((preset) => (
             <button
               key={preset.id}
               type="button"
               onClick={() => applyPreset(preset.id as DatePreset)}
-              className={`text-sm font-bold px-4 py-2.5 rounded-2xl transition-all cursor-pointer ${
+              className={`text-xs sm:text-sm font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                 datePreset === preset.id
                   ? 'bg-[#00875A] text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -335,111 +347,125 @@ export default function RiwayatPage() {
           ))}
         </div>
 
-        {/* Custom Date Range Picker */}
-        <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">
-              Dari Tanggal:
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setDatePreset('custom');
-                setStartDate(e.target.value);
-              }}
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
-            />
-          </div>
+        {/* Quick Search on mobile */}
+        <div className="relative pt-1 sm:hidden">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari transaksi / barang..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+          />
+        </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">
-              Sampai Tanggal:
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setDatePreset('custom');
-                setEndDate(e.target.value);
-              }}
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">
-              Jenis Transaksi:
-            </label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden cursor-pointer"
-            >
-              <option value="all">Semua Jenis</option>
-              <option value="income">Uang Masuk (Penjualan)</option>
-              <option value="expense">Uang Keluar (Belanja)</option>
-            </select>
-          </div>
-
-          {/* Search Input */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">
-              Cari Nama Barang:
-            </label>
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+        {/* Custom Date Range & Advanced Filters */}
+        {isFilterExpanded && (
+          <div className="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end animate-in fade-in duration-150">
+            <div>
+              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+                Dari Tanggal:
+              </label>
               <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Contoh: Bawang..."
-                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setDatePreset('custom');
+                  setStartDate(e.target.value);
+                }}
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
               />
             </div>
+
+            <div>
+              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+                Sampai Tanggal:
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setDatePreset('custom');
+                  setEndDate(e.target.value);
+                }}
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+              />
+            </div>
+
+            {/* Type Filter */}
+            <div>
+              <label className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+                Jenis Transaksi:
+              </label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden cursor-pointer"
+              >
+                <option value="all">Semua Jenis</option>
+                <option value="income">Uang Masuk (Penjualan)</option>
+                <option value="expense">Uang Keluar (Belanja)</option>
+              </select>
+            </div>
+
+            {/* Desktop Search Input */}
+            <div className="hidden sm:block">
+              <label className="block text-xs font-bold text-slate-500 mb-1">
+                Cari Nama Barang:
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Contoh: Bawang..."
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-bold text-slate-800 focus:border-[#00875A] outline-hidden"
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Summary Cards for Selected Date Range */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Summary Cards for Selected Date Range - Compact on mobile */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {/* Total Uang Masuk */}
-        <div className="bg-white p-5 rounded-3xl border-2 border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-            Total Uang Masuk
+        <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-slate-200 shadow-sm">
+          <div className="text-[10px] sm:text-xs font-bold text-emerald-800 uppercase tracking-wider truncate">
+            Uang Masuk
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-[#00875A] mt-1.5 tracking-tight">
+          <div className="text-sm sm:text-2xl lg:text-3xl font-black text-[#00875A] mt-0.5 sm:mt-1.5 tracking-tight truncate">
             Rp{summary.income.toLocaleString('id-ID')}
           </div>
-          <div className="text-xs font-semibold text-slate-400 mt-1">
-            Penjualan pada periode ini
+          <div className="hidden sm:block text-xs font-semibold text-slate-400 mt-1">
+            Penjualan periode ini
           </div>
         </div>
 
         {/* Total Uang Keluar */}
-        <div className="bg-white p-5 rounded-3xl border-2 border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-rose-800 uppercase tracking-wider">
-            Total Uang Keluar
+        <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-slate-200 shadow-sm">
+          <div className="text-[10px] sm:text-xs font-bold text-rose-800 uppercase tracking-wider truncate">
+            Uang Keluar
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-600 mt-1.5 tracking-tight">
+          <div className="text-sm sm:text-2xl lg:text-3xl font-black text-rose-600 mt-0.5 sm:mt-1.5 tracking-tight truncate">
             Rp{summary.expense.toLocaleString('id-ID')}
           </div>
-          <div className="text-xs font-semibold text-slate-400 mt-1">
-            Belanja & biaya pada periode ini
+          <div className="hidden sm:block text-xs font-semibold text-slate-400 mt-1">
+            Belanja periode ini
           </div>
         </div>
 
         {/* Sisa Uang / Untung Bersih */}
-        <div className="bg-[#A3E635] p-5 rounded-3xl border-2 border-[#84CC16] shadow-sm">
-          <div className="text-xs font-black text-slate-950 uppercase tracking-wider">
-            Sisa Uang (Untung Bersih)
+        <div className="bg-[#A3E635] p-3 sm:p-5 rounded-2xl sm:rounded-3xl border-2 border-[#84CC16] shadow-sm">
+          <div className="text-[10px] sm:text-xs font-black text-slate-950 uppercase tracking-wider truncate">
+            Sisa Saldo
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-950 mt-1.5 tracking-tight">
+          <div className="text-sm sm:text-2xl lg:text-3xl font-black text-slate-950 mt-0.5 sm:mt-1.5 tracking-tight truncate">
             Rp{summary.profit.toLocaleString('id-ID')}
           </div>
-          <div className="text-xs font-bold text-slate-800 mt-1">
-            Dari {summary.count} catatan transaksi
+          <div className="hidden sm:block text-xs font-bold text-slate-800 mt-1">
+            {summary.count} transaksi
           </div>
         </div>
       </div>

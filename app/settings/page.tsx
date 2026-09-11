@@ -228,7 +228,7 @@ export default function SettingsPage() {
         sessionStorage.removeItem(`vokasync_products_cache_${userKey}`);
         sessionStorage.removeItem('vokasync_products_cache');
 
-        showSuccess('Semua pengaturan berhasil disimpan ke database Supabase!');
+        showSuccess('Pengaturan toko berhasil diperbarui!');
         // Broadcast updates to Header and Sidebar
         window.dispatchEvent(
           new CustomEvent('vokasync-settings-changed', {
@@ -465,7 +465,7 @@ export default function SettingsPage() {
                   setSoundAlertEnabled(true);
                   localStorage.setItem('vokasync_sound_alert', 'true');
                   saveSettingsPatch({ sound_alert_enabled: true });
-                  showSuccess('Pengaturan suara asisten aktif disimpan ke Supabase!');
+                  showSuccess('Suara asisten aktif berhasil diaktifkan');
                   window.dispatchEvent(
                     new CustomEvent('vokasync-settings-changed', {
                       detail: { sound_alert_enabled: true },
@@ -505,7 +505,7 @@ export default function SettingsPage() {
                   setSoundAlertEnabled(false);
                   localStorage.setItem('vokasync_sound_alert', 'false');
                   saveSettingsPatch({ sound_alert_enabled: false });
-                  showSuccess('Pengaturan suara hening disimpan ke Supabase!');
+                  showSuccess('Mode hening berhasil diaktifkan');
                   window.dispatchEvent(
                     new CustomEvent('vokasync-settings-changed', {
                       detail: { sound_alert_enabled: false },

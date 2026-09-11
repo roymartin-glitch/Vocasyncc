@@ -198,7 +198,7 @@ export default function EksperimenPage() {
         {isLoading ? (
           <div className="p-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
-            <span>Memuat data eksperimen dari Supabase...</span>
+            <span>Memuat data eksperimen...</span>
           </div>
         ) : (
           filteredExperiments.map((exp) => {
@@ -532,7 +532,7 @@ export default function EksperimenPage() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                 >
-                  Simpan ke Supabase
+                  Mulai Tindakan
                 </button>
               </div>
             </form>
