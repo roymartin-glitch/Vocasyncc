@@ -109,6 +109,8 @@ export function AppShell({ children }: AppShellProps) {
     return () => window.removeEventListener('vokasync-settings-changed', handleSettingsChange);
   }, []);
 
+  const isHomePage = pathname === '/dashboard' || pathname === '/';
+
   if (isAuthPage) {
     return <>{children}</>;
   }
@@ -123,12 +125,14 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Main Content Area (offset by sidebar width on desktop/tablet) */}
       <div className="flex-1 flex flex-col md:pl-20 lg:pl-64 transition-all duration-300">
-        <Header
-          ownerName={ownerName}
-          businessName={businessName}
-        />
+        {isHomePage && (
+          <Header
+            ownerName={ownerName}
+            businessName={businessName}
+          />
+        )}
 
-        <main className="flex-1 px-4 md:px-8 pb-28 md:pb-12 max-w-7xl w-full">
+        <main className={`flex-1 px-4 md:px-8 pb-28 md:pb-12 max-w-7xl w-full ${!isHomePage ? 'pt-6 md:pt-8' : ''}`}>
           {children}
         </main>
       </div>
