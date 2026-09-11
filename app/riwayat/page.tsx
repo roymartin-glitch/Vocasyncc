@@ -16,6 +16,7 @@ import {
   Calendar,
   Filter,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { mockTransactions } from '@/lib/mock-data';
 import { Transaction } from '@/types';
@@ -96,11 +97,24 @@ export default function RiwayatPage() {
       const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.data) {
-        setTransactions(data.data);
+        let list = [...data.data];
+        if (typeof window !== 'undefined') {
+          try {
+            const localTxs = JSON.parse(localStorage.getItem('vokasync_local_txs') || '[]');
+            const existingIds = new Set(list.map((t: any) => t.id));
+            for (const l of localTxs) {
+              if (l && l.id && !existingIds.has(l.id)) {
+                list.unshift(l);
+                existingIds.add(l.id);
+              }
+            }
+          } catch (_) {}
+        }
+        setTransactions(list);
         // Cache default view (all transactions)
         if (filterType === 'all' && !searchQuery && !startDate && !endDate && typeof window !== 'undefined') {
           try {
-            sessionStorage.setItem('vokasync_tx_cache', JSON.stringify(data.data));
+            sessionStorage.setItem('vokasync_tx_cache', JSON.stringify(list));
           } catch (_) {}
         }
       }
@@ -253,13 +267,24 @@ export default function RiwayatPage() {
           </p>
         </div>
 
-        <Link
-          href="/catat"
-          className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-sm px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95 self-start cursor-pointer"
-        >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-          <span>Catat Transaksi Baru</span>
-        </Link>
+        <div className="flex items-center gap-2.5 flex-wrap self-start">
+          <Link
+            href="/laporan"
+            className="inline-flex items-center gap-2 bg-white hover:bg-emerald-50/70 text-emerald-900 border-2 border-emerald-300 hover:border-emerald-500 font-bold text-sm px-4 py-3 rounded-2xl shadow-2xs transition-all active:scale-95 cursor-pointer"
+            title="Buka Rekap Laporan Keuangan & Kas"
+          >
+            <FileText className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
+            <span>Lihat Laporan Keuangan</span>
+          </Link>
+
+          <Link
+            href="/catat"
+            className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-sm px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-5 h-5 stroke-[2.5]" />
+            <span>Catat Transaksi Baru</span>
+          </Link>
+        </div>
       </div>
 
       {/* Date Filter & Preset Controls */}

@@ -215,9 +215,14 @@ export default function CatatPage() {
         });
         setShowSuccessToast(true);
 
-        // Clear session caches to guarantee instant fresh data across all tabs
+        // Clear session caches and save to local transactions to guarantee instant fresh data across all tabs
         if (typeof window !== 'undefined') {
           try {
+            if (saveResult.data) {
+              const currentLocal = JSON.parse(localStorage.getItem('vokasync_local_txs') || '[]');
+              currentLocal.unshift(saveResult.data);
+              localStorage.setItem('vokasync_local_txs', JSON.stringify(currentLocal.slice(0, 100)));
+            }
             sessionStorage.removeItem('vokasync_products_cache');
             sessionStorage.removeItem('vokasync_dash_cache');
             sessionStorage.removeItem('vokasync_laporan_cache');

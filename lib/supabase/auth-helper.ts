@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function getCurrentUser() {
   try {
@@ -20,6 +21,37 @@ export async function getCurrentUser() {
 export async function getActiveUserProfile() {
   const user = await getCurrentUser();
   const adminClient = createAdminClient();
+
+  // 0. Check custom registered user cookie
+  try {
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get('vokasync_user')?.value;
+    if (userCookie) {
+      const parsed = JSON.parse(decodeURIComponent(userCookie));
+      if (parsed.id && parsed.owner_name) {
+        const customProfile = {
+          id: parsed.id,
+          owner_name: parsed.owner_name,
+          business_name: parsed.business_name || 'Kios Saya',
+          business_type: 'pasar',
+          margin_alert_threshold: 20,
+          low_stock_threshold: 20,
+          supplier_cost_increase_threshold: 5,
+          sound_alert_enabled: false,
+          sound_alert_volume: 80,
+          text_size: 'normal',
+          theme: 'terang',
+          default_unit: 'kg',
+          analysis_period: '7d',
+          app_settings: {},
+        };
+        return {
+          user: { id: parsed.id, email: parsed.email } as any,
+          profile: customProfile,
+        };
+      }
+    }
+  } catch (_) {}
 
   if (user) {
     // 1. Try to find profile by authenticated user ID

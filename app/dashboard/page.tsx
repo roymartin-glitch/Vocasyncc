@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Wallet,
   Receipt,
   PiggyBank,
   Percent,
   Share2,
+  FileText,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { TrendChart } from '@/components/dashboard/TrendChart';
@@ -144,14 +146,24 @@ export default function DashboardPage() {
             Ringkasan Hari Ini
           </h2>
 
-          <button
-            type="button"
-            onClick={handleShareWhatsAppRekap}
-            className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer self-start sm:self-auto border-2 border-emerald-600/80"
-          >
-            <Share2 className="w-4 h-4 stroke-[2.5]" />
-            <span>Kirim Rekap WhatsApp</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <Link
+              href="/laporan"
+              className="inline-flex items-center gap-2 bg-white hover:bg-emerald-50/70 text-emerald-900 border-2 border-emerald-300 hover:border-emerald-500 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
+              <span>Lihat Laporan</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleShareWhatsAppRekap}
+              className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer border-2 border-emerald-600/80"
+            >
+              <Share2 className="w-4 h-4 stroke-[2.5]" />
+              <span>Kirim Rekap WhatsApp</span>
+            </button>
+          </div>
         </div>
 
         {/* 4 Accessible Cards Grid */}

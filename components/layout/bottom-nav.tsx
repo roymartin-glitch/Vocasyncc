@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Mic, Package, FileText, Settings } from 'lucide-react';
+import { LayoutGrid, Mic, Package, History, Settings } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -62,18 +62,18 @@ export function BottomNav() {
           </Link>
         </div>
 
-        {/* 4. Laporan */}
+        {/* 4. Riwayat (Tukar posisi dengan Laporan sesuai permintaan) */}
         <Link
-          href="/laporan"
+          href="/riwayat"
           className={`flex-1 flex flex-col items-center justify-center py-1 transition-all ${
-            isTabActive('/laporan') ? 'text-[#22C55E]' : 'text-emerald-100/70 hover:text-white'
+            isTabActive('/riwayat') ? 'text-[#22C55E]' : 'text-emerald-100/70 hover:text-white'
           }`}
         >
-          <div className={`p-1.5 rounded-xl transition-all ${isTabActive('/laporan') ? 'scale-105 bg-[#123825]' : ''}`}>
-            <FileText className={`w-5 h-5 stroke-[2.3] ${isTabActive('/laporan') ? 'text-[#22C55E]' : 'text-emerald-200/70'}`} />
+          <div className={`p-1.5 rounded-xl transition-all ${isTabActive('/riwayat') ? 'scale-105 bg-[#123825]' : ''}`}>
+            <History className={`w-5 h-5 stroke-[2.3] ${isTabActive('/riwayat') ? 'text-[#22C55E]' : 'text-emerald-200/70'}`} />
           </div>
-          <span className={`text-[10px] mt-0.5 font-bold tracking-tight ${isTabActive('/laporan') ? 'text-[#22C55E]' : 'text-emerald-200/70'}`}>
-            Laporan
+          <span className={`text-[10px] mt-0.5 font-bold tracking-tight ${isTabActive('/riwayat') ? 'text-[#22C55E]' : 'text-emerald-200/70'}`}>
+            Riwayat
           </span>
         </Link>
 
