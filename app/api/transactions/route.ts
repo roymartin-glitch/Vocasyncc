@@ -42,6 +42,8 @@ export async function GET(req: NextRequest) {
 
     if (profile?.id) {
       query = query.eq('user_id', profile.id);
+    } else {
+      query = query.eq('user_id', 'demo-user-pak-budi');
     }
 
     if (type && (type === 'income' || type === 'expense')) {

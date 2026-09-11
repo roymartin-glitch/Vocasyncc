@@ -77,8 +77,9 @@ export default function DashboardPage() {
 
       // Persist to session cache for 0ms instant display next time
       try {
+        const userKey = typeof window !== 'undefined' ? (localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')) : 'guest';
         sessionStorage.setItem(
-          'vokasync_dash_cache',
+          `vokasync_dash_cache_${userKey}`,
           JSON.stringify({
             metrics: newMetrics,
             trendData: newTrend,
@@ -97,7 +98,9 @@ export default function DashboardPage() {
   useEffect(() => {
     // 1. Instant 0ms cache hydrate
     try {
-      const cached = sessionStorage.getItem('vokasync_dash_cache');
+      sessionStorage.removeItem('vokasync_dash_cache'); // purge legacy unscoped
+      const userKey = typeof window !== 'undefined' ? (localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')) : 'guest';
+      const cached = sessionStorage.getItem(`vokasync_dash_cache_${userKey}`);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.metrics) setMetrics(parsed.metrics);

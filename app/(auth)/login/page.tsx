@@ -105,8 +105,19 @@ export default function LoginPage() {
           const finalOwner = userProfile?.owner_name || data.user.user_metadata?.owner_name || email.split('@')[0];
           const finalBiz = userProfile?.business_name || data.user.user_metadata?.business_name || 'Toko Saya';
 
+          localStorage.setItem('vokasync_user_id', data.user.id);
+          localStorage.setItem('vokasync_user_email', data.user.email || email.trim());
           localStorage.setItem('vokasync_owner_name', finalOwner);
           localStorage.setItem('vokasync_business_name', finalBiz);
+          document.cookie = `vokasync_user=${encodeURIComponent(
+            JSON.stringify({
+              id: data.user.id,
+              owner_name: finalOwner,
+              business_name: finalBiz,
+              email: data.user.email || email.trim(),
+            })
+          )}; path=/; max-age=2592000`;
+
           if (userProfile?.text_size) localStorage.setItem('vokasync_text_size', userProfile.text_size);
           if (userProfile?.theme) localStorage.setItem('vokasync_theme', userProfile.theme);
           if (userProfile?.sound_alert_enabled !== undefined) {
@@ -172,6 +183,9 @@ export default function LoginPage() {
     }
 
     try {
+      try {
+        await supabase.auth.signOut();
+      } catch (_) {}
       clearAllLocalSessions();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('vokasync_is_demo');
@@ -197,6 +211,22 @@ export default function LoginPage() {
 
       // Upsert profile record explicitly to guarantee immediate availability
       if (data.user) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('vokasync_user_id', data.user.id);
+          localStorage.setItem('vokasync_user_email', data.user.email || email.trim());
+          localStorage.setItem('vokasync_owner_name', ownerName.trim());
+          localStorage.setItem('vokasync_business_name', businessName.trim());
+          localStorage.setItem('vokasync_business_type', businessType);
+          document.cookie = `vokasync_user=${encodeURIComponent(
+            JSON.stringify({
+              id: data.user.id,
+              owner_name: ownerName.trim(),
+              business_name: businessName.trim(),
+              email: data.user.email || email.trim(),
+            })
+          )}; path=/; max-age=2592000`;
+        }
+
         try {
           await supabase.from('profiles').upsert({
             id: data.user.id,

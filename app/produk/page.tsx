@@ -42,6 +42,7 @@ export default function ProdukPage() {
   const [newProductUnit, setNewProductUnit] = useState('kg');
   const [newProductCost, setNewProductCost] = useState('');
   const [newProductSelling, setNewProductSelling] = useState('');
+  const [newProductStock, setNewProductStock] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -51,6 +52,7 @@ export default function ProdukPage() {
   const [editName, setEditName] = useState('');
   const [editUnit, setEditUnit] = useState('kg');
   const [editSelling, setEditSelling] = useState('');
+  const [editStock, setEditStock] = useState('10');
   const [editError, setEditError] = useState('');
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
@@ -68,6 +70,11 @@ export default function ProdukPage() {
   const [aiNotes, setAiNotes] = useState<Record<string, string>>({});
   const [isLoadingAiNote, setIsLoadingAiNote] = useState(false);
 
+  const getUserKey = () => {
+    if (typeof window === 'undefined') return 'guest';
+    return localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+  };
+
   // Fetch product list
   const loadProducts = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -75,17 +82,31 @@ export default function ProdukPage() {
       const res = await fetch('/api/product-analysis');
       const data = await res.json();
       if (data.success && data.data) {
-        setProducts(data.data);
-        if (data.threshold) setThreshold(data.threshold);
+        const userKey = getUserKey();
+        let list = [...data.data];
+
+        // Merge locally added products for this user
         if (typeof window !== 'undefined') {
           try {
-            sessionStorage.setItem('vokasync_products_cache', JSON.stringify({
-              data: data.data,
+            sessionStorage.removeItem('vokasync_products_cache'); // purge legacy unscoped
+            const localSaved = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
+            const existingIds = new Set(list.map((p: any) => p.id));
+            for (const lp of localSaved) {
+              if (lp && lp.id && !existingIds.has(lp.id)) {
+                list.unshift(lp);
+                existingIds.add(lp.id);
+              }
+            }
+            sessionStorage.setItem(`vokasync_products_cache_${userKey}`, JSON.stringify({
+              data: list,
               threshold: data.threshold,
             }));
           } catch (_) {}
         }
-        return data.data;
+
+        setProducts(list);
+        if (data.threshold) setThreshold(data.threshold);
+        return list;
       }
     } catch (e) {
       console.warn('Product analysis fetch fallback:', e);
@@ -99,12 +120,15 @@ export default function ProdukPage() {
     let hasCache = false;
     if (typeof window !== 'undefined') {
       try {
-        const cached = sessionStorage.getItem('vokasync_products_cache');
+        sessionStorage.removeItem('vokasync_products_cache'); // purge legacy unscoped
+        const userKey = getUserKey();
+        const cached = sessionStorage.getItem(`vokasync_products_cache_${userKey}`) || localStorage.getItem(`vokasync_products_${userKey}`);
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
-            setProducts(parsed.data);
-            setSelectedProduct(parsed.data[0]);
+          const cacheList = Array.isArray(parsed) ? parsed : parsed.data;
+          if (Array.isArray(cacheList) && cacheList.length > 0) {
+            setProducts(cacheList);
+            setSelectedProduct(cacheList[0]);
             if (parsed.threshold) setThreshold(parsed.threshold);
             setIsLoading(false);
             hasCache = true;
@@ -210,6 +234,7 @@ export default function ProdukPage() {
     }
     const cost = parseFloat(newProductCost) || 0;
     const selling = parseFloat(newProductSelling) || 0;
+    const stockQty = Math.max(0, parseFloat(newProductStock) || 10);
 
     if (cost <= 0 || selling <= 0) {
       setAddError('Harga beli dari supplier dan harga jual harus lebih dari 0.');
@@ -228,6 +253,7 @@ export default function ProdukPage() {
           unit: newProductUnit,
           costPrice: cost,
           sellingPrice: selling,
+          stock: stockQty,
         }),
       });
 
@@ -236,22 +262,36 @@ export default function ProdukPage() {
         throw new Error(result.error || 'Gagal menyimpan produk baru.');
       }
 
+      const createdItem = result.data;
+
       // Reset form & close modal
       setNewProductName('');
       setNewProductCost('');
       setNewProductSelling('');
+      setNewProductStock('10');
       setIsAddModalOpen(false);
 
-      // Refresh list
-      const updatedList = await loadProducts();
-      if (updatedList && updatedList.length > 0) {
-        const newlyAdded =
-          updatedList.find(
-            (p: ProductAnalysisItem) =>
-              p.name.toLowerCase() === newProductName.trim().toLowerCase()
-          ) || updatedList[0];
-        setSelectedProduct(newlyAdded);
+      // Instant state update & local persistence for seamless UX
+      if (createdItem) {
+        setProducts((prev) => {
+          const next = [createdItem, ...prev.filter((p) => p.id !== createdItem.id)];
+          if (typeof window !== 'undefined') {
+            try {
+              const userKey = getUserKey();
+              localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(next));
+              sessionStorage.setItem(
+                `vokasync_products_cache_${userKey}`,
+                JSON.stringify({ data: next, threshold })
+              );
+            } catch (_) {}
+          }
+          return next;
+        });
+        setSelectedProduct(createdItem);
       }
+
+      // Background refresh
+      loadProducts(true);
     } catch (err: any) {
       setAddError(err.message || 'Terjadi kesalahan saat menambah produk.');
     } finally {
@@ -265,6 +305,7 @@ export default function ProdukPage() {
     setEditName(p.name);
     setEditUnit(p.unit);
     setEditSelling(String(p.selling_price));
+    setEditStock(String(p.remaining_stock ?? 10));
     setEditError('');
     setImageFile(null);
     setImagePreview(p.image_url || null);
@@ -280,17 +321,27 @@ export default function ProdukPage() {
       });
       const result = await res.json();
       if (result.success) {
-        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setProducts((prev) => {
+          const next = prev.filter((p) => p.id !== id);
+          if (typeof window !== 'undefined') {
+            try {
+              const userKey = getUserKey();
+              localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(next));
+              sessionStorage.setItem(
+                `vokasync_products_cache_${userKey}`,
+                JSON.stringify({ data: next, threshold })
+              );
+              sessionStorage.removeItem('vokasync_products_cache');
+              sessionStorage.removeItem('vokasync_dash_cache');
+            } catch (_) {}
+          }
+          return next;
+        });
+
         if (selectedProduct?.id === id) {
           setSelectedProduct(null);
         }
         setProductToDelete(null);
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.removeItem('vokasync_products_cache');
-            sessionStorage.removeItem('vokasync_dash_cache');
-          } catch (_) {}
-        }
       } else {
         alert(result.error || 'Gagal menghapus produk.');
       }
@@ -342,6 +393,8 @@ export default function ProdukPage() {
       return;
     }
     const selling = parseFloat(editSelling) || 0;
+    const stockQty = Math.max(0, parseFloat(editStock) || 0);
+
     if (selling <= 0) {
       setEditError('Harga jual ke pembeli harus lebih dari 0.');
       return;
@@ -362,6 +415,7 @@ export default function ProdukPage() {
         name: editName.trim(),
         unit: editUnit,
         sellingPrice: selling,
+        stock: stockQty,
       };
       if (newImageUrl !== undefined) body.image_url = newImageUrl;
 
@@ -377,11 +431,49 @@ export default function ProdukPage() {
       setImageFile(null);
       setImagePreview(null);
 
-      const updatedList = await loadProducts();
-      if (updatedList) {
-        const refreshed = updatedList.find((p: ProductAnalysisItem) => p.id === editProduct.id);
-        if (refreshed) setSelectedProduct(refreshed);
-      }
+      // Instant state update & local persistence
+      setProducts((prev) => {
+        const next = prev.map((p) =>
+          p.id === editProduct.id
+            ? {
+                ...p,
+                name: editName.trim(),
+                unit: editUnit,
+                selling_price: selling,
+                remaining_stock: stockQty,
+                is_stock_low: stockQty <= 2,
+                image_url: newImageUrl !== undefined ? newImageUrl : p.image_url,
+              }
+            : p
+        );
+        if (typeof window !== 'undefined') {
+          try {
+            const userKey = getUserKey();
+            localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(next));
+            sessionStorage.setItem(
+              `vokasync_products_cache_${userKey}`,
+              JSON.stringify({ data: next, threshold })
+            );
+          } catch (_) {}
+        }
+        return next;
+      });
+
+      setSelectedProduct((prev) =>
+        prev?.id === editProduct.id
+          ? {
+              ...prev,
+              name: editName.trim(),
+              unit: editUnit,
+              selling_price: selling,
+              remaining_stock: stockQty,
+              is_stock_low: stockQty <= 2,
+              image_url: newImageUrl !== undefined ? newImageUrl : prev.image_url,
+            }
+          : prev
+      );
+
+      loadProducts(true);
     } catch (err: any) {
       setEditError(err.message || 'Terjadi kesalahan saat menyimpan.');
     } finally {
@@ -547,6 +639,27 @@ export default function ProdukPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Jumlah Stok Awal ({newProductUnit}) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    placeholder="Contoh: 10"
+                    value={newProductStock}
+                    onChange={(e) => setNewProductStock(e.target.value)}
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-emerald-600 font-semibold text-slate-900"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Berapa banyak stok barang ini yang saat ini tersedia di kios Anda
+                </p>
               </div>
 
               {/* Live Financial Margin Preview */}
@@ -752,6 +865,27 @@ export default function ProdukPage() {
                       className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 focus:bg-white focus:outline-emerald-600 font-semibold text-slate-900"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Jumlah Stok Saat Ini ({editUnit}) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      required
+                      placeholder="Contoh: 10"
+                      value={editStock}
+                      onChange={(e) => setEditStock(e.target.value)}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-emerald-600 font-semibold text-slate-900"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Perbarui jumlah fisik stok komoditas yang tersedia di kios
+                  </p>
                 </div>
 
                 {/* Live Margin Calculation Preview in Edit Modal */}

@@ -101,21 +101,33 @@ export default function RiwayatPage() {
         if (typeof window !== 'undefined') {
           try {
             const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            // Purge old unscoped keys so they never leak old transactions into new accounts
+            localStorage.removeItem('vokasync_local_txs');
+            sessionStorage.removeItem('vokasync_tx_cache');
+            if (userKey !== 'guest') {
+              localStorage.removeItem('vokasync_local_txs_guest');
+              sessionStorage.removeItem('vokasync_tx_cache_guest');
+            }
+
             const localTxs = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
             const existingIds = new Set(list.map((t: any) => t.id));
             for (const l of localTxs) {
               if (l && l.id && !existingIds.has(l.id)) {
-                list.unshift(l);
-                existingIds.add(l.id);
+                // Ensure transaction belongs strictly to active user
+                if (l.user_id && l.user_id === userKey) {
+                  list.unshift(l);
+                  existingIds.add(l.id);
+                }
               }
             }
           } catch (_) {}
         }
         setTransactions(list);
-        // Cache default view (all transactions)
+        // Cache default view per user
         if (filterType === 'all' && !searchQuery && !startDate && !endDate && typeof window !== 'undefined') {
           try {
-            sessionStorage.setItem('vokasync_tx_cache', JSON.stringify(list));
+            const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            sessionStorage.setItem(`vokasync_tx_cache_${userKey}`, JSON.stringify(list));
           } catch (_) {}
         }
       }
@@ -130,7 +142,12 @@ export default function RiwayatPage() {
     let hasCache = false;
     if (filterType === 'all' && !searchQuery && !startDate && !endDate && typeof window !== 'undefined') {
       try {
-        const cached = sessionStorage.getItem('vokasync_tx_cache');
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        sessionStorage.removeItem('vokasync_tx_cache');
+        if (userKey !== 'guest') {
+          sessionStorage.removeItem('vokasync_tx_cache_guest');
+        }
+        const cached = sessionStorage.getItem(`vokasync_tx_cache_${userKey}`);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {

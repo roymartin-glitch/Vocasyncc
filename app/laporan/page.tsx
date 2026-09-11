@@ -78,7 +78,8 @@ export default function LaporanPage() {
       // Persist to session cache for instant future transitions
       if (typeof window !== 'undefined' && nextMetrics && nextTx) {
         try {
-          sessionStorage.setItem('vokasync_laporan_cache', JSON.stringify({
+          const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+          sessionStorage.setItem(`vokasync_laporan_cache_${userKey}`, JSON.stringify({
             metrics: nextMetrics,
             trendData: nextTrend || [],
             transactions: nextTx,
@@ -99,7 +100,9 @@ export default function LaporanPage() {
     let hasCache = false;
     if (typeof window !== 'undefined') {
       try {
-        const cached = sessionStorage.getItem('vokasync_laporan_cache');
+        sessionStorage.removeItem('vokasync_laporan_cache'); // purge legacy unscoped
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        const cached = sessionStorage.getItem(`vokasync_laporan_cache_${userKey}`);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed.metrics) setMetrics(parsed.metrics);

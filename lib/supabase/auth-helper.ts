@@ -113,16 +113,6 @@ export async function getActiveUserProfile() {
     return { user: null, profile: demoProfileInDb };
   }
 
-  const { data: firstProfile } = await adminClient
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (firstProfile) {
-    return { user: null, profile: firstProfile };
-  }
 
   const demoUuid = '00000000-0000-0000-0000-000000000001';
   const defaultDemo = {
