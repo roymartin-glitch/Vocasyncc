@@ -40,6 +40,11 @@ export async function POST(req: NextRequest) {
           resource_type: 'image',
           quality: 'auto:good',
           fetch_format: 'auto',
+          transformation: [
+            { effect: 'improve:outdoor' }, // AI Food & Product Lighting Auto-Enhancement
+            { effect: 'vibrance:30' },     // AI Rich Fresh Color Saturation Booster
+            { effect: 'auto_contrast' },   // Auto balance highlights and shadows
+          ],
         });
 
         return NextResponse.json({

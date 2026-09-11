@@ -314,24 +314,96 @@ export function StudioModal({
         112
       );
 
-      // 4. Draw Product Image in Center
+      // 4. Draw Product Image in Center with Studio Lighting & Contextual Backdrop
       const renderProductImage = () => {
         if (uploadedImage) {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
-            // Draw card background behind image
-            ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)';
+            // A. Studio Pedestal / Spotlight Backdrop
+            const stageCenterX = 540;
+            const stageCenterY = 440;
+
+            // Radial soft spotlight aura behind product
+            const spotLight = ctx.createRadialGradient(
+              stageCenterX,
+              stageCenterY - 40,
+              40,
+              stageCenterX,
+              stageCenterY,
+              260
+            );
+            if (selectedFrame === 'minimalis') {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 1)');
+              spotLight.addColorStop(0.7, 'rgba(241, 245, 249, 0.9)');
+              spotLight.addColorStop(1, 'rgba(226, 232, 240, 0.4)');
+            } else if (selectedFrame === 'canva-pastel') {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+              spotLight.addColorStop(0.6, 'rgba(253, 242, 248, 0.7)');
+              spotLight.addColorStop(1, 'rgba(243, 232, 255, 0.2)');
+            } else if (selectedFrame === 'neon') {
+              spotLight.addColorStop(0, 'rgba(34, 211, 238, 0.35)');
+              spotLight.addColorStop(0.6, 'rgba(147, 51, 234, 0.2)');
+              spotLight.addColorStop(1, 'rgba(15, 23, 42, 0)');
+            } else {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+              spotLight.addColorStop(0.6, 'rgba(16, 185, 129, 0.15)');
+              spotLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+
+            // Draw Card / Studio Stage Box
+            ctx.save();
+            ctx.fillStyle = spotLight;
             ctx.beginPath();
             ctx.roundRect(290, 190, 500, 500, 36);
             ctx.fill();
 
-            // Clip image rounded
+            // Card Inner Glow Border
+            ctx.strokeStyle =
+              selectedFrame === 'minimalis'
+                ? '#cbd5e1'
+                : selectedFrame === 'canva-pastel'
+                ? '#f472b6'
+                : selectedFrame === 'neon'
+                ? '#22d3ee'
+                : 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.restore();
+
+            // B. Studio Pedestal Ellipse Underneath (creates realistic grounded product look)
+            ctx.save();
+            const pedestalY = 630;
+            const shadowGrad = ctx.createRadialGradient(540, pedestalY, 15, 540, pedestalY, 210);
+            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+            shadowGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadowGrad;
+            ctx.beginPath();
+            ctx.ellipse(540, pedestalY, 210, 34, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // C. Draw Product Image with Vibrant Lighting & Sharp Contrast Filter
             ctx.save();
             ctx.beginPath();
             ctx.roundRect(300, 200, 480, 480, 32);
             ctx.clip();
+
+            // Apply AI photography color & lighting filter (fresh, appetizing, professional studio look)
+            ctx.filter = 'contrast(1.08) saturate(1.16) brightness(1.04)';
             ctx.drawImage(img, 300, 200, 480, 480);
+            ctx.restore();
+
+            // D. Studio Glass Highlights on Corners
+            ctx.save();
+            const gloss = ctx.createLinearGradient(300, 200, 500, 360);
+            gloss.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+            gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = gloss;
+            ctx.beginPath();
+            ctx.roundRect(300, 200, 480, 160, [32, 32, 0, 0]);
+            ctx.fill();
             ctx.restore();
 
             finishDrawingTypography();
@@ -675,28 +747,42 @@ export function StudioModal({
                 </div>
               </div>
 
-              {/* Product Image */}
+              {/* Product Image Stage */}
               {isRemovingBg ? (
                 <div className="flex flex-col items-center gap-3 py-8 animate-pulse">
                   <RefreshCw className="w-10 h-10 animate-spin text-emerald-400" />
                   <p className="font-bold text-sm">AI sedang memproses Background Removal di browser Anda...</p>
                 </div>
               ) : (
-                <div className="space-y-3 z-10">
-                  <div className="w-28 h-28 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center mx-auto shadow-xl border border-white/30 overflow-hidden">
-                    {uploadedImage ? (
-                      <img
-                        src={uploadedImage}
-                        alt="Product"
-                        className="w-full h-full object-cover rounded-3xl"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-center p-2">
-                        <Package className="w-10 h-10 text-white/90 mb-1" />
-                        <span className="text-[10px] font-bold text-white/80">Produk Segar</span>
-                      </div>
-                    )}
+                <div className="space-y-3 z-10 w-full flex flex-col items-center">
+                  {/* Studio Spotlight & Pedestal Stage */}
+                  <div className="relative group">
+                    {/* Background Radial Glow */}
+                    <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 via-amber-400/20 to-sky-500/20 rounded-full blur-xl opacity-75 group-hover:opacity-100 transition duration-500" />
+
+                    {/* Product Container */}
+                    <div className="relative w-36 h-36 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center mx-auto shadow-2xl border border-white/40 overflow-hidden">
+                      {uploadedImage ? (
+                        <img
+                          src={uploadedImage}
+                          alt="Product"
+                          className="w-full h-full object-cover rounded-3xl filter brightness-105 contrast-105 saturate-115 transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-2">
+                          <Package className="w-10 h-10 text-white/90 mb-1" />
+                          <span className="text-[10px] font-bold text-white/80">Produk Segar</span>
+                        </div>
+                      )}
+
+                      {/* Gloss Highlight Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-transparent pointer-events-none rounded-3xl" />
+                    </div>
+
+                    {/* 3D Ground Pedestal Shadow */}
+                    <div className="w-28 h-3.5 mx-auto mt-1 rounded-full bg-black/35 blur-xs" />
                   </div>
+
                   <h4 className="text-2xl font-black tracking-tight">{activeProductName}</h4>
                   <p className="text-sm opacity-90 max-w-sm mx-auto">
                     Kualitas Super • Langsung Petani • Garansi Segar

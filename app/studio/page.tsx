@@ -284,20 +284,91 @@ export default function StudioPage() {
       ctx.font = 'bold 24px sans-serif';
       ctx.fillText('⭐ KUALITAS TERBAIK', 1000, 110);
 
-      // 4. Draw Product Image in Center
+      // 4. Draw Product Image in Center with Studio Lighting & Contextual Stage
       const renderProductImage = () => {
         if (uploadedImage) {
           const img = new Image();
           img.crossOrigin = 'anonymous';
           img.onload = () => {
-            ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)';
+            // A. Radial soft spotlight behind product
+            const stageCenterX = 540;
+            const stageCenterY = 430;
+            const spotLight = ctx.createRadialGradient(
+              stageCenterX,
+              stageCenterY - 40,
+              40,
+              stageCenterX,
+              stageCenterY,
+              260
+            );
+            if (selectedFrame === 'minimalis') {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 1)');
+              spotLight.addColorStop(0.7, 'rgba(241, 245, 249, 0.9)');
+              spotLight.addColorStop(1, 'rgba(226, 232, 240, 0.4)');
+            } else if (selectedFrame === 'canva-pastel') {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+              spotLight.addColorStop(0.6, 'rgba(253, 242, 248, 0.7)');
+              spotLight.addColorStop(1, 'rgba(243, 232, 255, 0.2)');
+            } else if (selectedFrame === 'neon') {
+              spotLight.addColorStop(0, 'rgba(34, 211, 238, 0.35)');
+              spotLight.addColorStop(0.6, 'rgba(147, 51, 234, 0.2)');
+              spotLight.addColorStop(1, 'rgba(15, 23, 42, 0)');
+            } else {
+              spotLight.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+              spotLight.addColorStop(0.6, 'rgba(16, 185, 129, 0.15)');
+              spotLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+
+            // Draw Card / Studio Stage Box
+            ctx.save();
+            ctx.fillStyle = spotLight;
             drawRoundedRect(ctx, 290, 180, 500, 500, 36);
             ctx.fill();
 
+            // Inner border
+            ctx.strokeStyle =
+              selectedFrame === 'minimalis'
+                ? '#cbd5e1'
+                : selectedFrame === 'canva-pastel'
+                ? '#f472b6'
+                : selectedFrame === 'neon'
+                ? '#22d3ee'
+                : 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.restore();
+
+            // B. Studio Pedestal Ground Shadow
+            ctx.save();
+            const pedestalY = 620;
+            const shadowGrad = ctx.createRadialGradient(540, pedestalY, 15, 540, pedestalY, 210);
+            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+            shadowGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadowGrad;
+            ctx.beginPath();
+            ctx.ellipse(540, pedestalY, 210, 34, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // C. Draw Product Image with Vibrant Lighting & Sharp Contrast Filter
             ctx.save();
             drawRoundedRect(ctx, 300, 190, 480, 480, 32);
             ctx.clip();
+
+            // AI Color & Lighting filter
+            ctx.filter = 'contrast(1.08) saturate(1.16) brightness(1.04)';
             ctx.drawImage(img, 300, 190, 480, 480);
+            ctx.restore();
+
+            // D. Studio Glass Highlights
+            ctx.save();
+            const gloss = ctx.createLinearGradient(300, 190, 500, 350);
+            gloss.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+            gloss.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = gloss;
+            drawRoundedRect(ctx, 300, 190, 480, 160, 32);
+            ctx.fill();
             ctx.restore();
 
             finishDrawingTypography();
@@ -555,20 +626,29 @@ export default function StudioPage() {
                 <span className="text-emerald-400">⭐ KUALITAS TERBAIK</span>
               </div>
 
-              {/* Center Photo */}
+              {/* Center Photo with Studio Spotlight & Pedestal */}
               <div className="my-auto py-2">
                 {isRemovingBg ? (
                   <div className="w-44 h-44 mx-auto rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-emerald-400/60 bg-emerald-950/30 gap-2">
                     <Loader2 className="w-8 h-8 text-emerald-300 animate-spin" />
-                    <span className="text-[10px] font-bold text-emerald-200 text-center px-2">AI hapus latar belakang foto...</span>
+                    <span className="text-[10px] font-bold text-emerald-200 text-center px-2">AI memproses pencahayaan & studio stage...</span>
                   </div>
                 ) : uploadedImage ? (
-                  <div className="w-44 h-44 mx-auto rounded-2xl overflow-hidden shadow-md border-2 border-white/40 bg-white/10">
-                    <img
-                      src={uploadedImage}
-                      alt={productName}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="relative group max-w-[180px] mx-auto">
+                    {/* Background Radial Glow */}
+                    <div className="absolute -inset-3 bg-emerald-400/25 rounded-full blur-lg opacity-80 group-hover:opacity-100 transition duration-300 pointer-events-none" />
+
+                    <div className="relative w-44 h-44 mx-auto rounded-2xl overflow-hidden shadow-2xl border-2 border-white/40 bg-white/10 backdrop-blur-xs">
+                      <img
+                        src={uploadedImage}
+                        alt={productName}
+                        className="w-full h-full object-cover filter brightness-105 contrast-105 saturate-115 transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent pointer-events-none" />
+                    </div>
+
+                    {/* Realistic Ground Pedestal Shadow */}
+                    <div className="w-32 h-2.5 mx-auto mt-1 rounded-full bg-black/40 blur-xs" />
                   </div>
                 ) : (
                   <div
@@ -577,7 +657,7 @@ export default function StudioPage() {
                     title="Klik untuk unggah foto produk"
                   >
                     <Upload className="w-6 h-6 opacity-70" />
-                    <span className="text-xs font-bold">Ketuk untuk\nUnggah Foto</span>
+                    <span className="text-xs font-bold text-center">Ketuk untuk<br />Unggah Foto</span>
                   </div>
                 )}
               </div>
