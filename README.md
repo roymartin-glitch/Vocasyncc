@@ -88,7 +88,37 @@ npm run dev
 ```
 Buka browser di `http://localhost:3000`.
 
-### 5. Build Produksi
+### 5. Setup Akun Demo (Opsional untuk Presentasi)
+
+Akun demo memungkinkan juri atau evaluator mencoba aplikasi dengan data realistis yang tersimpan di database Supabase real.
+
+**Kredensial Demo:**
+- **Email:** demo@vokasync.id
+- **Password:** demovokasync123
+- **UUID:** 34f9e50b-d4ba-41b1-807d-7807eb5e0d77
+
+**Cara Setup:**
+```bash
+# 1. Buat user demo di Supabase Auth Dashboard
+# Email: demo@vokasync.id, Password: demovokasync123
+# UUID sudah di-set: 34f9e50b-d4ba-41b1-807d-7807eb5e0d77
+
+# 2. Jalankan script setup di Supabase SQL Editor
+# Copy-paste isi file: supabase/schema/setup_demo_account.sql
+# Klik "Run"
+
+# 3. Test login dengan akun demo
+# Verifikasi: Dashboard menampilkan data Kios Berkah Sayur
+```
+
+**Reset Data Demo (Sebelum Presentasi):**
+```bash
+# Jalankan di Supabase SQL Editor
+# File: supabase/schema/reset_demo_account.sql
+# Kemudian re-run: setup_demo_account.sql
+```
+
+### 6. Build Produksi
 ```bash
 npm run build
 ```

@@ -29,6 +29,20 @@ export async function getActiveUserProfile() {
     if (userCookie) {
       const parsed = JSON.parse(decodeURIComponent(userCookie));
       if (parsed.id && parsed.owner_name) {
+        // Cek database Supabase terlebih dahulu untuk profile ter-update
+        const { data: dbProfile } = await adminClient
+          .from('profiles')
+          .select('*')
+          .eq('id', parsed.id)
+          .maybeSingle();
+
+        if (dbProfile) {
+          return {
+            user: { id: parsed.id, email: parsed.email } as any,
+            profile: dbProfile,
+          };
+        }
+
         const customProfile = {
           id: parsed.id,
           owner_name: parsed.owner_name,
@@ -101,20 +115,18 @@ export async function getActiveUserProfile() {
     return { user, profile: newProfile };
   }
 
-  // 3. Fallback untuk akun demo (Pak Budi - Kios Berkah Sayur) tanpa login
+  // 3. Fallback untuk akun demo (Pak Budi - Kios Berkah Sayur)
+  const demoUuid = '34f9e50b-d4ba-41b1-807d-7807eb5e0d77';
   const { data: demoProfileInDb } = await adminClient
     .from('profiles')
     .select('*')
-    .ilike('owner_name', '%budi%')
-    .limit(1)
+    .eq('id', demoUuid)
     .maybeSingle();
 
   if (demoProfileInDb) {
-    return { user: null, profile: demoProfileInDb };
+    return { user: { id: demoUuid, email: 'demo@vokasync.id' } as any, profile: demoProfileInDb };
   }
 
-
-  const demoUuid = '00000000-0000-0000-0000-000000000001';
   const defaultDemo = {
     id: demoUuid,
     owner_name: 'Pak Budi',
@@ -126,7 +138,6 @@ export async function getActiveUserProfile() {
     sound_alert_enabled: false,
     sound_alert_volume: 80,
     text_size: 'normal',
-    theme: 'terang',
     default_unit: 'kg',
     analysis_period: '7d',
     app_settings: {},
@@ -140,10 +151,10 @@ export async function getActiveUserProfile() {
       .maybeSingle();
 
     if (upserted) {
-      return { user: null, profile: upserted };
+      return { user: { id: demoUuid, email: 'demo@vokasync.id' } as any, profile: upserted };
     }
   } catch (_) {}
 
-  return { user: null, profile: defaultDemo };
+  return { user: { id: demoUuid, email: 'demo@vokasync.id' } as any, profile: defaultDemo };
 }
 

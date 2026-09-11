@@ -16,12 +16,6 @@ import { TrendChart } from '@/components/dashboard/TrendChart';
 import { AdvisorCard } from '@/components/dashboard/AdvisorCard';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { StudioModal } from '@/components/studio/StudioModal';
-import {
-  mockDashboardMetrics,
-  mockTrendData,
-  mockInsights,
-  mockTransactions,
-} from '@/lib/mock-data';
 import { AIInsight, DashboardMetrics, Transaction, TrendDayData } from '@/types';
 
 export default function DashboardPage() {
@@ -136,13 +130,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Visual Marketing Poster Modal */}
-      <StudioModal
-        isOpen={isStudioOpen}
-        onClose={() => setIsStudioOpen(false)}
-        productName={primaryInsight?.product_name || 'Produk Pilihan'}
-      />
-
       {/* Ringkasan Hari Ini Section */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

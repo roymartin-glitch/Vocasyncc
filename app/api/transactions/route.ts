@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getFIFOCostPrice } from '@/lib/calculations/financial';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
-import { mockTransactions, mockProducts } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,33 +14,6 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limitParam = searchParams.get('limit');
-
-    // Early return untuk mode demo
-    if (isDemo) {
-      let list = [...mockTransactions];
-
-      if (type && (type === 'income' || type === 'expense')) {
-        list = list.filter((t) => t.type === type);
-      }
-      if (search) {
-        list = list.filter((t) =>
-          t.items?.some((it) => it.product_name?.toLowerCase().includes(search.toLowerCase()))
-        );
-      }
-      if (startDate) {
-        list = list.filter((t) => (t.transaction_date || '').split('T')[0] >= startDate);
-      }
-      if (endDate) {
-        list = list.filter((t) => (t.transaction_date || '').split('T')[0] <= endDate);
-      }
-      if (limitParam) {
-        list = list.slice(0, parseInt(limitParam, 10));
-      }
-      return NextResponse.json(
-        { success: true, data: list },
-        { headers: { 'Cache-Control': 'private, no-cache, must-revalidate' } }
-      );
-    }
 
     const supabase = createAdminClient();
 
@@ -71,8 +43,6 @@ export async function GET(req: NextRequest) {
 
     if (profile?.id) {
       query = query.eq('user_id', profile.id);
-    } else {
-      query = query.eq('user_id', 'demo-user-pak-budi');
     }
 
     if (type && (type === 'income' || type === 'expense')) {
@@ -97,29 +67,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    // Jika di database belum ada data transaksi, gunakan memory store (mockTransactions & DEMO_TRANSACTIONS)
     if (!data || data.length === 0) {
-      let list = [...mockTransactions];
-
-      if (type && (type === 'income' || type === 'expense')) {
-        list = list.filter((t) => t.type === type);
-      }
-      if (search) {
-        list = list.filter((t) =>
-          t.items?.some((it) => it.product_name?.toLowerCase().includes(search.toLowerCase()))
-        );
-      }
-      if (startDate) {
-        list = list.filter((t) => (t.transaction_date || '').split('T')[0] >= startDate);
-      }
-      if (endDate) {
-        list = list.filter((t) => (t.transaction_date || '').split('T')[0] <= endDate);
-      }
-      if (limitParam) {
-        list = list.slice(0, parseInt(limitParam, 10));
-      }
       return NextResponse.json(
-        { success: true, data: list },
+        { success: true, data: [] },
         { headers: { 'Cache-Control': 'private, no-cache, must-revalidate' } }
       );
     }
@@ -210,90 +160,8 @@ export async function POST(req: NextRequest) {
     const total = parseFloat(totalAmount) || 0;
     const unitPrice = total / qty;
 
-    // A. Demo Mode Handler: Dukung penuh pencatatan transaksi & auto-tambah barang baru tanpa login
-    if (isDemo) {
-      const existingDemoProd = mockProducts.find(
-        (p) => p.name.toLowerCase() === finalCleanName.toLowerCase()
-      );
-
-      if (existingDemoProd) {
-        productId = existingDemoProd.id;
-        if (userId) existingDemoProd.user_id = userId;
-        if (type === 'expense') {
-          existingDemoProd.cost_price = Math.round(unitPrice);
-          existingDemoProd.remaining_stock = (existingDemoProd.remaining_stock || 0) + qty;
-        } else {
-          existingDemoProd.selling_price = Math.round(unitPrice);
-          existingDemoProd.remaining_stock = Math.max(0, (existingDemoProd.remaining_stock || 0) - qty);
-        }
-      }
-
-      let demoProdObj = existingDemoProd;
-      if (!demoProdObj) {
-        isNewProduct = true;
-        productId = 'prod-' + Date.now();
-        const costPrice = type === 'expense' ? Math.round(unitPrice) : Math.round(unitPrice * 0.8);
-        const sellPrice = type === 'income' ? Math.round(unitPrice) : Math.round(unitPrice * 1.25);
-        const margin = Math.round(((sellPrice - costPrice) / (sellPrice || 1)) * 100);
-
-        demoProdObj = {
-          id: productId,
-          user_id: userId || (isDemo ? 'demo' : 'guest'),
-          name: finalCleanName,
-          unit: unit || 'kg',
-          cost_price: costPrice,
-          selling_price: sellPrice,
-          margin_percentage: margin,
-          action_category: margin >= 20 ? 'dorong' : 'perbaiki',
-          avg_daily_volume: qty,
-          total_revenue_7d: total,
-          remaining_stock: qty,
-          is_stock_low: false,
-        };
-        mockProducts.unshift(demoProdObj);
-      }
-
-      const newTxId = 'tx-' + Date.now();
-      const newDemoTx = {
-        id: newTxId,
-        user_id: userId || '00000000-0000-0000-0000-000000000001',
-        type,
-        transaction_date: new Date().toISOString(),
-        source,
-        raw_voice_text: rawVoiceText || null,
-        total_amount: total,
-        items: [
-          {
-            id: 'txi-' + Date.now(),
-            transaction_id: newTxId,
-            product_id: productId,
-            product_name: finalCleanName,
-            quantity: qty,
-            unit,
-            unit_price: Math.round(unitPrice),
-            subtotal: total,
-          },
-        ],
-      };
-      mockTransactions.unshift(newDemoTx);
-
-      return NextResponse.json({
-        success: true,
-        data: newDemoTx,
-        productId,
-        productName: finalCleanName,
-        isNewProduct,
-        product: demoProdObj,
-        message: 'Transaksi dan barang berhasil dicatat.',
-      });
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Pengguna tidak ditemukan.' },
-        { status: 404 }
-      );
-    }
+    // Ensure userId is valid
+    const effectiveUserId = userId || '34f9e50b-d4ba-41b1-807d-7807eb5e0d77';
 
     const supabase = createAdminClient();
     let newTxRecord: any = null;
@@ -301,7 +169,7 @@ export async function POST(req: NextRequest) {
       const { data: existingProduct } = await supabase
         .from('products')
         .select('id, name')
-        .eq('user_id', userId)
+        .eq('user_id', effectiveUserId)
         .ilike('name', finalCleanName)
         .limit(1);
 
@@ -312,7 +180,7 @@ export async function POST(req: NextRequest) {
         const { data: newProd, error: prodErr } = await supabase
           .from('products')
           .insert({
-            user_id: userId,
+            user_id: effectiveUserId,
             name: finalCleanName,
             default_unit: unit || 'kg',
           })
@@ -329,7 +197,7 @@ export async function POST(req: NextRequest) {
       const { data: newTx, error: txErr } = await supabase
         .from('transactions')
         .insert({
-          user_id: userId,
+          user_id: effectiveUserId,
           type,
           transaction_date: new Date().toISOString(),
           source,
@@ -353,7 +221,7 @@ export async function POST(req: NextRequest) {
 
       newTxRecord = {
         id: newTx.id,
-        user_id: userId,
+        user_id: effectiveUserId,
         type,
         transaction_date: new Date().toISOString(),
         source,
@@ -372,13 +240,13 @@ export async function POST(req: NextRequest) {
           },
         ],
       };
-      mockTransactions.unshift(newTxRecord);
+      // NOTE: No longer mutating server-side module state (mockTransactions)
 
       // 5. FIFO Stock Batch Tracking
       try {
         if (type === 'expense') {
           await supabase.from('stock_batches').insert({
-            user_id: userId,
+            user_id: effectiveUserId,
             product_id: productId,
             transaction_id: newTx.id,
             initial_quantity: qty,
@@ -435,52 +303,16 @@ export async function POST(req: NextRequest) {
           },
         ],
       };
-      mockTransactions.unshift(newTxRecord);
+      // NOTE: No longer mutating server-side module state
     }
 
-    // Pastikan komoditas selalu tersimpan / diperbarui di mockProducts & dikembalikan ke frontend
-    const costPrice = type === 'expense' ? Math.round(unitPrice) : Math.round(unitPrice * 0.8);
-    const sellPrice = type === 'income' ? Math.round(unitPrice) : Math.round(unitPrice * 1.25);
-    const margin = Math.round(((sellPrice - costPrice) / (sellPrice || 1)) * 100);
-
-    let productObj = mockProducts.find(
-      (p) => (p.user_id === userId || !p.user_id) && p.name.toLowerCase() === finalCleanName.toLowerCase()
-    );
-
-    if (productObj) {
-      if (type === 'expense') {
-        productObj.cost_price = Math.round(unitPrice);
-        productObj.remaining_stock = (productObj.remaining_stock || 0) + qty;
-      } else {
-        productObj.selling_price = Math.round(unitPrice);
-        productObj.remaining_stock = Math.max(0, (productObj.remaining_stock || 0) - qty);
-      }
-      productObj.total_revenue_7d = (productObj.total_revenue_7d || 0) + total;
-    } else {
-      productObj = {
-        id: productId || 'prod-' + Date.now(),
-        user_id: userId,
-        name: finalCleanName,
-        unit: unit || 'kg',
-        cost_price: costPrice,
-        selling_price: sellPrice,
-        margin_percentage: margin,
-        action_category: margin >= 20 ? 'dorong' : 'perbaiki',
-        avg_daily_volume: qty,
-        total_revenue_7d: total,
-        remaining_stock: qty,
-        is_stock_low: false,
-      };
-      mockProducts.unshift(productObj);
-    }
-
+    // Return the created transaction and product info
     return NextResponse.json({
       success: true,
       data: newTxRecord,
-      productId: productId || productObj.id,
+      productId: productId,
       productName: finalCleanName,
-      isNewProduct: isNewProduct || true,
-      product: productObj,
+      isNewProduct: isNewProduct,
       message: 'Transaksi dan barang berhasil dicatat.',
     });
   } catch (err: any) {

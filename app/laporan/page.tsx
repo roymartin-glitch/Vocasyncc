@@ -19,11 +19,6 @@ import {
   Share2,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
-import {
-  mockDashboardMetrics,
-  mockTransactions,
-  mockTrendData,
-} from '@/lib/mock-data';
 import { DashboardMetrics, Transaction, TrendDayData } from '@/types';
 
 type ReportPeriod = 'today' | 'week' | 'month' | 'all';

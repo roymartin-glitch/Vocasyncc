@@ -1,44 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { calculateMargin, determineSeverity, build7DayTrend, isStockLow } from '@/lib/calculations/financial';
+import { determineSeverity, build7DayTrend, isStockLow } from '@/lib/calculations/financial';
 import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
-import { mockDashboardMetrics, mockTrendData, mockInsights } from '@/lib/mock-data';
-import {
-  DEMO_DASHBOARD_METRICS,
-  DEMO_TREND_DATA,
-  DEMO_PRIMARY_INSIGHT,
-} from '@/lib/mock-data/demo-data';
+
 
 export async function GET(req: NextRequest) {
   try {
     const { user, profile } = await getActiveUserProfile();
-    const isDemo = !user;
-
-    // Early return untuk mode demo
-    if (isDemo) {
-      return NextResponse.json(
-        {
-          success: true,
-          profile: profile || {
-            owner_name: 'Pak Budi',
-            business_name: 'Kios Berkah Sayur',
-            margin_alert_threshold: 20,
-          },
-          metrics: DEMO_DASHBOARD_METRICS,
-          trendData: DEMO_TREND_DATA,
-          primaryInsight: DEMO_PRIMARY_INSIGHT,
-          signals: [DEMO_PRIMARY_INSIGHT],
-        },
-        {
-          headers: {
-            'Cache-Control': 'private, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
     const supabase = createAdminClient();
     const userId = profile?.id;
 
@@ -102,24 +72,9 @@ export async function GET(req: NextRequest) {
     };
     const threshold = Number(activeProfile.margin_alert_threshold) || 20;
 
-    // Use DB transactions if available, otherwise fall back to memory mockTransactions
-    const { mockTransactions } = await import('@/lib/mock-data');
+    // Use only DB transactions - no mock fallback to avoid stale/wrong data
     const dbTx = txRes.data || [];
-    const allTx = dbTx.length > 0
-      ? dbTx
-      : mockTransactions.map((tx: any) => ({
-          id: tx.id,
-          type: tx.type,
-          transaction_date: tx.transaction_date,
-          source: tx.source,
-          raw_voice_text: tx.raw_voice_text,
-          transaction_items: (tx.items || []).map((it: any) => ({
-            quantity: it.quantity,
-            unit_price: it.unit_price,
-            product_id: it.product_id,
-            products: { id: it.product_id, name: it.product_name },
-          })),
-        }));
+    const allTx = dbTx;
 
     const batches = batchesRes.data || [];
     const insights = insightsRes.data || [];
@@ -141,17 +96,8 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Fallback baseline if today has 0 transactions but historical transactions exist
-    if (todayIncome === 0 && todayExpense === 0 && allTx.length > 0) {
-      allTx.forEach((tx) => {
-        const total = (tx.transaction_items || []).reduce(
-          (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
-          0
-        );
-        if (tx.type === 'income') todayIncome += total;
-        if (tx.type === 'expense') todayExpense += total;
-      });
-    }
+    // NOTE: When today has 0 transactions, metrics remain 0 - this is correct behavior.
+    // The insight message will handle the "no data today" case gracefully.
 
     const todayProfit = todayIncome - todayExpense;
     const todayMargin = todayIncome > 0 ? Math.round((todayProfit / todayIncome) * 1000) / 10 : 0;
@@ -202,28 +148,21 @@ export async function GET(req: NextRequest) {
       console.warn('Stock alert check fallback:', sErr);
     }
 
-    // Fallback low stock alert ONLY for presentation
-    if (lowStockSignals.length === 0) {
-      lowStockSignals.push({
-        id: 'stock-alert-cabai',
-        user_id: profile?.id || 'demo-user',
-        product_name: 'Cabai Rawit Merah',
-        severity: 'yellow',
-        message: 'Stok Cabai Rawit Merah tinggal 6 kg. Segera belanja stok agar tidak kehabisan.',
-        has_quick_action: false,
-        created_at: 'Baru saja',
-      });
-    }
+    // Low stock signals only if detected from actual batches
+    // (no fake alerts for empty database)
 
     // 6. Get recent insights from pre-fetched parallel query
     let primaryInsight = insights?.[0];
 
-    const hasData = allTx.length > 0;
+    const hasTodayData = todayIncome > 0 || todayExpense > 0;
+    const hasHistoricalData = allTx.length > 0;
 
-    const defaultMessage = hasData
+    const defaultMessage = hasTodayData
       ? todayMargin < threshold
-        ? `${activeProfile.owner_name}, margin keuntungan barang dagangan Anda sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi harga beli modal.`
-        : `${activeProfile.owner_name}, margin usaha Anda saat ini terpantau sehat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs modal secara otomatis.`
+        ? `${activeProfile.owner_name}, margin hari ini sedang di ${todayMargin}% (di bawah target ${threshold}%). Sebaiknya sesuaikan harga jual atau kurangi harga beli modal.`
+        : `${activeProfile.owner_name}, margin usaha hari ini terpantau sehat di ${todayMargin}%. Sistem terus memantau pergerakan harga jual vs modal secara otomatis.`
+      : hasHistoricalData
+      ? `${activeProfile.owner_name}, belum ada transaksi hari ini. Yuk catat penjualan atau belanja stok pertama hari ini!`
       : `Selamat datang di VokaSync, ${activeProfile.owner_name}! Mulai catat transaksi penjualan atau belanja stok pertama Anda hari ini untuk melihat analisa keuangan otomatis.`;
 
     if (!primaryInsight && profile?.id && dbTx.length > 0) {
@@ -262,22 +201,22 @@ export async function GET(req: NextRequest) {
         profile,
         metrics: {
           today_income: todayIncome,
-          today_income_change: 12.8,
+          today_income_change: 0,
           today_expense: todayExpense,
-          today_expense_change: -3.5,
+          today_expense_change: 0,
           today_profit: todayProfit,
-          today_profit_change: 18.2,
+          today_profit_change: 0,
           today_margin: todayMargin,
-          today_margin_change: 2.4,
+          today_margin_change: 0,
         },
-        trendData: trendData.length > 0 ? trendData : DEMO_TREND_DATA,
+        trendData: trendData.length > 0 ? trendData : [],
         primaryInsight: primaryInsight || {
           severity: severity || 'green',
           has_quick_action: hasQuickAction || false,
           message: defaultMessage,
           created_at: 'Baru saja',
         },
-        signals: allSignals.length > 0 ? allSignals : [DEMO_PRIMARY_INSIGHT],
+        signals: allSignals,
       },
       {
         headers: {

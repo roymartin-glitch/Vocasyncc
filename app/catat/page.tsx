@@ -20,7 +20,6 @@ import {
   Check,
   Package,
 } from 'lucide-react';
-import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
 import { findSimilarProduct } from '@/lib/calculations/financial';
 
@@ -61,10 +60,10 @@ export default function CatatPage() {
 
   // Form states (for manual fallback)
   const [type, setType] = useState<TransactionType>('income');
-  const [productName, setProductName] = useState('Bawang Merah');
-  const [quantity, setQuantity] = useState<number>(5);
+  const [productName, setProductName] = useState('');
+  const [quantity, setQuantity] = useState<number>(1);
   const [unit, setUnit] = useState('Kilogram (kg)');
-  const [totalAmount, setTotalAmount] = useState<number>(200000);
+  const [totalAmount, setTotalAmount] = useState<number>(0);
 
   // Voice recording & patient auto-save states
   const [isListening, setIsListening] = useState(false);
@@ -109,12 +108,7 @@ export default function CatatPage() {
   } | null>(null);
 
   // Products list for fuzzy matching
-  const [productsList, setProductsList] = useState<any[]>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('vokasync_is_demo') === 'true') {
-      return mockProducts;
-    }
-    return [];
-  });
+  const [productsList, setProductsList] = useState<any[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

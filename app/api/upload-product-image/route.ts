@@ -57,11 +57,13 @@ export async function POST(req: NextRequest) {
 
     const publicUrl = urlData?.publicUrl;
 
-    // Update product image_url in DB
-    await supabase
-      .from("products")
-      .update({ image_url: publicUrl })
-      .eq("id", productId);
+    // Optional: Update product image_url in DB if column exists
+    try {
+      await supabase
+        .from("products")
+        .update({ image_url: publicUrl })
+        .eq("id", productId);
+    } catch (_) {}
 
     return NextResponse.json({ success: true, url: publicUrl });
   } catch (err: any) {

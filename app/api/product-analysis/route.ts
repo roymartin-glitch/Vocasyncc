@@ -7,21 +7,10 @@ import { mockProducts } from '@/lib/mock-data';
 export async function GET(req: NextRequest) {
   try {
     const { user, profile } = await getActiveUserProfile();
-    const isDemo = !user;
-
-    // Early return untuk mode demo
-    if (isDemo) {
-      return NextResponse.json({
-        success: true,
-        threshold: Number(profile?.margin_alert_threshold) || 20,
-        data: mockProducts,
-      });
-    }
-
     const supabase = createAdminClient();
     const userId = profile?.id;
 
-    let productsQuery = supabase.from('products').select('id, name, default_unit, image_url').order('name');
+    let productsQuery = supabase.from('products').select('id, name, default_unit').order('name');
     if (userId) {
       productsQuery = productsQuery.eq('user_id', userId);
     }
@@ -57,19 +46,11 @@ export async function GET(req: NextRequest) {
     const items = itemsRes.data || [];
     const stockBatches = batchesRes.data || [];
 
-    // In-memory / fallback products filtered strictly by user_id
-    const activeUserId = profile?.id;
-    const userMockProducts = mockProducts.filter((p: any) => {
-      if (activeUserId && p.user_id === activeUserId) return true;
-      if (isDemo && (p.user_id === 'user-001' || p.user_id === 'demo' || p.user_id === 'demo-user-pak-budi' || p.user_id === '00000000-0000-0000-0000-000000000001' || !p.user_id)) return true;
-      return false;
-    });
-
     if (products.length === 0) {
       return NextResponse.json({
         success: true,
         threshold,
-        data: mockProducts,
+        data: [],
       });
     }
 
@@ -81,7 +62,7 @@ export async function GET(req: NextRequest) {
         id: p.id,
         name: p.name,
         unit: p.default_unit || 'kg',
-        image_url: p.image_url || null,
+        image_url: null, // image_url column not yet in DB schema
         latestCost: 0,
         latestCostDate: '',
         latestSelling: 0,
@@ -146,28 +127,17 @@ export async function GET(req: NextRequest) {
         id: stat.id,
         name: stat.name,
         unit: stat.unit,
-        image_url: stat.image_url || null,
+        image_url: null, // image_url column not yet in DB schema
         cost_price: Math.round(cost),
         selling_price: Math.round(selling),
         margin_percentage: margin,
         action_category: category,
-        avg_daily_volume: Math.max(Math.round(stat.totalVolume / 7), 5),
-        total_revenue_7d: Math.round(stat.totalRevenue || selling * 15),
+        avg_daily_volume: stat.totalVolume > 0 ? Math.max(Math.round(stat.totalVolume / 7), 1) : 0,
+        total_revenue_7d: Math.round(stat.totalRevenue || 0),
         remaining_stock: Math.round(remainingStock * 10) / 10,
         is_stock_low: isLow,
       };
     });
-
-    // Merge in-memory products created in session
-    if (userMockProducts.length > 0) {
-      const existingIds = new Set(results.map((r) => r.id));
-      for (const mp of userMockProducts) {
-        if (!existingIds.has(mp.id)) {
-          results.unshift(mp);
-          existingIds.add(mp.id);
-        }
-      }
-    }
 
     return NextResponse.json({ success: true, threshold, data: results });
   } catch (err: any) {
@@ -302,7 +272,6 @@ export async function POST(req: NextRequest) {
       id: newProd.id,
       name: newProd.name,
       unit: newProd.default_unit || unit,
-      image_url: newProd.image_url || null,
       cost_price: Math.round(cost),
       selling_price: Math.round(selling),
       margin_percentage: margin,
@@ -313,8 +282,6 @@ export async function POST(req: NextRequest) {
       is_stock_low: stockNum <= 2,
       user_id: userId,
     };
-
-    mockProducts.unshift(completeItem);
 
     return NextResponse.json({
       success: true,
@@ -327,12 +294,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH: Update product details (name, unit, selling price, stock, image_url)
+// PATCH: Update product details (name, unit, selling price, stock)
 export async function PATCH(req: NextRequest) {
   try {
     const supabase = createAdminClient();
     const body = await req.json();
-    const { id, name, unit, sellingPrice, stock, image_url } = body;
+    const { id, name, unit, sellingPrice, stock } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -341,12 +308,11 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 1. Perbarui di mockProducts in-memory store
+    // 1. Perbarui di mockProducts in-memory store jika ada
     const mockIdx = mockProducts.findIndex((p) => p.id === id);
     if (mockIdx !== -1) {
       if (name !== undefined && name.trim()) mockProducts[mockIdx].name = name.trim();
       if (unit !== undefined && unit.trim()) mockProducts[mockIdx].unit = unit.trim();
-      if (image_url !== undefined) mockProducts[mockIdx].image_url = image_url || null;
       if (stock !== undefined) {
         const parsedStock = Number(stock);
         mockProducts[mockIdx].remaining_stock = parsedStock;
@@ -365,8 +331,6 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, any> = {};
     if (name !== undefined && name.trim()) updates.name = name.trim();
     if (unit !== undefined && unit.trim()) updates.default_unit = unit.trim();
-    if (image_url !== undefined) updates.image_url = image_url || null;
-    updates.updated_at = new Date().toISOString();
 
     let updatedProd: any = mockIdx !== -1 ? mockProducts[mockIdx] : null;
 

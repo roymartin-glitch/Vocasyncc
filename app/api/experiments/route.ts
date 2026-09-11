@@ -3,20 +3,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { callGemini } from '@/lib/ai/gemini';
 import { getExperimentVerdictPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
-import { mockExperiments } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
     const { user, profile } = await getActiveUserProfile();
-    const isDemo = !user;
 
-    // Early return untuk mode demo
-    if (isDemo) {
-      return NextResponse.json({
-        success: true,
-        data: mockExperiments,
-      });
-    }
 
     const supabase = createAdminClient();
 
@@ -54,10 +45,7 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    if (isDemo && (!data || data.length === 0)) {
-      const { DEMO_EXPERIMENTS } = await import('@/lib/mock-data/demo-data');
-      return NextResponse.json({ success: true, data: mockExperiments.length > 0 ? mockExperiments : DEMO_EXPERIMENTS });
-    }
+
 
     const formatted = (data || []).map((exp: any) => ({
       id: exp.id,

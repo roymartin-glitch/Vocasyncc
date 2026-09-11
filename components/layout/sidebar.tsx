@@ -41,7 +41,7 @@ export function Sidebar({ businessName = 'Toko Saya' }: SidebarProps) {
         </div>
         <div className="hidden lg:block overflow-hidden">
           <h1 className="font-extrabold text-white text-lg tracking-tight leading-tight">VokaSync</h1>
-          <p className="text-xs text-emerald-200/70 truncate max-w-[150px] font-medium">{businessName}</p>
+          <p suppressHydrationWarning className="text-xs text-emerald-200/70 truncate max-w-[150px] font-medium">{businessName}</p>
         </div>
       </div>
 

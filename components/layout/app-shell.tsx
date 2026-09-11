@@ -15,18 +15,8 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
 
-  const [businessName, setBusinessName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vokasync_business_name') || 'Toko Saya';
-    }
-    return 'Toko Saya';
-  });
-  const [ownerName, setOwnerName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vokasync_owner_name') || 'Pedagang';
-    }
-    return 'Pedagang';
-  });
+  const [businessName, setBusinessName] = useState<string>('Toko Saya');
+  const [ownerName, setOwnerName] = useState<string>('Pedagang');
 
   // Apply text size and theme to root documentElement
   useEffect(() => {

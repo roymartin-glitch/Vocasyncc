@@ -12,16 +12,10 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
-import { mockExperiments } from '@/lib/mock-data';
 import { Experiment } from '@/types';
 
 export default function EksperimenPage() {
-  const [experiments, setExperiments] = useState<Experiment[]>(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('vokasync_is_demo') === 'true') {
-      return mockExperiments;
-    }
-    return [];
-  });
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'running' | 'completed'>('all');
   const [isNewExpModalOpen, setIsNewExpModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

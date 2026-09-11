@@ -18,7 +18,6 @@ import {
   Loader2,
   FileText,
 } from 'lucide-react';
-import { mockTransactions } from '@/lib/mock-data';
 import { Transaction } from '@/types';
 
 type DatePreset = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom';

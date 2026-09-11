@@ -25,19 +25,19 @@ export function Header({ ownerName = 'Pedagang', businessName = 'Toko Saya' }: H
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
             Sistem Pencatatan Toko
           </p>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+          <h1 suppressHydrationWarning className="text-3xl font-black text-slate-900 tracking-tight mt-0.5">
             Halo, {ownerName}
           </h1>
           <div className="flex items-center gap-2 mt-1 text-sm font-semibold text-slate-600">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            <span className="font-bold text-slate-800">{businessName}</span>
+            <span suppressHydrationWarning className="font-bold text-slate-800">{businessName}</span>
             <span className="text-slate-300">•</span>
             <span className="text-xs text-slate-500">Asisten Keuangan</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2.5 rounded-2xl text-sm font-bold text-slate-800 shadow-2xs">
+          <div suppressHydrationWarning className="flex items-center gap-2 bg-white border-2 border-slate-200 px-4 py-2.5 rounded-2xl text-sm font-bold text-slate-800 shadow-2xs">
             <Calendar className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
             <span>{currentDate}</span>
           </div>

@@ -22,7 +22,6 @@ import {
   Sparkles,
   Play,
 } from 'lucide-react';
-import { mockProfile } from '@/lib/mock-data';
 import { TextSizeSetting, AnalysisPeriodSetting, AppThemeSetting } from '@/types';
 
 export default function SettingsPage() {

@@ -40,33 +40,42 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // 1. One-Click Demo Login for Judges & Evaluators
+  // 1. One-Click Demo Login for Judges & Evaluators (Connects to real Supabase Database)
   const handleDemoLogin = async () => {
     setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage('Masuk sebagai akun demo Pak Budi (Kios Berkah Sayur)...');
+    setSuccessMessage('Masuk ke database akun demo Pak Budi (Kios Berkah Sayur)...');
 
     try {
       clearAllLocalSessions();
+
+      // Sign in directly to Supabase Auth demo user
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'demo@vokasync.id',
+        password: 'demovokasync123',
+      });
+
+      if (error) {
+        throw error;
+      }
+
       if (typeof window !== 'undefined') {
-        const { DEMO_PRODUCTS, DEMO_TRANSACTIONS } = await import('@/lib/mock-data/demo-data');
         localStorage.setItem('vokasync_is_demo', 'true');
-        localStorage.setItem('vokasync_user_id', 'demo-user-pak-budi');
+        localStorage.setItem('vokasync_user_id', data.user.id);
+        localStorage.setItem('vokasync_user_email', 'demo@vokasync.id');
         localStorage.setItem('vokasync_owner_name', 'Pak Budi');
         localStorage.setItem('vokasync_business_name', 'Kios Berkah Sayur');
-        localStorage.setItem('vokasync_products_demo-user-pak-budi', JSON.stringify(DEMO_PRODUCTS));
-        localStorage.setItem('vokasync_local_txs_demo-user-pak-budi', JSON.stringify(DEMO_TRANSACTIONS));
         document.cookie = `vokasync_user=${encodeURIComponent(
           JSON.stringify({
-            id: 'demo-user-pak-budi',
+            id: data.user.id,
             owner_name: 'Pak Budi',
             business_name: 'Kios Berkah Sayur',
             email: 'demo@vokasync.id',
           })
         )}; path=/; max-age=86400`;
       }
-      // Clear any prior active session so demo doesn't conflict
-      await supabase.auth.signOut();
+
+      setSuccessMessage('Berhasil masuk akun demo! Membuka Beranda...');
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 500);

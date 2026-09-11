@@ -18,13 +18,9 @@ import {
   RefreshCw,
   Package,
   Pencil,
-  Camera,
-  Upload,
   Check,
   Trash2,
-  ImageOff,
 } from 'lucide-react';
-import { mockProducts, mockProfile } from '@/lib/mock-data';
 import { ProductAnalysisItem, ProductActionCategory } from '@/types';
 import { StudioModal } from '@/components/studio/StudioModal';
 
@@ -33,7 +29,7 @@ export default function ProdukPage() {
   const [selectedProduct, setSelectedProduct] = useState<ProductAnalysisItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [threshold, setThreshold] = useState(mockProfile.margin_alert_threshold);
+  const [threshold, setThreshold] = useState(20);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,11 +57,6 @@ export default function ProdukPage() {
   const [productToDelete, setProductToDelete] = useState<ProductAnalysisItem | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
-  // Image Upload State in Edit Modal
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // AI Advisor Note State
   const [aiNotes, setAiNotes] = useState<Record<string, string>>({});
@@ -390,8 +381,6 @@ export default function ProdukPage() {
     setEditSelling(String(p.selling_price));
     setEditStock(String(p.remaining_stock ?? 10));
     setEditError('');
-    setImageFile(null);
-    setImagePreview(p.image_url || null);
     setIsEditModalOpen(true);
   };
 
@@ -435,38 +424,6 @@ export default function ProdukPage() {
     }
   };
 
-  // Handle image file selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setEditError('Ukuran foto maksimal 5 MB.');
-      return;
-    }
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
-    setEditError('');
-  };
-
-  // Upload image and return public URL
-  const uploadImage = async (productId: string): Promise<string | null> => {
-    if (!imageFile) return null;
-    setIsUploadingImage(true);
-    try {
-      const form = new FormData();
-      form.append('file', imageFile);
-      form.append('productId', productId);
-      const res = await fetch('/api/upload-product-image', { method: 'POST', body: form });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-      return data.url;
-    } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
   // Submit edit handler
   const handleEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,13 +443,6 @@ export default function ProdukPage() {
     setIsEditSubmitting(true);
     setEditError('');
     try {
-      let newImageUrl: string | null | undefined = undefined;
-      if (imageFile) {
-        newImageUrl = await uploadImage(editProduct.id);
-      } else if (imagePreview === null) {
-        newImageUrl = null;
-      }
-
       const body: Record<string, any> = {
         id: editProduct.id,
         name: editName.trim(),
@@ -500,7 +450,6 @@ export default function ProdukPage() {
         sellingPrice: selling,
         stock: stockQty,
       };
-      if (newImageUrl !== undefined) body.image_url = newImageUrl;
 
       const res = await fetch('/api/product-analysis', {
         method: 'PATCH',
@@ -511,8 +460,6 @@ export default function ProdukPage() {
       if (!res.ok || !result.success) throw new Error(result.error || 'Gagal memperbarui produk.');
 
       setIsEditModalOpen(false);
-      setImageFile(null);
-      setImagePreview(null);
 
       // Instant state update & local persistence
       setProducts((prev) => {
@@ -525,7 +472,6 @@ export default function ProdukPage() {
                 selling_price: selling,
                 remaining_stock: stockQty,
                 is_stock_low: stockQty <= 2,
-                image_url: newImageUrl !== undefined ? newImageUrl : p.image_url,
               }
             : p
         );
@@ -551,7 +497,6 @@ export default function ProdukPage() {
               selling_price: selling,
               remaining_stock: stockQty,
               is_stock_low: stockQty <= 2,
-              image_url: newImageUrl !== undefined ? newImageUrl : prev.image_url,
             }
           : prev
       );
@@ -593,16 +538,6 @@ export default function ProdukPage() {
 
   return (
     <div className="space-y-6">
-      {/* Studio Modal for Marketing */}
-      <StudioModal
-        isOpen={isStudioOpen}
-        onClose={() => setIsStudioOpen(false)}
-        productName={selectedProduct?.name || 'Bawang Merah'}
-        initialImage={selectedProduct?.image_url || undefined}
-        price={selectedProduct?.selling_price || 40000}
-        unit={selectedProduct?.unit || 'kg'}
-      />
-
       {/* Modal Tambah Produk Baru */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
@@ -811,13 +746,13 @@ export default function ProdukPage() {
                   <Pencil className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg">Edit Produk & Foto</h3>
-                  <p className="text-xs text-slate-500">Kelola informasi komoditas dan foto etalase</p>
+                  <h3 className="font-black text-slate-900 text-lg">Edit Komoditas</h3>
+                  <p className="text-xs text-slate-500">Kelola harga jual, satuan, dan stok komoditas</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => { setIsEditModalOpen(false); setImageFile(null); setImagePreview(null); }}
+                onClick={() => setIsEditModalOpen(false)}
                 className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -825,74 +760,6 @@ export default function ProdukPage() {
             </div>
 
             <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-              {/* Image Upload Zone */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Foto Produk
-                  </label>
-                  <span className="text-[11px] text-slate-400">Opsional (Maks. 5 MB)</span>
-                </div>
-                
-                <div className="relative group">
-                  {imagePreview ? (
-                    <div className="relative w-full h-48 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 shadow-inner">
-                      <img
-                        src={imagePreview}
-                        alt="Preview foto produk"
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Hover Overlay Controls */}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex items-center gap-1.5 bg-white text-slate-900 px-3 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-slate-100 transition-all cursor-pointer"
-                        >
-                          <Camera className="w-4 h-4 text-emerald-600" />
-                          Ganti Foto
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setImagePreview(null); setImageFile(null); }}
-                          className="flex items-center gap-1.5 bg-rose-500 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-rose-600 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Hapus Foto
-                        </button>
-                      </div>
-                      {imageFile && (
-                        <div className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-                          Foto Baru Dipilih
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
-                    >
-                      <div className="w-11 h-11 rounded-2xl bg-slate-200/80 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
-                        <Upload className="w-5 h-5 text-slate-500 group-hover:text-emerald-700 transition-colors" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs font-bold text-slate-700 group-hover:text-emerald-800 transition-colors">
-                          Klik untuk upload foto produk
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Format JPG, PNG, atau WEBP</p>
-                      </div>
-                    </button>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                  />
-                </div>
-              </div>
 
               {editError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
@@ -1004,18 +871,18 @@ export default function ProdukPage() {
                 <div className="flex items-center justify-end gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={() => { setIsEditModalOpen(false); setImageFile(null); setImagePreview(null); }}
+                    onClick={() => setIsEditModalOpen(false)}
                     className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    disabled={isEditSubmitting || isUploadingImage}
+                    disabled={isEditSubmitting}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                   >
-                    {(isEditSubmitting || isUploadingImage) ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /><span>{isUploadingImage ? 'Mengunggah foto...' : 'Menyimpan...'}</span></>
+                    {isEditSubmitting ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
                     ) : (
                       <><Check className="w-4 h-4" /><span>Simpan Perubahan</span></>
                     )}
@@ -1103,11 +970,11 @@ export default function ProdukPage() {
           <button
             type="button"
             onClick={() => setIsStudioOpen(true)}
-            className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-900 border-2 border-purple-300 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold text-xs px-3 py-2 rounded-xl shadow-2xs active:scale-95 transition-all cursor-pointer"
             title="Buat Brosur & Pesan Promosi WhatsApp dengan AI"
           >
-            <Sparkles className="w-4 h-4 text-purple-600 stroke-[2.5]" />
-            <span>Studio Promosi</span>
+            <Sparkles className="w-3.5 h-3.5 text-purple-500 stroke-[2.5]" />
+            <span className="hidden sm:inline">Promosi</span>
           </button>
 
           <button
@@ -1205,41 +1072,28 @@ export default function ProdukPage() {
                       : 'border-slate-200/80 hover:border-slate-300 shadow-xs'
                   }`}
                 >
-                  {/* E-commerce style card: Thumbnail Image + Details */}
-                  <div className="flex flex-row items-stretch">
-                    {/* Thumbnail Image */}
-                    <div className="relative w-28 sm:w-32 flex-shrink-0 bg-slate-100 overflow-hidden">
-                      {p.image_url ? (
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                          style={{ minHeight: '128px' }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-slate-50" style={{ minHeight: '128px' }}>
-                          <ImageOff className="w-7 h-7 text-slate-300 mb-1" />
-                          <span className="text-[10px] text-slate-400 font-medium leading-tight">Belum ada foto</span>
-                        </div>
-                      )}
-                      {p.is_stock_low && (
-                        <div className="absolute top-2 left-2 bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
-                          <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5]" />
-                          <span>Tipis</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="flex-1 p-4 min-w-0 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="p-4 sm:p-5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex items-center justify-center flex-shrink-0 font-black">
+                            <Package className="w-5 h-5" />
+                          </div>
                           <div className="min-w-0">
-                            <h3 className="font-bold text-base text-slate-900 tracking-tight truncate">{p.name}</h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-bold text-base text-slate-900 tracking-tight truncate">{p.name}</h3>
+                              {p.is_stock_low && (
+                                <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0">
+                                  <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5]" />
+                                  Stok Tipis
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-slate-400 mt-0.5">
                               ~{p.avg_daily_volume || 1} {p.unit}/hari • 7 Hari: Rp{(p.total_revenue_7d || 0).toLocaleString('id-ID')}
                             </p>
                           </div>
+                        </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.color}`}
@@ -1309,9 +1163,25 @@ export default function ProdukPage() {
                           Stok: <span className={`${p.is_stock_low ? 'text-amber-700 font-bold' : ''}`}>{p.remaining_stock ?? 10} {p.unit}</span>
                         </div>
                       </div>
+
+                      {/* Promotion Button */}
+                      <div className="pt-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(p);
+                            setIsStudioOpen(true);
+                          }}
+                          className="w-full min-h-[40px] flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                          title="Buat brosur dan pesan promosi WhatsApp untuk produk ini"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          <span>📸 Buat Promosi</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
               );
             })
           )}
@@ -1321,33 +1191,35 @@ export default function ProdukPage() {
         {selectedProduct ? (
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs sticky top-24 overflow-hidden">
-              {/* Product Hero Image */}
-              <div className="relative w-full h-52 bg-slate-100 group">
-                {selectedProduct.image_url ? (
-                  <img
-                    src={selectedProduct.image_url}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
-                    <ImageOff className="w-12 h-12 text-slate-300" />
-                    <p className="text-xs text-slate-400 font-medium">Belum ada foto produk</p>
+              {/* Product Header Banner */}
+              <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 p-6 text-white relative">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center text-white flex-shrink-0">
+                      <Package className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300">
+                        KOMODITAS DAGANGAN
+                      </span>
+                      <h2 className="text-xl font-black text-white tracking-tight">
+                        {selectedProduct.name}
+                      </h2>
+                    </div>
                   </div>
-                )}
-                {/* Overlay edit button */}
-                <button
-                  type="button"
-                  onClick={() => openEditModal(selectedProduct)}
-                  className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg hover:bg-white transition-all cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                  {selectedProduct.image_url ? 'Ganti Foto' : 'Tambah Foto'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(selectedProduct)}
+                    className="flex items-center gap-1.5 bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm hover:bg-emerald-50 transition-all cursor-pointer flex-shrink-0"
+                  >
+                    <Pencil className="w-3 h-3 text-emerald-700" />
+                    Edit Data
+                  </button>
+                </div>
                 {selectedProduct.is_stock_low && (
-                  <div className="absolute top-3 left-3 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1 rounded-full shadow-md flex items-center gap-1.5">
+                  <div className="mt-4 bg-amber-400 text-amber-950 text-xs font-black px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Stok Menipis — Perlu Belanja Stok Segera</span>
+                    <span>Peringatan: Stok Menipis — Segera belanja ke pemasok</span>
                   </div>
                 )}
               </div>
@@ -1516,7 +1388,6 @@ export default function ProdukPage() {
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
         productName={selectedProduct?.name || products[0]?.name || 'Bawang Merah Brebes'}
-        initialImage={selectedProduct?.image_url || products[0]?.image_url || undefined}
         price={selectedProduct?.selling_price || products[0]?.selling_price || 40000}
         unit={selectedProduct?.unit || products[0]?.unit || 'kg'}
         products={products}
