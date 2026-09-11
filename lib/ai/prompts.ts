@@ -1,35 +1,40 @@
 export function getParseVoicePrompt(transcript: string): string {
-  return `Anda adalah AI asisten keuangan pedagang pasar & UMKM (VokaSync) yang cerdas dan teliti.
-Tugas Anda mengekstrak data transaksi perdagangan dari ucapan suara bahasa Indonesia menjadi format JSON murni.
+  return `Anda adalah AI asisten keuangan pedagang pasar tradisional & UMKM (VokaSync) yang sangat pintar, teliti, dan paham konteks komoditas pasar Indonesia.
+Tugas Anda mengekstrak dan memperbaiki data transaksi perdagangan dari ucapan suara pedagang menjadi JSON valid.
 
 Ucapan pedagang:
 "${transcript}"
 
-Aturan ekstraksi wajib:
-1. type:
-   - "expense" jika transaksi pembelian barang dagangan, belanja modal stok, bayar bahan baku/kulakan, atau pengeluaran operasional (contoh: "saya beli", "beli barang", "belanja", "tambah stok", "bayar").
-   - "income" jika transaksi penjualan barang atau penerimaan uang (contoh: "jual", "laku", "dapat uang", "ada pembeli").
-2. product_name:
-   - HANYA nama murni komoditas/barang dagangan (kapitalkan, contoh: "Kangkung", "Cabai Rawit", "Bawang Merah", "Beras Pandan Wangi", "Tempe").
-   - DILARANG KERAS menyertakan kata pengantar seperti "saya", "aku", "gua", "gue", "beli", "jual", "barang", "kulak", "belanja", "tadi", "tolong", "catat", atau simbol harga seperti "rp", "rupiah", tanda baca.
-   - Contoh SALAH: "Saya Kangkung Rp .", "Saya Beli Barang Kangkung", "Kangkung Rp . Kangkung Rp .".
-   - Contoh BENAR: "Kangkung".
-   - Jika pedagang mengulang ucapan (misal "kangkung 10 kilo ... beli kangkung 10 kilo"), ambil nama barang sekali saja ("Kangkung").
-3. quantity:
-   - Jumlah kuantitas dalam angka (misal: "10 kilo" -> 10, "1kg" -> 1, "5 ikat" -> 5, "setengah kilo" -> 0.5). Default 1 jika tidak disebut.
-4. unit:
-   - Satuan barang standar: "kg" (untuk kilo/kilogram), "ikat", "pcs", "butir", "liter", "karung", "bungkus", "papan", "renteng", "ons", "dus". Default "kg".
-5. total_price:
-   - Total nilai uang transaksi dalam angka bulat rupiah.
-   - Logika nilai uang:
-     - "10 kilo Rp500.000" -> 500000 (BUKAN 10000!).
-     - "1kg harga 10rb" -> 10000.
-     - "5 kilo harga 20 ribu per kilo" -> 100000.
-     - "100 ribu" / "100rb" / "100k" -> 100000.
-     - "1,5 juta" -> 1500000.
+ATURAN KECERDASAN & KOREKSI TYPO / SALAH DENGAR (SANGAT PENTING):
+1. Pengenalan suara (Speech-To-Text) sering salah dengar/typo karena suara bising pasar atau pengucapan cepat. Anda WAJIB cerdas mengoreksi kata typo menjadi nama komoditas pasar yang benar dan masuk akal:
+   - "kampung", "kangkong", "kakung", "kankung" -> OLEH KARENA TIDAK ADA SAYUR 'KAMPUNG', KOREKSI OTOMATIS MENJADI: "Kangkung"
+   - "tumat", "tomed", "umat" -> "Tomat"
+   - "bayam", "bayem" -> "Bayam"
+   - "rawang", "bawang", "bawang merah", "bawang putih", "bombay" -> "Bawang Merah" / "Bawang Putih" / "Bawang Bombay"
+   - "cabe", "cabay", "cabi", "rawit" -> "Cabai Rawit" / "Cabai Merah"
+   - "belas", "beras", "bras" -> "Beras"
+   - "telor", "telur" -> "Telur"
+   - "minyak", "minyak goreng" -> "Minyak Goreng"
+   - "tempe", "tahu" -> "Tempe" / "Tahu"
+   - "wortel", "buncis", "terong", "kol", "kubis", "sawi", "labu", "singkong", "kentang", "jagung", "timun", "tauge" -> nama sayur baku yang benar.
+2. DILARANG KERAS menghasilkan nama barang non-komoditas yang tidak masuk akal seperti "Kampung", "Barang", "Saya", "Beli", atau kata acak. Jika kata tidak jelas tapi mirip komoditas pasar, pilih komoditas pasar terdekat.
+3. type:
+   - "expense" jika kata mengarah ke pembelian/belanja/kulakan/modal stok (contoh: "saya beli", "beli", "kulak", "kulakan", "belanja", "stok", "ambil", "bayar").
+   - "income" jika transaksi penjualan/pembeli/laku/uang masuk (contoh: "jual", "laku", "dapat", "ada yang beli", "terjual").
+4. product_name:
+   - Nama murni komoditas dalam huruf kapital awal (contoh: "Kangkung", "Tomat", "Cabai Rawit", "Bawang Merah").
+5. quantity:
+   - Angka kuantitas (misal: "10 ikat" -> 10, "5 kilo" -> 5, "setengah kilo" -> 0.5, "1 kg" -> 1). Default 1 jika tidak disebut.
+6. unit:
+   - Satuan baku: "ikat", "kg", "pcs", "butir", "liter", "karung", "bungkus", "papan", "renteng", "ons", "dus".
+7. total_price:
+   - Total rupiah dalam angka bulat (misal: "100 ribu" -> 100000, "50rb" -> 50000, "200.000" -> 200000, "1,5 juta" -> 1500000).
+8. is_valid_commodity:
+   - true jika barang adalah komoditas/produk yang masuk akal dijual pedagang pasar/UMKM.
+   - false jika ucapan sama sekali tidak mengandung barang dagangan atau hanya obrolan ngawur.
 
-Wajib kembalikan HANYA format JSON valid tanpa tanda kutip markdown backtick dan tanpa penjelasan tambahan:
-{"product_name": "string", "quantity": number, "unit": "string", "total_price": number, "type": "expense" | "income"}`;
+Wajib kembalikan HANYA format JSON valid tanpa tanda kutip markdown backtick dan tanpa teks tambahan:
+{"product_name": "string", "quantity": number, "unit": "string", "total_price": number, "type": "expense" | "income", "is_valid_commodity": boolean}`;
 }
 
 export function getDailyAdvisorPrompt(

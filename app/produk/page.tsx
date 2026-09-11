@@ -1010,7 +1010,7 @@ export default function ProdukPage() {
                           <div className="min-w-0">
                             <h3 className="font-bold text-base text-slate-900 tracking-tight truncate">{p.name}</h3>
                             <p className="text-xs text-slate-400 mt-0.5">
-                              ~{p.avg_daily_volume} {p.unit}/hari • 7 Hari: Rp{p.total_revenue_7d.toLocaleString('id-ID')}
+                              ~{p.avg_daily_volume || 1} {p.unit}/hari • 7 Hari: Rp{(p.total_revenue_7d || 0).toLocaleString('id-ID')}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1048,21 +1048,21 @@ export default function ProdukPage() {
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-slate-500">Persentase Untung:</span>
                             <span className="font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                              {p.margin_percentage}%
+                              {p.margin_percentage || 0}%
                             </span>
                           </div>
                           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                p.margin_percentage >= 30
+                                (p.margin_percentage || 0) >= 30
                                   ? 'bg-emerald-600'
-                                  : p.margin_percentage >= 20
+                                  : (p.margin_percentage || 0) >= 20
                                   ? 'bg-blue-600'
-                                  : p.margin_percentage >= 10
+                                  : (p.margin_percentage || 0) >= 10
                                   ? 'bg-amber-500'
                                   : 'bg-rose-500'
                               }`}
-                              style={{ width: `${Math.min(Math.max(p.margin_percentage * 2, 8), 100)}%` }}
+                              style={{ width: `${Math.min(Math.max((p.margin_percentage || 0) * 2, 8), 100)}%` }}
                             />
                           </div>
                         </div>
@@ -1072,11 +1072,11 @@ export default function ProdukPage() {
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                         <div>
                           <span className="text-slate-400">Beli: </span>
-                          <span className="font-semibold text-slate-800">Rp{p.cost_price.toLocaleString('id-ID')}</span>
+                          <span className="font-semibold text-slate-800">Rp{(p.cost_price || 0).toLocaleString('id-ID')}</span>
                         </div>
                         <div>
                           <span className="text-slate-400">Jual: </span>
-                          <span className="font-bold text-slate-900">Rp{p.selling_price.toLocaleString('id-ID')}</span>
+                          <span className="font-bold text-slate-900">Rp{(p.selling_price || 0).toLocaleString('id-ID')}</span>
                         </div>
                         <div className="font-semibold text-slate-700">
                           Stok: <span className={`${p.is_stock_low ? 'text-amber-700 font-bold' : ''}`}>{p.remaining_stock ?? 10} {p.unit}</span>
@@ -1164,19 +1164,19 @@ export default function ProdukPage() {
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="text-slate-500">Harga Beli dari Supplier:</span>
                     <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
-                      Rp{selectedProduct.cost_price.toLocaleString('id-ID')} / {selectedProduct.unit}
+                      Rp{(selectedProduct.cost_price || 0).toLocaleString('id-ID')} / {selectedProduct.unit}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="text-slate-500">Harga Jual ke Pembeli:</span>
                     <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
-                      Rp{selectedProduct.selling_price.toLocaleString('id-ID')} / {selectedProduct.unit}
+                      Rp{(selectedProduct.selling_price || 0).toLocaleString('id-ID')} / {selectedProduct.unit}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="text-slate-500">Untung per Satuan:</span>
                     <span className="font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/60">
-                      Rp{(selectedProduct.selling_price - selectedProduct.cost_price).toLocaleString('id-ID')} / {selectedProduct.unit}
+                      Rp{((selectedProduct.selling_price || 0) - (selectedProduct.cost_price || 0)).toLocaleString('id-ID')} / {selectedProduct.unit}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">

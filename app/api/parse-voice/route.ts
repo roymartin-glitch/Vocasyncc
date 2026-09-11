@@ -29,9 +29,28 @@ function cleanProductName(text: string): string {
     'ada', 'yang', 'dan', 'sama', 'ke', 'ya'
   ]);
 
+  // Common phonetic speech-to-text mistakes in Indonesian traditional market speech
+  const phoneticCorrections: Record<string, string> = {
+    kampung: 'kangkung',
+    kangkong: 'kangkung',
+    kakung: 'kangkung',
+    kankung: 'kangkung',
+    tumat: 'tomat',
+    tomed: 'tomat',
+    umat: 'tomat',
+    rawang: 'bawang',
+    bayem: 'bayam',
+    belas: 'beras',
+    bras: 'beras',
+    cabe: 'cabai',
+    cabay: 'cabai',
+    telor: 'telur',
+  };
+
   const words = cleaned
     .split(/\s+/)
     .map((w) => w.trim())
+    .map((w) => phoneticCorrections[w] || w)
     .filter((w) => w.length > 1 && !stopWords.has(w));
 
   // Deduplicate consecutive/repeated words (e.g. "Kangkung ... Kangkung" -> "Kangkung")

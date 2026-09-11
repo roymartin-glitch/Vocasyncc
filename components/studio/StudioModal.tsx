@@ -57,7 +57,8 @@ export function StudioModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const formattedPrice = `Rp${price.toLocaleString('id-ID')}/${unit}`;
+  const safePrice = Number(price) || 0;
+  const formattedPrice = `Rp${safePrice.toLocaleString('id-ID')}/${unit || 'kg'}`;
 
   const [promoText, setPromoText] = useState(
     `🔥 *PROMO SPESIAL ${effectiveStoreName.toUpperCase()}* 🔥\n\n` +

@@ -18,6 +18,7 @@ import {
   Sparkles,
   Clock,
   Check,
+  Package,
 } from 'lucide-react';
 import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
@@ -96,6 +97,15 @@ export default function CatatPage() {
     existingProduct: { id: string; name: string };
     parsedData: any;
     rawVoiceText: string;
+  } | null>(null);
+
+  // Voice Review & Confirmation Modal
+  const [voiceConfirmation, setVoiceConfirmation] = useState<{
+    isOpen: boolean;
+    data: any;
+    transcript: string;
+    isSimilar?: boolean;
+    existingProduct?: any;
   } | null>(null);
 
   // Products list for fuzzy matching
@@ -284,30 +294,15 @@ export default function CatatPage() {
 
         const simCheck = findSimilarProduct(d.product_name, productsList);
 
-        if (simCheck.isSimilar && simCheck.matchedProduct) {
-          setSimilarityPrompt({
-            isOpen: true,
-            candidateName: d.product_name,
-            existingProduct: simCheck.matchedProduct,
-            parsedData: d,
-            rawVoiceText: cleanTranscript,
-          });
-          return;
-        }
-
-        if (simCheck.isExact && simCheck.matchedProduct) {
-          await executeSaveTransaction(
-            simCheck.matchedProduct.name,
-            d,
-            cleanTranscript,
-            false
-          );
-          return;
-        }
-
-        await executeSaveTransaction(d.product_name, d, cleanTranscript, true);
+        setVoiceConfirmation({
+          isOpen: true,
+          data: d,
+          transcript: cleanTranscript,
+          isSimilar: simCheck.isSimilar || simCheck.isExact,
+          existingProduct: simCheck.matchedProduct || null,
+        });
       } else {
-        alert('Kalimat belum jelas. Silakan ucapkan dengan santai, contoh: "Jual beras 5 kilo 75 ribu"');
+        alert('Kalimat belum jelas. Silakan ucapkan dengan santai, contoh: "Beli kangkung 10 ikat 20 ribu"');
       }
     } catch (err) {
       console.error('Error processing voice:', err);
@@ -609,6 +604,99 @@ export default function CatatPage() {
                 className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
               >
                 Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Review & Confirmation Modal */}
+      {voiceConfirmation?.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
+            <div className="space-y-1.5 text-center">
+              <div className="inline-flex p-3 bg-emerald-100 text-emerald-800 rounded-2xl">
+                <Sparkles className="w-7 h-7 stroke-[2.5]" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900">
+                Konfirmasi Hasil Suara
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold italic">
+                &quot;{voiceConfirmation.transcript}&quot;
+              </p>
+            </div>
+
+            {/* Detected Card */}
+            <div className="bg-slate-50 border-2 border-slate-200/80 rounded-2xl p-4 space-y-3 text-left">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-2 border-b border-slate-200">
+                <span>Jenis Transaksi</span>
+                <span className={`px-2.5 py-1 rounded-lg font-black text-xs ${
+                  voiceConfirmation.data.type === 'expense'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {voiceConfirmation.data.type === 'expense' ? 'Belanja Modal Stok (Uang Keluar)' : 'Penjualan (Uang Masuk)'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>Barang Dagangan</span>
+                <span className="text-sm font-black text-slate-900">
+                  {voiceConfirmation.data.product_name}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                <span>Jumlah</span>
+                <span className="text-sm font-black text-slate-800">
+                  {voiceConfirmation.data.quantity} {voiceConfirmation.data.unit || 'kg'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-2 border-t border-slate-200">
+                <span>Total Nominal</span>
+                <span className="text-base font-black text-emerald-800">
+                  Rp{(voiceConfirmation.data.total_price || 0).toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            {voiceConfirmation.isSimilar && voiceConfirmation.existingProduct && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-900 flex items-center gap-2">
+                <Package className="w-4 h-4 text-blue-700 shrink-0" />
+                <span>Cocok dengan barang di kios: <strong>{voiceConfirmation.existingProduct.name}</strong></span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const finalName = voiceConfirmation.isSimilar && voiceConfirmation.existingProduct
+                    ? voiceConfirmation.existingProduct.name
+                    : voiceConfirmation.data.product_name;
+                  const isNew = !(voiceConfirmation.isSimilar && voiceConfirmation.existingProduct);
+                  const { data, transcript } = voiceConfirmation;
+                  setVoiceConfirmation(null);
+                  executeSaveTransaction(finalName, data, transcript, isNew);
+                }}
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#00875A] hover:bg-[#059669] text-white font-black text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Check className="w-5 h-5 stroke-[2.5]" />
+                <span>Simpan ke Catatan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVoiceConfirmation(null);
+                  // Focus manual form so merchant can edit freely
+                  const el = document.getElementById('manual-product-name');
+                  if (el) el.focus();
+                }}
+                className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition-all cursor-pointer"
+              >
+                ✏️ Perbaiki / Edit Terlebih Dahulu
               </button>
             </div>
           </div>

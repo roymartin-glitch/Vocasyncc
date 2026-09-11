@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Format analysis items with stock remaining and low stock alert
-    const results = Object.values(productStats).map((stat: any) => {
+    const results: any[] = Object.values(productStats).map((stat: any) => {
       const cost = stat.latestCost || 25000;
       const selling = stat.latestSelling || cost * 1.25;
       const margin = calculateMargin(cost, selling);

@@ -150,6 +150,7 @@ export interface StockBatch {
 
 export interface ProductAnalysisItem {
   id: string;
+  user_id?: string;
   name: string;
   unit: string;
   cost_price: number;
