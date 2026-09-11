@@ -252,6 +252,15 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Studio Promosi Modal */}
+      <StudioModal
+        isOpen={isStudioOpen}
+        onClose={() => setIsStudioOpen(false)}
+        productName={primaryInsight?.product_name || 'Bawang Merah Brebes'}
+        price={40000}
+        unit="kg"
+      />
     </div>
   );
 }

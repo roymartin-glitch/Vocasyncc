@@ -1100,14 +1100,15 @@ export default function ProdukPage() {
             </span>
           </div>
 
-          <Link
-            href="/visual-studio"
+          <button
+            type="button"
+            onClick={() => setIsStudioOpen(true)}
             className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-900 border-2 border-purple-300 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
-            title="Buat Poster & Teks Promosi WhatsApp dengan AI"
+            title="Buat Brosur & Pesan Promosi WhatsApp dengan AI"
           >
             <Sparkles className="w-4 h-4 text-purple-600 stroke-[2.5]" />
-            <span>Visual Studio</span>
-          </Link>
+            <span>Studio Promosi</span>
+          </button>
 
           <button
             type="button"
@@ -1509,6 +1510,18 @@ export default function ProdukPage() {
           </div>
         )}
       </div>
+
+      {/* Studio Promosi Modal */}
+      <StudioModal
+        isOpen={isStudioOpen}
+        onClose={() => setIsStudioOpen(false)}
+        productName={selectedProduct?.name || products[0]?.name || 'Bawang Merah Brebes'}
+        initialImage={selectedProduct?.image_url || products[0]?.image_url || undefined}
+        price={selectedProduct?.selling_price || products[0]?.selling_price || 40000}
+        unit={selectedProduct?.unit || products[0]?.unit || 'kg'}
+        products={products}
+        onSelectProduct={(p) => setSelectedProduct(p)}
+      />
     </div>
   );
 }

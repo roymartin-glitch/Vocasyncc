@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Sparkles,
@@ -13,7 +11,9 @@ import {
   ChevronRight,
   MessageCircle,
   Loader2,
+  Package,
 } from 'lucide-react';
+import { ProductAnalysisItem } from '@/types';
 
 interface StudioModalProps {
   isOpen: boolean;
@@ -24,23 +24,32 @@ interface StudioModalProps {
   unit?: string;
   storeName?: string;
   phone?: string;
+  products?: ProductAnalysisItem[];
+  onSelectProduct?: (product: ProductAnalysisItem) => void;
 }
 
 export function StudioModal({
   isOpen,
   onClose,
-  productName = 'Bawang Merah Brebes',
+  productName: initialProductName = 'Bawang Merah Brebes',
   initialImage,
-  price = 40000,
-  unit = 'kg',
+  price: initialPrice = 40000,
+  unit: initialUnit = 'kg',
   storeName,
   phone = '0812-3456-7890',
+  products = [],
+  onSelectProduct,
 }: StudioModalProps) {
   const effectiveStoreName =
     storeName ||
     (typeof window !== 'undefined'
-      ? localStorage.getItem('vokasync_business_name') || 'Toko Saya'
-      : 'Toko Saya');
+      ? localStorage.getItem('vokasync_business_name') || 'Kios Berkah Sayur'
+      : 'Kios Berkah Sayur');
+
+  const [activeProductName, setActiveProductName] = useState(initialProductName);
+  const [activePrice, setActivePrice] = useState(Number(initialPrice) || 0);
+  const [activeUnit, setActiveUnit] = useState(initialUnit);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedFrame, setSelectedFrame] = useState<'pasar' | 'minimalis' | 'kriya'>('pasar');
@@ -52,30 +61,69 @@ export function StudioModal({
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [cloudinaryUrl, setCloudinaryUrl] = useState<string | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const safePrice = Number(price) || 0;
-  const formattedPrice = `Rp${safePrice.toLocaleString('id-ID')}/${unit || 'kg'}`;
+  const safePrice = Number(activePrice) || 0;
+  const formattedPrice = `Rp${safePrice.toLocaleString('id-ID')}/${activeUnit || 'kg'}`;
 
   const [promoText, setPromoText] = useState(
     `🔥 *PROMO SPESIAL ${effectiveStoreName.toUpperCase()}* 🔥\n\n` +
-    `Segar langsung dari petani: *${productName}* kualitas super, wangi, dan pilihan!\n\n` +
+    `Segar langsung dari petani: *${activeProductName}* kualitas super, wangi, dan pilihan!\n\n` +
     `🏷️ *Harga Promo Spesial:* ${formattedPrice}\n` +
     `🛵 *Pesan antar cepat:* Siap kirim langsung ke rumah / warung Anda.\n\n` +
     `Pesan sekarang via WhatsApp sebelum stok habis! 🙏`
   );
 
-  // Update image if initialImage changes
-  React.useEffect(() => {
-    if (initialImage) {
-      setUploadedImage(initialImage);
-    }
-  }, [initialImage]);
+  // Sync state when props change
+  useEffect(() => {
+    if (initialProductName) setActiveProductName(initialProductName);
+    if (initialPrice !== undefined) setActivePrice(Number(initialPrice) || 0);
+    if (initialUnit) setActiveUnit(initialUnit);
+    if (initialImage !== undefined) setUploadedImage(initialImage || null);
+  }, [initialProductName, initialPrice, initialUnit, initialImage]);
 
-  if (!isOpen) return null;
+  // Handler for picking product inside StudioModal
+  const handlePickProduct = (prod: ProductAnalysisItem) => {
+    setActiveProductName(prod.name);
+    setActivePrice(Number(prod.selling_price) || 0);
+    setActiveUnit(prod.unit || 'kg');
+    setUploadedImage(prod.image_url || null);
+    if (onSelectProduct) onSelectProduct(prod);
+    fetchAiCopy(prod.name, Number(prod.selling_price) || 0, prod.unit || 'kg', copyStyle);
+  };
+
+  const fetchAiCopy = async (
+    pName = activeProductName,
+    pPrice = activePrice,
+    pUnit = activeUnit,
+    style = copyStyle
+  ) => {
+    setIsGeneratingCopy(true);
+    try {
+      const res = await fetch('/api/generate-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: pName,
+          price: pPrice,
+          unit: pUnit,
+          phone,
+          storeName: effectiveStoreName,
+          style,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.text) {
+        setPromoText(data.text);
+      }
+    } catch (e) {
+      console.warn('Fallback copywriting on network error:', e);
+    } finally {
+      setIsGeneratingCopy(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,7 +138,6 @@ export function StudioModal({
   const processBackgroundRemoval = async (file: File, fallbackUrl: string) => {
     setIsRemovingBg(true);
     try {
-      // Attempt client-side background removal if library loads
       const imgly = await import('@imgly/background-removal');
       const blob = await imgly.removeBackground(file);
       const cleanUrl = URL.createObjectURL(blob);
@@ -106,38 +153,15 @@ export function StudioModal({
 
   const handleCopyStyleChange = async (style: 'pasar' | 'fomo' | 'elegan') => {
     setCopyStyle(style);
-    setIsGeneratingCopy(true);
-
-    try {
-      const res = await fetch('/api/generate-copy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName,
-          price,
-          unit,
-          phone,
-          storeName,
-          style,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.text) {
-        setPromoText(data.text);
-      }
-    } catch (e) {
-      console.warn('Fallback copywriting on network error:', e);
-    } finally {
-      setIsGeneratingCopy(false);
-    }
+    await fetchAiCopy(activeProductName, activePrice, activeUnit, style);
   };
 
-  // Generate real-time copy with Gemini whenever modal opens with a new product
-  React.useEffect(() => {
+  // Generate real-time copy whenever modal opens
+  useEffect(() => {
     if (isOpen) {
-      handleCopyStyleChange(copyStyle);
+      fetchAiCopy(activeProductName, activePrice, activeUnit, copyStyle);
     }
-  }, [isOpen, productName, price, unit, storeName]);
+  }, [isOpen]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(promoText);
@@ -247,7 +271,7 @@ export function StudioModal({
         ctx.textAlign = 'center';
         ctx.fillStyle = selectedFrame === 'minimalis' ? '#0f172a' : '#ffffff';
         ctx.font = 'bold 54px sans-serif';
-        ctx.fillText(productName, 540, 760);
+        ctx.fillText(activeProductName, 540, 760);
 
         // Subtitle
         ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#cbd5e1';
@@ -285,7 +309,7 @@ export function StudioModal({
       if (!dataUrl) throw new Error('Gagal merender gambar.');
 
       const link = document.createElement('a');
-      link.download = `Promo-${productName.replace(/\s+/g, '-')}.png`;
+      link.download = `Promo-${activeProductName.replace(/\s+/g, '-')}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -314,7 +338,7 @@ export function StudioModal({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageBase64: flyerDataUrl,
-            productName,
+            productName: activeProductName,
           }),
         });
         const data = await res.json();
@@ -382,11 +406,44 @@ export function StudioModal({
             </div>
           </div>
 
+          {/* Product Picker if multiple products provided */}
+          {products && products.length > 0 && (
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700 flex items-center gap-1.5 text-xs">
+                  <Package className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Pilih Produk Toko:</span>
+                </span>
+                <span className="text-[10px] text-slate-400">{products.length} barang tersedia</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+                {products.map((p) => {
+                  const isSelected = activeProductName.toLowerCase() === p.name.toLowerCase();
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handlePickProduct(p)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <span>{p.name}</span>
+                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Context */}
           <div className="bg-emerald-50/70 border border-emerald-200/80 p-3.5 rounded-2xl flex items-center gap-3 text-emerald-950">
             <Wand2 className="w-4 h-4 text-emerald-700 flex-shrink-0" />
             <span>
-              Target Kampanye: <strong>{productName}</strong>. Promosi visual profesional akan memulihkan penjualan produk ini ke pelanggan langganan.
+              Target Kampanye: <strong>{activeProductName}</strong> ({formattedPrice}). Promosi visual profesional akan memulihkan penjualan produk ini ke pelanggan langganan.
             </span>
           </div>
 
@@ -470,7 +527,7 @@ export function StudioModal({
                       <ImageIcon className="w-12 h-12 text-white/80" />
                     )}
                   </div>
-                  <h4 className="text-2xl font-black tracking-tight">{productName}</h4>
+                  <h4 className="text-2xl font-black tracking-tight">{activeProductName}</h4>
                   <p className="text-xs opacity-90 max-w-sm mx-auto">
                     Kualitas Super • Langsung Petani • Garansi Segar
                   </p>

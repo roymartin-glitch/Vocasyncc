@@ -18,6 +18,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/visual-studio',
+        destination: '/produk',
+        permanent: false,
+      },
+      {
+        source: '/studio',
+        destination: '/produk',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
