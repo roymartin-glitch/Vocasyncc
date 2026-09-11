@@ -84,11 +84,35 @@ export default function ProdukPage() {
         const userKey = getUserKey();
         let list = [...data.data];
 
-        // Merge locally added products for this user
+        // Merge locally updated or added products for this user
         if (typeof window !== 'undefined') {
           try {
             sessionStorage.removeItem('vokasync_products_cache'); // purge legacy unscoped
             const localSaved = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
+            const localMap = new Map<string, any>(localSaved.map((lp: any) => [lp.id, lp]));
+
+            // Apply locally updated fields (e.g. edited selling_price, stock, name, image) onto the list
+            list = list.map((serverProd: any) => {
+              const localOverride = localMap.get(serverProd.id);
+              if (localOverride) {
+                return {
+                  ...serverProd,
+                  name: localOverride.name ?? serverProd.name,
+                  unit: localOverride.unit ?? serverProd.unit,
+                  selling_price: localOverride.selling_price ?? serverProd.selling_price,
+                  cost_price: localOverride.cost_price ?? serverProd.cost_price,
+                  margin_percentage: localOverride.selling_price && serverProd.cost_price
+                    ? Math.round(((localOverride.selling_price - serverProd.cost_price) / localOverride.selling_price) * 100)
+                    : serverProd.margin_percentage,
+                  remaining_stock: localOverride.remaining_stock ?? serverProd.remaining_stock,
+                  is_stock_low: localOverride.remaining_stock !== undefined ? localOverride.remaining_stock <= 2 : serverProd.is_stock_low,
+                  image_url: localOverride.image_url ?? serverProd.image_url,
+                };
+              }
+              return serverProd;
+            });
+
+            // Prepend new locally created items not in database yet
             const existingIds = new Set(list.map((p: any) => p.id));
             for (const lp of localSaved) {
               if (lp && lp.id && !existingIds.has(lp.id)) {
@@ -96,6 +120,7 @@ export default function ProdukPage() {
                 existingIds.add(lp.id);
               }
             }
+
             sessionStorage.setItem(`vokasync_products_cache_${userKey}`, JSON.stringify({
               data: list,
               threshold: data.threshold,
@@ -581,6 +606,10 @@ export default function ProdukPage() {
       setIsEditModalOpen(false);
 
       // Instant state update & local persistence
+      const newMargin = editProduct.cost_price && selling > 0
+        ? Math.round(((selling - editProduct.cost_price) / selling) * 100)
+        : editProduct.margin_percentage;
+
       setProducts((prev) => {
         const next = prev.map((p) =>
           p.id === editProduct.id
@@ -589,6 +618,7 @@ export default function ProdukPage() {
               name: editName.trim(),
               unit: editUnit,
               selling_price: selling,
+              margin_percentage: newMargin,
               remaining_stock: stockQty,
               is_stock_low: stockQty <= 2,
               image_url: editImageUrl,
@@ -615,6 +645,7 @@ export default function ProdukPage() {
             name: editName.trim(),
             unit: editUnit,
             selling_price: selling,
+            margin_percentage: newMargin,
             remaining_stock: stockQty,
             is_stock_low: stockQty <= 2,
             image_url: editImageUrl,
