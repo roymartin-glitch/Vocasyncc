@@ -289,8 +289,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F5F5F5] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 antialiased">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
         {/* Brand Logo */}
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-700 text-white shadow-md shadow-emerald-200">
-          <TrendingUp className="w-8 h-8 text-emerald-100" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white border border-slate-200/80 shadow-md p-2">
+          <img src="/icon.png" alt="VokaSync Logo" className="w-full h-full object-contain" />
         </div>
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">VokaSync</h1>

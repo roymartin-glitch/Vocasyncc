@@ -35,8 +35,8 @@ export function Sidebar({ businessName = 'Toko Saya' }: SidebarProps) {
     <aside className="hidden md:flex md:flex-col fixed top-0 left-0 h-screen z-30 bg-[#0A2619] border-r border-[#123825] transition-all duration-300 md:w-20 lg:w-64 select-none">
       {/* Brand Header */}
       <div className="h-20 flex items-center px-4 lg:px-6 border-b border-[#123825] justify-center lg:justify-start gap-3.5">
-        <div className="w-11 h-11 rounded-2xl bg-[#22C55E] flex items-center justify-center text-[#0A2619] shadow-md flex-shrink-0">
-          <TrendingUp className="w-6 h-6 stroke-[2.5]" />
+        <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-md flex-shrink-0 p-1.5">
+          <img src="/icon.png" alt="VokaSync Logo" className="w-full h-full object-contain" />
         </div>
         <div className="hidden lg:block overflow-hidden">
           <h1 className="font-extrabold text-white text-lg tracking-tight leading-tight">VokaSync</h1>
