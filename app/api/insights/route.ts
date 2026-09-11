@@ -5,6 +5,11 @@ import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 import { mockDashboardMetrics, mockTrendData, mockInsights } from '@/lib/mock-data';
+import {
+  DEMO_DASHBOARD_METRICS,
+  DEMO_TREND_DATA,
+  DEMO_PRIMARY_INSIGHT,
+} from '@/lib/mock-data/demo-data';
 
 export async function GET(req: NextRequest) {
   try {
@@ -216,15 +221,10 @@ export async function GET(req: NextRequest) {
         {
           success: true,
           profile,
-          metrics: mockDashboardMetrics,
-          trendData: mockTrendData,
-          primaryInsight: mockInsights[0] || {
-            severity: 'green',
-            has_quick_action: false,
-            message: defaultMessage,
-            created_at: 'Hari ini',
-          },
-          signals: mockInsights,
+          metrics: DEMO_DASHBOARD_METRICS,
+          trendData: DEMO_TREND_DATA,
+          primaryInsight: DEMO_PRIMARY_INSIGHT,
+          signals: [DEMO_PRIMARY_INSIGHT],
         },
         {
           headers: {

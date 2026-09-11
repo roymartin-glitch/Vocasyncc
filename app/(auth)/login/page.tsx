@@ -49,10 +49,13 @@ export default function LoginPage() {
     try {
       clearAllLocalSessions();
       if (typeof window !== 'undefined') {
+        const { DEMO_PRODUCTS, DEMO_TRANSACTIONS } = await import('@/lib/mock-data/demo-data');
         localStorage.setItem('vokasync_is_demo', 'true');
         localStorage.setItem('vokasync_user_id', 'demo-user-pak-budi');
         localStorage.setItem('vokasync_owner_name', 'Pak Budi');
         localStorage.setItem('vokasync_business_name', 'Kios Berkah Sayur');
+        localStorage.setItem('vokasync_products_demo-user-pak-budi', JSON.stringify(DEMO_PRODUCTS));
+        localStorage.setItem('vokasync_local_txs_demo-user-pak-budi', JSON.stringify(DEMO_TRANSACTIONS));
         document.cookie = `vokasync_user=${encodeURIComponent(
           JSON.stringify({
             id: 'demo-user-pak-budi',

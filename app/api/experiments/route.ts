@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
     if (error) throw error;
 
     if (isDemo && (!data || data.length === 0)) {
-      return NextResponse.json({ success: true, data: mockExperiments });
+      const { DEMO_EXPERIMENTS } = await import('@/lib/mock-data/demo-data');
+      return NextResponse.json({ success: true, data: mockExperiments.length > 0 ? mockExperiments : DEMO_EXPERIMENTS });
     }
 
     const formatted = (data || []).map((exp: any) => ({

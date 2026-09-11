@@ -56,10 +56,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (products.length === 0) {
+      const { DEMO_PRODUCTS } = await import('@/lib/mock-data/demo-data');
+      const finalProducts = isDemo ? (userMockProducts.length > 0 ? userMockProducts : DEMO_PRODUCTS) : userMockProducts;
       return NextResponse.json({
         success: true,
         threshold,
-        data: userMockProducts,
+        data: finalProducts,
       });
     }
 

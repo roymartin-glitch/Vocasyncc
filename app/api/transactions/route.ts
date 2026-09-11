@@ -74,8 +74,13 @@ export async function GET(req: NextRequest) {
       const activeUserId = profile?.id;
       let list = mockTransactions.filter((t) => {
         if (activeUserId) return t.user_id === activeUserId;
-        return isDemo && (t.user_id === 'user-001' || t.user_id === 'demo');
+        return isDemo && (t.user_id === 'user-001' || t.user_id === 'demo' || t.user_id === 'demo-user-pak-budi');
       });
+
+      if (isDemo && list.length === 0) {
+        const { DEMO_TRANSACTIONS } = await import('@/lib/mock-data/demo-data');
+        list = [...DEMO_TRANSACTIONS];
+      }
 
       if (type && (type === 'income' || type === 'expense')) {
         list = list.filter((t) => t.type === type);
