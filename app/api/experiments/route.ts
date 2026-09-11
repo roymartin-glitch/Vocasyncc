@@ -7,9 +7,18 @@ import { mockExperiments } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const { user, profile } = await getActiveUserProfile();
     const isDemo = !user;
+
+    // Early return untuk mode demo
+    if (isDemo) {
+      return NextResponse.json({
+        success: true,
+        data: mockExperiments,
+      });
+    }
+
+    const supabase = createAdminClient();
 
     let query = supabase
       .from('experiments')

@@ -6,10 +6,20 @@ import { mockProducts } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const { user, profile } = await getActiveUserProfile();
-    const userId = profile?.id;
     const isDemo = !user;
+
+    // Early return untuk mode demo
+    if (isDemo) {
+      return NextResponse.json({
+        success: true,
+        threshold: Number(profile?.margin_alert_threshold) || 20,
+        data: mockProducts,
+      });
+    }
+
+    const supabase = createAdminClient();
+    const userId = profile?.id;
 
     let productsQuery = supabase.from('products').select('id, name, default_unit, image_url').order('name');
     if (userId) {
@@ -56,12 +66,10 @@ export async function GET(req: NextRequest) {
     });
 
     if (products.length === 0) {
-      const { DEMO_PRODUCTS } = await import('@/lib/mock-data/demo-data');
-      const finalProducts = isDemo ? (userMockProducts.length > 0 ? userMockProducts : DEMO_PRODUCTS) : userMockProducts;
       return NextResponse.json({
         success: true,
         threshold,
-        data: finalProducts,
+        data: mockProducts,
       });
     }
 

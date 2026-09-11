@@ -7,6 +7,7 @@ import {
   Transaction,
   Experiment
 } from '@/types';
+import { DEMO_PRODUCTS, DEMO_TRANSACTIONS, DEMO_DASHBOARD_METRICS, DEMO_TREND_DATA, DEMO_PRIMARY_INSIGHT, DEMO_EXPERIMENTS } from './demo-data';
 
 export const mockProfile: Profile = {
   id: 'user-001',
@@ -16,23 +17,15 @@ export const mockProfile: Profile = {
   margin_alert_threshold: 20,
 };
 
-export const mockDashboardMetrics: DashboardMetrics = {
-  today_income: 0,
-  today_income_change: 0,
-  today_expense: 0,
-  today_expense_change: 0,
-  today_profit: 0,
-  today_profit_change: 0,
-  today_margin: 0,
-  today_margin_change: 0,
-};
+export const mockDashboardMetrics: DashboardMetrics = DEMO_DASHBOARD_METRICS;
 
-export const mockTrendData: TrendDayData[] = [];
+export const mockTrendData: TrendDayData[] = DEMO_TREND_DATA;
 
-export const mockInsights: AIInsight[] = [];
+export const mockInsights: AIInsight[] = [DEMO_PRIMARY_INSIGHT];
 
-export const mockProducts: ProductAnalysisItem[] = [];
+export const mockProducts: ProductAnalysisItem[] = [...DEMO_PRODUCTS];
 
-export const mockTransactions: Transaction[] = [];
+export const mockTransactions: Transaction[] = [...DEMO_TRANSACTIONS];
 
-export const mockExperiments: Experiment[] = [];
+export const mockExperiments: Experiment[] = [...DEMO_EXPERIMENTS];
+

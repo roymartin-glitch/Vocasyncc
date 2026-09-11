@@ -4,7 +4,29 @@ import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 export async function GET(req: NextRequest) {
   try {
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
+    const isDemo = !user;
+
+    // Early return untuk mode demo
+    if (isDemo) {
+      const demoProfile = {
+        id: '00000000-0000-0000-0000-000000000001',
+        owner_name: 'Pak Budi',
+        business_name: 'Kios Berkah Sayur',
+        business_type: 'pasar',
+        margin_alert_threshold: 20,
+        low_stock_threshold: 20,
+        supplier_cost_increase_threshold: 5,
+        sound_alert_enabled: false,
+        sound_alert_volume: 80,
+        text_size: 'normal',
+        theme: 'terang',
+        default_unit: 'kg',
+        analysis_period: '7d',
+        app_settings: {},
+      };
+      return NextResponse.json({ success: true, data: demoProfile });
+    }
 
     if (!profile) {
       return NextResponse.json({ success: false, error: 'Profil tidak ditemukan.' }, { status: 404 });
@@ -33,7 +55,6 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const body = await req.json();
     const {
       business_name,
@@ -50,7 +71,31 @@ export async function PATCH(req: NextRequest) {
       analysis_period,
     } = body;
 
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
+    const isDemo = !user;
+
+    // Early return untuk mode demo
+    if (isDemo) {
+      const demoUpdated = {
+        id: '00000000-0000-0000-0000-000000000001',
+        owner_name: owner_name ?? 'Pak Budi',
+        business_name: business_name ?? 'Kios Berkah Sayur',
+        business_type: business_type ?? 'pasar',
+        margin_alert_threshold: margin_alert_threshold !== undefined ? parseFloat(margin_alert_threshold) || 20 : 20,
+        low_stock_threshold: low_stock_threshold !== undefined ? parseFloat(low_stock_threshold) || 20 : 20,
+        supplier_cost_increase_threshold: supplier_cost_increase_threshold !== undefined ? parseFloat(supplier_cost_increase_threshold) || 5 : 5,
+        sound_alert_enabled: sound_alert_enabled !== undefined ? Boolean(sound_alert_enabled) : false,
+        sound_alert_volume: sound_alert_volume !== undefined ? parseFloat(sound_alert_volume) || 80 : 80,
+        text_size: text_size ?? 'normal',
+        theme: theme ?? 'terang',
+        default_unit: default_unit ?? 'kg',
+        analysis_period: analysis_period ?? '7d',
+        app_settings: {},
+      };
+      return NextResponse.json({ success: true, data: demoUpdated });
+    }
+
+    const supabase = createAdminClient();
     const userId = profile?.id;
 
     if (!userId) {

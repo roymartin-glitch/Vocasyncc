@@ -10,7 +10,6 @@ import {
   Share2,
   FileText,
   TrendingUp,
-  Sparkles,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { TrendChart } from '@/components/dashboard/TrendChart';
@@ -159,15 +158,6 @@ export default function DashboardPage() {
             >
               <TrendingUp className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
               <span>Coba & Pantau</span>
-            </Link>
-
-            <Link
-              href="/visual-studio"
-              className="inline-flex items-center gap-2 bg-purple-50 hover:bg-purple-100/80 text-purple-900 border-2 border-purple-300 font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
-              title="Visual Studio Promosi AI WhatsApp"
-            >
-              <Sparkles className="w-4 h-4 text-purple-700 stroke-[2.5]" />
-              <span>Visual Studio</span>
             </Link>
 
             <Link

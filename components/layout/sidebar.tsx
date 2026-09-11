@@ -12,7 +12,6 @@ import {
   Settings,
   LogOut,
   TrendingUp,
-  Sparkles,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,7 +24,6 @@ const navItems = [
   { name: 'Catat', href: '/catat', icon: PlusCircle },
   { name: 'Barang', href: '/produk', icon: Package },
   { name: 'Coba & Pantau', href: '/eksperimen', icon: TrendingUp },
-  { name: 'Visual Studio', href: '/visual-studio', icon: Sparkles },
   { name: 'Laporan', href: '/laporan', icon: FileText },
   { name: 'Riwayat', href: '/riwayat', icon: History },
   { name: 'Pengaturan', href: '/settings', icon: Settings },

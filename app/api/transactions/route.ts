@@ -6,7 +6,6 @@ import { mockTransactions, mockProducts } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const { user, profile } = await getActiveUserProfile();
     const isDemo = !user;
 
@@ -15,6 +14,36 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const limitParam = searchParams.get('limit');
+
+    // Early return untuk mode demo
+    if (isDemo) {
+      let list = [...mockTransactions];
+
+      if (type && (type === 'income' || type === 'expense')) {
+        list = list.filter((t) => t.type === type);
+      }
+      if (search) {
+        list = list.filter((t) =>
+          t.items?.some((it) => it.product_name?.toLowerCase().includes(search.toLowerCase()))
+        );
+      }
+      if (startDate) {
+        list = list.filter((t) => (t.transaction_date || '').split('T')[0] >= startDate);
+      }
+      if (endDate) {
+        list = list.filter((t) => (t.transaction_date || '').split('T')[0] <= endDate);
+      }
+      if (limitParam) {
+        list = list.slice(0, parseInt(limitParam, 10));
+      }
+      return NextResponse.json(
+        { success: true, data: list },
+        { headers: { 'Cache-Control': 'private, no-cache, must-revalidate' } }
+      );
+    }
+
+    const supabase = createAdminClient();
 
     let query = supabase
       .from('transactions')
@@ -58,7 +87,6 @@ export async function GET(req: NextRequest) {
       query = query.lte('transaction_date', `${endDate}T23:59:59.999Z`);
     }
 
-    const limitParam = searchParams.get('limit');
     if (limitParam) {
       query = query.limit(parseInt(limitParam, 10));
     }
@@ -69,18 +97,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    // Jika di database belum ada data transaksi, pisahkan per user_id agar data akun baru tidak tercampur
+    // Jika di database belum ada data transaksi, gunakan memory store (mockTransactions & DEMO_TRANSACTIONS)
     if (!data || data.length === 0) {
-      const activeUserId = profile?.id;
-      let list = mockTransactions.filter((t) => {
-        if (activeUserId) return t.user_id === activeUserId;
-        return isDemo && (t.user_id === 'user-001' || t.user_id === 'demo' || t.user_id === 'demo-user-pak-budi');
-      });
-
-      if (isDemo && list.length === 0) {
-        const { DEMO_TRANSACTIONS } = await import('@/lib/mock-data/demo-data');
-        list = [...DEMO_TRANSACTIONS];
-      }
+      let list = [...mockTransactions];
 
       if (type && (type === 'income' || type === 'expense')) {
         list = list.filter((t) => t.type === type);
@@ -89,6 +108,12 @@ export async function GET(req: NextRequest) {
         list = list.filter((t) =>
           t.items?.some((it) => it.product_name?.toLowerCase().includes(search.toLowerCase()))
         );
+      }
+      if (startDate) {
+        list = list.filter((t) => (t.transaction_date || '').split('T')[0] >= startDate);
+      }
+      if (endDate) {
+        list = list.filter((t) => (t.transaction_date || '').split('T')[0] <= endDate);
       }
       if (limitParam) {
         list = list.slice(0, parseInt(limitParam, 10));
@@ -148,7 +173,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const body = await req.json();
     const { type, productName, quantity, unit = 'kg', totalAmount, source = 'manual', rawVoiceText } = body;
 
@@ -271,6 +295,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const supabase = createAdminClient();
     let newTxRecord: any = null;
     try {
       const { data: existingProduct } = await supabase

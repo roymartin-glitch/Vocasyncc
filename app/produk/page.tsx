@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   BarChart3,
   Sparkles,
@@ -1088,7 +1089,7 @@ export default function ProdukPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex items-center gap-3 self-start md:self-auto flex-wrap">
           <div className="flex items-center gap-2 bg-white border border-slate-200/80 px-4 py-2 rounded-2xl shadow-2xs">
             <Sparkles className="w-4 h-4 text-emerald-600" />
             <span className="text-xs text-slate-600 font-medium">
@@ -1098,6 +1099,15 @@ export default function ProdukPage() {
               </span>
             </span>
           </div>
+
+          <Link
+            href="/visual-studio"
+            className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-900 border-2 border-purple-300 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+            title="Buat Poster & Teks Promosi WhatsApp dengan AI"
+          >
+            <Sparkles className="w-4 h-4 text-purple-600 stroke-[2.5]" />
+            <span>Visual Studio</span>
+          </Link>
 
           <button
             type="button"
