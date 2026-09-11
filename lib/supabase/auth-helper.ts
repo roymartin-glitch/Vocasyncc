@@ -69,13 +69,46 @@ export async function getActiveUserProfile() {
     return { user, profile: newProfile };
   }
 
-  // 3. Fallback for demo mode or evaluation without login
-  const { data: fallbackProfile } = await adminClient
+  // 3. Fallback untuk akun demo (Pak Budi - Kios Berkah Sayur) tanpa login
+  const { data: demoProfileInDb } = await adminClient
+    .from('profiles')
+    .select('*')
+    .ilike('owner_name', '%budi%')
+    .limit(1)
+    .maybeSingle();
+
+  if (demoProfileInDb) {
+    return { user: null, profile: demoProfileInDb };
+  }
+
+  const { data: firstProfile } = await adminClient
     .from('profiles')
     .select('*')
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  return { user: null, profile: fallbackProfile };
+  if (firstProfile) {
+    return { user: null, profile: firstProfile };
+  }
+
+  const defaultDemo = {
+    id: 'demo-user-pak-budi',
+    owner_name: 'Pak Budi',
+    business_name: 'Kios Berkah Sayur',
+    business_type: 'pasar',
+    margin_alert_threshold: 20,
+    low_stock_threshold: 20,
+    supplier_cost_increase_threshold: 5,
+    sound_alert_enabled: false,
+    sound_alert_volume: 80,
+    text_size: 'normal',
+    theme: 'terang',
+    default_unit: 'kg',
+    analysis_period: '7d',
+    app_settings: {},
+  };
+
+  return { user: null, profile: defaultDemo };
 }
+

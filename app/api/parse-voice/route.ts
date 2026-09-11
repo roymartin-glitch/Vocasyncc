@@ -113,16 +113,44 @@ function fallbackParseIndonesianSpeech(text: string) {
   };
 }
 
+// Helper to deduplicate repeated voice phrases (e.g. "saya beli kangkung saya beli kangkung")
+function cleanRepeatedVoicePhrases(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  for (let n = 6; n >= 2; n--) {
+    const regex = new RegExp(`\\b((?:[a-zA-Z0-9가-힣]+\\s+){${n - 1}}[a-zA-Z0-9가-힣]+)\\s+\\1\\b`, 'gi');
+    cleaned = cleaned.replace(regex, '$1');
+  }
+
+  cleaned = cleaned.replace(/\b([a-zA-Z0-9]+)\s+\1\b/gi, '$1');
+
+  const words = cleaned.split(/\s+/);
+  if (words.length >= 4 && words.length % 2 === 0) {
+    const half = words.length / 2;
+    const firstHalf = words.slice(0, half).join(' ').toLowerCase();
+    const secondHalf = words.slice(half).join(' ').toLowerCase();
+    if (firstHalf === secondHalf) {
+      cleaned = words.slice(0, half).join(' ');
+    }
+  }
+
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { transcript } = await req.json();
+    const body = await req.json();
+    const rawTranscript = body?.transcript;
 
-    if (!transcript || typeof transcript !== 'string') {
+    if (!rawTranscript || typeof rawTranscript !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Transkrip suara tidak valid.' },
         { status: 400 }
       );
     }
+
+    const transcript = cleanRepeatedVoicePhrases(rawTranscript);
 
     try {
       const prompt = getParseVoicePrompt(transcript);

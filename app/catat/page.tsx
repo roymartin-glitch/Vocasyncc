@@ -20,6 +20,38 @@ import { mockProducts } from '@/lib/mock-data';
 import { TransactionType } from '@/types';
 import { findSimilarProduct } from '@/lib/calculations/financial';
 
+/**
+ * Pembersih cerdas untuk mengatasi bug akumulasi dan pengulangan suara pada Web Speech API
+ * Contoh: "saya beli kangkung saya beli kangkung" -> "saya beli kangkung"
+ * Contoh: "beli kangkung 10 ikat beli kangkung 10 ikat" -> "beli kangkung 10 ikat"
+ */
+function cleanRepeatedVoicePhrases(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  // 1. Pangkas pengulangan 2 sampai 6 kata yang berulang berurutan
+  for (let n = 6; n >= 2; n--) {
+    const regex = new RegExp(`\\b((?:[a-zA-Z0-9가-힣]+\\s+){${n - 1}}[a-zA-Z0-9가-힣]+)\\s+\\1\\b`, 'gi');
+    cleaned = cleaned.replace(regex, '$1');
+  }
+
+  // 2. Pangkas kata tunggal yang berulang langsung (misal: "kangkung kangkung" -> "kangkung")
+  cleaned = cleaned.replace(/\b([a-zA-Z0-9]+)\s+\1\b/gi, '$1');
+
+  // 3. Deteksi pengulangan paruh kalimat yang persis sama
+  const words = cleaned.split(/\s+/);
+  if (words.length >= 4 && words.length % 2 === 0) {
+    const half = words.length / 2;
+    const firstHalf = words.slice(0, half).join(' ').toLowerCase();
+    const secondHalf = words.slice(half).join(' ').toLowerCase();
+    if (firstHalf === secondHalf) {
+      cleaned = words.slice(0, half).join(' ');
+    }
+  }
+
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
+
 export default function CatatPage() {
   const router = useRouter();
 
@@ -64,7 +96,12 @@ export default function CatatPage() {
   } | null>(null);
 
   // Products list for fuzzy matching
-  const [productsList, setProductsList] = useState<any[]>(mockProducts);
+  const [productsList, setProductsList] = useState<any[]>(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('vokasync_is_demo') === 'true') {
+      return mockProducts;
+    }
+    return [];
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -72,7 +109,7 @@ export default function CatatPage() {
         const cached = sessionStorage.getItem('vokasync_products_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
+          if (Array.isArray(parsed.data)) {
             setProductsList(parsed.data);
           }
         }
@@ -82,7 +119,7 @@ export default function CatatPage() {
     fetch('/api/product-analysis')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data?.length > 0) {
+        if (data.success && Array.isArray(data.data)) {
           setProductsList(data.data);
         }
       })
@@ -215,13 +252,15 @@ export default function CatatPage() {
     clearSilenceTimers();
     setIsListening(false);
     setIsProcessingVoice(true);
-    setRawVoiceText(`"${transcript}"`);
+
+    const cleanTranscript = cleanRepeatedVoicePhrases(transcript);
+    setRawVoiceText(`"${cleanTranscript}"`);
 
     try {
       const res = await fetch('/api/parse-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript }),
+        body: JSON.stringify({ transcript: cleanTranscript }),
       });
       const result = await res.json();
 
@@ -242,7 +281,7 @@ export default function CatatPage() {
             candidateName: d.product_name,
             existingProduct: simCheck.matchedProduct,
             parsedData: d,
-            rawVoiceText: transcript,
+            rawVoiceText: cleanTranscript,
           });
           return;
         }
@@ -251,13 +290,13 @@ export default function CatatPage() {
           await executeSaveTransaction(
             simCheck.matchedProduct.name,
             d,
-            transcript,
+            cleanTranscript,
             false
           );
           return;
         }
 
-        await executeSaveTransaction(d.product_name, d, transcript, true);
+        await executeSaveTransaction(d.product_name, d, cleanTranscript, true);
       } else {
         alert('Kalimat belum jelas. Silakan ucapkan dengan santai, contoh: "Jual beras 5 kilo 75 ribu"');
       }
@@ -299,22 +338,28 @@ export default function CatatPage() {
 
       recognition.onresult = (event: any) => {
         clearSilenceTimers();
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const trans = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            accumulatedRef.current += ' ' + trans;
+        let finalStr = '';
+        let interimStr = '';
+
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            finalStr += res[0].transcript + ' ';
           } else {
-            interim += trans;
+            interimStr += res[0].transcript;
           }
         }
-        const currentText = (accumulatedRef.current + ' ' + interim).trim();
-        if (currentText) {
-          setCollectedTranscript(currentText);
-          setRawVoiceText(`"${currentText}"`);
+
+        const combinedRaw = (finalStr + ' ' + interimStr).trim();
+        const cleanedText = cleanRepeatedVoicePhrases(combinedRaw);
+
+        if (cleanedText) {
+          accumulatedRef.current = cleanRepeatedVoicePhrases(finalStr).trim();
+          setCollectedTranscript(cleanedText);
+          setRawVoiceText(`"${cleanedText}"`);
 
           // Jeda santai: Berikan waktu 3 detik setelah ucapan terakhir sebelum menyarankan simpan
-          startGentleSilenceTimer(currentText);
+          startGentleSilenceTimer(cleanedText);
         }
       };
 
@@ -331,7 +376,7 @@ export default function CatatPage() {
 
       recognition.onend = () => {
         // Jika recognition terhenti secara otomatis tapi pengguna belum selesai, jangan buru-buru tutup
-        const current = accumulatedRef.current.trim();
+        const current = cleanRepeatedVoicePhrases(accumulatedRef.current || collectedTranscript).trim();
         if (current.length > 2) {
           startGentleSilenceTimer(current);
         } else {
@@ -377,7 +422,8 @@ export default function CatatPage() {
       } catch (_) {}
     }
     setIsListening(false);
-    const text = collectedTranscript.trim() || accumulatedRef.current.trim();
+    const raw = collectedTranscript.trim() || accumulatedRef.current.trim();
+    const text = cleanRepeatedVoicePhrases(raw);
     if (text && text.length > 2) {
       processVoiceAndSave(text);
     } else {

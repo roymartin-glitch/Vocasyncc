@@ -16,7 +16,12 @@ import { mockExperiments } from '@/lib/mock-data';
 import { Experiment } from '@/types';
 
 export default function EksperimenPage() {
-  const [experiments, setExperiments] = useState<Experiment[]>(mockExperiments);
+  const [experiments, setExperiments] = useState<Experiment[]>(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('vokasync_is_demo') === 'true') {
+      return mockExperiments;
+    }
+    return [];
+  });
   const [activeTab, setActiveTab] = useState<'all' | 'running' | 'completed'>('all');
   const [isNewExpModalOpen, setIsNewExpModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +37,7 @@ export default function EksperimenPage() {
     try {
       const res = await fetch('/api/experiments');
       const data = await res.json();
-      if (data.success && data.data?.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         setExperiments(data.data);
       }
     } catch (e) {

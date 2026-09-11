@@ -4,12 +4,14 @@ import { calculateMargin, determineSeverity, build7DayTrend, isStockLow } from '
 import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
+import { mockDashboardMetrics, mockTrendData, mockInsights } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
     const { user, profile } = await getActiveUserProfile();
     const userId = profile?.id;
+    const isDemo = !user;
 
     let txQuery = supabase
       .from('transactions')
@@ -37,27 +39,30 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(5);
 
+    let batchesQuery = supabase
+      .from('stock_batches')
+      .select(`
+        product_id,
+        initial_quantity,
+        remaining_quantity,
+        unit,
+        status,
+        products (
+          id,
+          name
+        )
+      `);
+
     if (userId) {
       txQuery = txQuery.eq('user_id', userId);
       insightsQuery = insightsQuery.eq('user_id', userId);
+      batchesQuery = batchesQuery.eq('user_id', userId);
     }
 
     // 1. Run all database queries in parallel for maximum speed & lowest latency
     const [txRes, batchesRes, insightsRes] = await Promise.all([
       txQuery,
-      supabase
-        .from('stock_batches')
-        .select(`
-          product_id,
-          initial_quantity,
-          remaining_quantity,
-          unit,
-          status,
-          products (
-            id,
-            name
-          )
-        `),
+      batchesQuery,
       insightsQuery,
     ]);
 
@@ -205,6 +210,25 @@ export async function GET(req: NextRequest) {
     // Combine low stock signals and general business signals
     const allSignals = [...lowStockSignals, ...(insights || [])];
 
+    // Jika mode demo dan belum ada transaksi di database, gunakan data demo komprehensif
+    if (isDemo && !hasData) {
+      return NextResponse.json(
+        {
+          success: true,
+          profile,
+          metrics: mockDashboardMetrics,
+          trendData: mockTrendData,
+          primaryInsight: mockInsights[0],
+          signals: mockInsights,
+        },
+        {
+          headers: {
+            'Cache-Control': 'private, no-cache, must-revalidate',
+          },
+        }
+      );
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -219,14 +243,14 @@ export async function GET(req: NextRequest) {
           today_margin: todayMargin,
           today_margin_change: hasData ? 2.4 : 0,
         },
-        trendData,
+        trendData: hasData ? trendData : [],
         primaryInsight: primaryInsight || {
           severity: hasData ? severity : 'green',
           has_quick_action: hasData ? hasQuickAction : false,
           message: defaultMessage,
           created_at: 'Baru saja',
         },
-        signals: allSignals,
+        signals: hasData ? allSignals : [],
       },
       {
         headers: {

@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getFIFOCostPrice } from '@/lib/calculations/financial';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
+import { mockTransactions } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
+    const isDemo = !user;
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
@@ -63,6 +65,26 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    // Jika mode demo dan di database belum ada data transaksi demo, gunakan mockTransactions
+    if (isDemo && (!data || data.length === 0)) {
+      let demoList = mockTransactions;
+      if (type && (type === 'income' || type === 'expense')) {
+        demoList = demoList.filter((t) => t.type === type);
+      }
+      if (search) {
+        demoList = demoList.filter((t) =>
+          t.items?.some((it) => it.product_name?.toLowerCase().includes(search.toLowerCase()))
+        );
+      }
+      if (limitParam) {
+        demoList = demoList.slice(0, parseInt(limitParam, 10));
+      }
+      return NextResponse.json(
+        { success: true, data: demoList },
+        { headers: { 'Cache-Control': 'private, no-cache, must-revalidate' } }
+      );
     }
 
     // Transform into standard frontend interface

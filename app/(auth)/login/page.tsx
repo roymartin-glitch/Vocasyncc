@@ -19,6 +19,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { clearAllLocalSessions } from '@/lib/supabase/auth-client';
 import { BusinessType } from '@/types';
 
 export default function LoginPage() {
@@ -46,8 +47,9 @@ export default function LoginPage() {
     setSuccessMessage('Masuk sebagai akun demo Pak Budi (Kios Berkah Sayur)...');
 
     try {
+      clearAllLocalSessions();
       if (typeof window !== 'undefined') {
-        localStorage.clear();
+        localStorage.setItem('vokasync_is_demo', 'true');
         localStorage.setItem('vokasync_owner_name', 'Pak Budi');
         localStorage.setItem('vokasync_business_name', 'Kios Berkah Sayur');
       }
@@ -55,7 +57,7 @@ export default function LoginPage() {
       await supabase.auth.signOut();
       setTimeout(() => {
         window.location.href = '/dashboard';
-      }, 600);
+      }, 500);
     } catch (e: any) {
       setErrorMessage(e.message || 'Gagal masuk akun demo.');
       setIsLoading(false);
@@ -69,6 +71,9 @@ export default function LoginPage() {
     setErrorMessage(null);
 
     try {
+      // Clear all prior caches and demo flags before signing in
+      clearAllLocalSessions();
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -76,10 +81,6 @@ export default function LoginPage() {
 
       if (error) {
         throw error;
-      }
-
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
       }
 
       // Fetch the actual user profile for this newly logged in user
@@ -90,12 +91,16 @@ export default function LoginPage() {
           .eq('id', data.user.id)
           .maybeSingle();
 
-        if (userProfile && typeof window !== 'undefined') {
-          if (userProfile.owner_name) localStorage.setItem('vokasync_owner_name', userProfile.owner_name);
-          if (userProfile.business_name) localStorage.setItem('vokasync_business_name', userProfile.business_name);
-          if (userProfile.text_size) localStorage.setItem('vokasync_text_size', userProfile.text_size);
-          if (userProfile.theme) localStorage.setItem('vokasync_theme', userProfile.theme);
-          if (userProfile.sound_alert_enabled !== undefined) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('vokasync_is_demo');
+          const finalOwner = userProfile?.owner_name || data.user.user_metadata?.owner_name || email.split('@')[0];
+          const finalBiz = userProfile?.business_name || data.user.user_metadata?.business_name || 'Toko Saya';
+
+          localStorage.setItem('vokasync_owner_name', finalOwner);
+          localStorage.setItem('vokasync_business_name', finalBiz);
+          if (userProfile?.text_size) localStorage.setItem('vokasync_text_size', userProfile.text_size);
+          if (userProfile?.theme) localStorage.setItem('vokasync_theme', userProfile.theme);
+          if (userProfile?.sound_alert_enabled !== undefined) {
             localStorage.setItem('vokasync_sound_alert', userProfile.sound_alert_enabled ? 'true' : 'false');
           }
         }
@@ -104,7 +109,7 @@ export default function LoginPage() {
       setSuccessMessage('Login berhasil! Mengalihkan ke Beranda...');
       setTimeout(() => {
         window.location.href = '/dashboard';
-      }, 700);
+      }, 600);
     } catch (err: any) {
       setErrorMessage(err.message || 'Email atau kata sandi tidak valid.');
     } finally {
@@ -125,8 +130,9 @@ export default function LoginPage() {
     }
 
     try {
+      clearAllLocalSessions();
       if (typeof window !== 'undefined') {
-        localStorage.clear();
+        localStorage.removeItem('vokasync_is_demo');
         localStorage.setItem('vokasync_owner_name', ownerName.trim());
         localStorage.setItem('vokasync_business_name', businessName.trim());
       }
@@ -207,7 +213,7 @@ export default function LoginPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900">VokaSync</h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Asisten Bisnis VokaSync & Visual Marketing Pedagang Pasar & UMKM
+            Asisten Bisnis & Visual Marketing Pedagang Pasar & UMKM
           </p>
         </div>
       </div>

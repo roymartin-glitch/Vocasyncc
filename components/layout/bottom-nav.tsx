@@ -11,7 +11,7 @@ const navItems = [
   { name: 'Barang', href: '/produk', icon: Package },
   { name: 'Laporan', href: '/laporan', icon: FileText },
   { name: 'Riwayat', href: '/riwayat', icon: History },
-  { name: 'Setelan', href: '/settings', icon: Settings },
+  { name: 'Pengaturan', href: '/settings', icon: Settings },
 ];
 
 export function BottomNav() {

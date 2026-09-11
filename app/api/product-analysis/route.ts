@@ -2,37 +2,68 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { calculateMargin, determineActionCategory, isStockLow } from '@/lib/calculations/financial';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
+import { mockProducts } from '@/lib/mock-data';
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
-    const { profile } = await getActiveUserProfile();
+    const { user, profile } = await getActiveUserProfile();
     const userId = profile?.id;
+    const isDemo = !user;
 
     let productsQuery = supabase.from('products').select('id, name, default_unit, image_url').order('name');
     if (userId) {
       productsQuery = productsQuery.eq('user_id', userId);
     }
 
+    let itemsQuery = supabase.from('transaction_items').select(`
+      product_id,
+      quantity,
+      unit_price,
+      transactions!inner (
+        type,
+        transaction_date,
+        user_id
+      )
+    `);
+    if (userId) {
+      itemsQuery = itemsQuery.eq('transactions.user_id', userId);
+    }
+
+    let batchesQuery = supabase.from('stock_batches').select('*');
+    if (userId) {
+      batchesQuery = batchesQuery.eq('user_id', userId);
+    }
+
     // Parallelize all database queries concurrently for maximum speed
     const [productsRes, itemsRes, batchesRes] = await Promise.all([
       productsQuery,
-      supabase.from('transaction_items').select(`
-        product_id,
-        quantity,
-        unit_price,
-        transactions (
-          type,
-          transaction_date
-        )
-      `),
-      supabase.from('stock_batches').select('*'),
+      itemsQuery,
+      batchesQuery,
     ]);
 
     const threshold = Number(profile?.margin_alert_threshold) || 20;
     const products = productsRes.data || [];
     const items = itemsRes.data || [];
     const stockBatches = batchesRes.data || [];
+
+    // Jika akun demo dan di DB belum ada produk, selalu tampilkan mockProducts lengkap bawaan
+    if (isDemo && products.length === 0) {
+      return NextResponse.json({
+        success: true,
+        threshold,
+        data: mockProducts,
+      });
+    }
+
+    // Jika akun pribadi baru dan belum ada produk di DB, kembalikan daftar kosong bersih
+    if (!isDemo && products.length === 0) {
+      return NextResponse.json({
+        success: true,
+        threshold,
+        data: [],
+      });
+    }
 
     // Compute cost price, selling price, and stock per product
     const productStats: Record<string, any> = {};

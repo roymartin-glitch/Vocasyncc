@@ -78,16 +78,8 @@ export function Sidebar({ businessName = 'Toko Saya' }: SidebarProps) {
           type="button"
           onClick={async () => {
             if (confirm('Apakah Anda yakin ingin keluar dari akun?')) {
-              try {
-                const { createClient } = await import('@/lib/supabase/client');
-                await createClient().auth.signOut();
-              } catch (e) {
-                console.warn('SignOut info:', e);
-              }
-              if (typeof window !== 'undefined') {
-                localStorage.clear();
-              }
-              window.location.href = '/login';
+              const { logoutUser } = await import('@/lib/supabase/auth-client');
+              await logoutUser();
             }
           }}
           className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-base font-bold text-emerald-100/70 hover:bg-rose-950/40 hover:text-rose-400 transition-colors justify-center lg:justify-start cursor-pointer"
