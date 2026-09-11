@@ -312,6 +312,60 @@ export default function ProdukPage() {
               `vokasync_products_cache_${userKey}`,
               JSON.stringify({ data: next, threshold })
             );
+
+            // REAL-TIME SYNC: Catat transaksi belanja stok modal awal ke Riwayat & Laporan
+            const initialExpense = Math.round(cost * stockQty);
+            if (initialExpense > 0) {
+              const txId = 'tx-stok-' + Date.now();
+              const newExpenseTx = {
+                id: txId,
+                user_id: userKey,
+                type: 'expense',
+                transaction_date: new Date().toISOString(),
+                source: 'manual',
+                raw_voice_text: `Stok Awal Barang: ${createdItem.name} (${stockQty} ${newProductUnit})`,
+                total_amount: initialExpense,
+                items: [
+                  {
+                    id: 'txi-' + Date.now(),
+                    transaction_id: txId,
+                    product_id: createdItem.id,
+                    product_name: createdItem.name,
+                    quantity: stockQty,
+                    unit: newProductUnit,
+                    unit_price: Math.round(cost),
+                    subtotal: initialExpense,
+                  },
+                ],
+              };
+
+              const currentTxs = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
+              currentTxs.unshift(newExpenseTx);
+              localStorage.setItem(`vokasync_local_txs_${userKey}`, JSON.stringify(currentTxs.slice(0, 100)));
+
+              // Clear caches across Riwayat, Laporan, and Beranda for instantaneous refresh
+              sessionStorage.removeItem(`vokasync_tx_cache_${userKey}`);
+              sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
+              sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);
+              sessionStorage.removeItem('vokasync_tx_cache');
+              sessionStorage.removeItem('vokasync_dash_cache');
+              sessionStorage.removeItem('vokasync_laporan_cache');
+
+              // Sync asynchronously to backend transactions API
+              fetch('/api/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'expense',
+                  productName: createdItem.name,
+                  quantity: stockQty,
+                  unit: newProductUnit,
+                  totalAmount: initialExpense,
+                  source: 'manual',
+                  rawVoiceText: `Stok Awal Barang: ${createdItem.name} (${stockQty} ${newProductUnit})`,
+                }),
+              }).catch(() => {});
+            }
           } catch (_) {}
         }
         return next;

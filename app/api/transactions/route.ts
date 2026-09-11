@@ -197,14 +197,17 @@ export async function POST(req: NextRequest) {
           existingDemoProd.selling_price = Math.round(unitPrice);
           existingDemoProd.remaining_stock = Math.max(0, (existingDemoProd.remaining_stock || 0) - qty);
         }
-      } else {
+      }
+
+      let demoProdObj = existingDemoProd;
+      if (!demoProdObj) {
         isNewProduct = true;
         productId = 'prod-' + Date.now();
         const costPrice = type === 'expense' ? Math.round(unitPrice) : Math.round(unitPrice * 0.8);
         const sellPrice = type === 'income' ? Math.round(unitPrice) : Math.round(unitPrice * 1.25);
-        const margin = Math.round(((sellPrice - costPrice) / sellPrice) * 100);
+        const margin = Math.round(((sellPrice - costPrice) / (sellPrice || 1)) * 100);
 
-        mockProducts.unshift({
+        demoProdObj = {
           id: productId,
           user_id: userId || (isDemo ? 'demo' : 'guest'),
           name: finalCleanName,
@@ -217,7 +220,8 @@ export async function POST(req: NextRequest) {
           total_revenue_7d: total,
           remaining_stock: qty,
           is_stock_low: false,
-        });
+        };
+        mockProducts.unshift(demoProdObj);
       }
 
       const newTxId = 'tx-' + Date.now();
@@ -250,6 +254,7 @@ export async function POST(req: NextRequest) {
         productId,
         productName: finalCleanName,
         isNewProduct,
+        product: demoProdObj,
         message: 'Transaksi dan barang berhasil dicatat.',
       });
     }

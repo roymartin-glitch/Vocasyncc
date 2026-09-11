@@ -9,6 +9,8 @@ import {
   Percent,
   Share2,
   FileText,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { TrendChart } from '@/components/dashboard/TrendChart';
@@ -151,8 +153,26 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
             <Link
+              href="/eksperimen"
+              className="inline-flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900 border-2 border-emerald-300 font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+              title="Coba & Pantau Prediksi Keuntungan"
+            >
+              <TrendingUp className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
+              <span>Coba & Pantau</span>
+            </Link>
+
+            <Link
+              href="/visual-studio"
+              className="inline-flex items-center gap-2 bg-purple-50 hover:bg-purple-100/80 text-purple-900 border-2 border-purple-300 font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+              title="Visual Studio Promosi AI WhatsApp"
+            >
+              <Sparkles className="w-4 h-4 text-purple-700 stroke-[2.5]" />
+              <span>Visual Studio</span>
+            </Link>
+
+            <Link
               href="/laporan"
-              className="inline-flex items-center gap-2 bg-white hover:bg-emerald-50/70 text-emerald-900 border-2 border-emerald-300 hover:border-emerald-500 font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 bg-white hover:bg-emerald-50/70 text-emerald-900 border-2 border-emerald-300 hover:border-emerald-500 font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-2xl shadow-2xs active:scale-95 transition-all cursor-pointer"
             >
               <FileText className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
               <span>Lihat Laporan</span>
@@ -161,7 +181,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={handleShareWhatsAppRekap}
-              className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer border-2 border-emerald-600/80"
+              className="inline-flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all cursor-pointer border-2 border-emerald-600/80"
             >
               <Share2 className="w-4 h-4 stroke-[2.5]" />
               <span>Kirim Rekap WhatsApp</span>

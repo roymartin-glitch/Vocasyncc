@@ -17,6 +17,27 @@ import {
 } from 'lucide-react';
 import { ProductAnalysisItem } from '@/types';
 
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+}
+
 export default function StudioPage() {
   const [products, setProducts] = useState<ProductAnalysisItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ProductAnalysisItem | null>(null);
@@ -50,6 +71,8 @@ export default function StudioPage() {
 
   // Load products list and saved store metadata
   useEffect(() => {
+    let initialList: ProductAnalysisItem[] = [];
+
     if (typeof window !== 'undefined') {
       const savedStore = localStorage.getItem('vokasync_business_name');
       if (savedStore) setStoreName(savedStore);
@@ -57,33 +80,45 @@ export default function StudioPage() {
       if (savedPhone) setPhone(savedPhone);
 
       try {
-        const cached = sessionStorage.getItem('vokasync_products_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed.data) && parsed.data.length > 0) {
-            setProducts(parsed.data);
-            handleSelectProduct(parsed.data[0]);
-            return;
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        const localProds = localStorage.getItem(`vokasync_products_${userKey}`);
+        if (localProds) {
+          const parsed = JSON.parse(localProds);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initialList = parsed;
+          }
+        }
+
+        if (initialList.length === 0) {
+          const cached = sessionStorage.getItem(`vokasync_products_cache_${userKey}`) || sessionStorage.getItem('vokasync_products_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const dataArr = Array.isArray(parsed) ? parsed : parsed.data;
+            if (Array.isArray(dataArr) && dataArr.length > 0) {
+              initialList = dataArr;
+            }
           }
         }
       } catch (_) {}
+    }
+
+    if (initialList.length > 0) {
+      setProducts(initialList);
+      handleSelectProduct(initialList[0]);
     }
 
     fetch('/api/product-analysis')
       .then((r) => r.json())
       .then((data) => {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setProducts(data.data);
-          handleSelectProduct(data.data[0]);
-        } else {
-          setProducts([]);
-          handleSelectProduct(null);
+          setProducts((prev) => {
+            if (prev.length > 0) return prev;
+            handleSelectProduct(data.data[0]);
+            return data.data;
+          });
         }
       })
-      .catch(() => {
-        setProducts([]);
-        handleSelectProduct(null);
-      });
+      .catch(() => {});
   }, []);
 
   const handleSelectProduct = (p?: ProductAnalysisItem | null) => {
@@ -194,13 +229,11 @@ export default function StudioPage() {
           img.crossOrigin = 'anonymous';
           img.onload = () => {
             ctx.fillStyle = selectedFrame === 'minimalis' ? '#ffffff' : 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.roundRect(290, 180, 500, 500, 36);
+            drawRoundedRect(ctx, 290, 180, 500, 500, 36);
             ctx.fill();
 
             ctx.save();
-            ctx.beginPath();
-            ctx.roundRect(300, 190, 480, 480, 32);
+            drawRoundedRect(ctx, 300, 190, 480, 480, 32);
             ctx.clip();
             ctx.drawImage(img, 300, 190, 480, 480);
             ctx.restore();
@@ -211,8 +244,7 @@ export default function StudioPage() {
           img.src = uploadedImage;
         } else {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-          ctx.beginPath();
-          ctx.roundRect(290, 180, 500, 500, 36);
+          drawRoundedRect(ctx, 290, 180, 500, 500, 36);
           ctx.fill();
 
           ctx.fillStyle = selectedFrame === 'minimalis' ? '#64748b' : '#94a3b8';
@@ -239,8 +271,7 @@ export default function StudioPage() {
 
         // 6. Price Badge Banner
         ctx.fillStyle = selectedFrame === 'minimalis' ? '#059669' : '#10b981';
-        ctx.beginPath();
-        ctx.roundRect(300, 845, 480, 85, 24);
+        drawRoundedRect(ctx, 300, 845, 480, 85, 24);
         ctx.fill();
 
         ctx.fillStyle = '#ffffff';

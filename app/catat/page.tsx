@@ -235,20 +235,47 @@ export default function CatatPage() {
               currentLocal.unshift(txWithUser);
               localStorage.setItem(`vokasync_local_txs_${userKey}`, JSON.stringify(currentLocal.slice(0, 100)));
             }
-            if (saveResult.product) {
-              const currentProds = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
-              const pIdx = currentProds.findIndex(
-                (p: any) =>
-                  p.id === saveResult.product.id ||
-                  p.name.toLowerCase() === saveResult.product.name.toLowerCase()
-              );
-              if (pIdx !== -1) {
-                currentProds[pIdx] = { ...currentProds[pIdx], ...saveResult.product };
-              } else {
-                currentProds.unshift(saveResult.product);
-              }
-              localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(currentProds));
+            // Selalu simpan atau perbarui data produk agar barang baru dari voice langsung ada di halaman Barang
+            const isExpense = (d.type || 'income') === 'expense';
+            const totalP = Number(d.total_price) || 0;
+            const qNum = Number(d.quantity) || 1;
+            const uPrice = Math.round(totalP / (qNum || 1));
+
+            const effectiveProduct = saveResult.product || {
+              id: saveResult.productId || 'prod-' + Date.now(),
+              user_id: userKey,
+              name: finalProductName,
+              unit: d.unit || 'kg',
+              cost_price: isExpense ? uPrice : Math.round(uPrice * 0.8),
+              selling_price: !isExpense ? uPrice : Math.round(uPrice * 1.25),
+              margin_percentage: 20,
+              action_category: 'dorong',
+              avg_daily_volume: qNum,
+              total_revenue_7d: totalP,
+              remaining_stock: qNum,
+              is_stock_low: false,
+            };
+
+            const currentProds = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
+            const pIdx = currentProds.findIndex(
+              (p: any) =>
+                p.id === effectiveProduct.id ||
+                p.name.toLowerCase() === effectiveProduct.name.toLowerCase()
+            );
+            if (pIdx !== -1) {
+              const prev = currentProds[pIdx];
+              currentProds[pIdx] = {
+                ...prev,
+                ...effectiveProduct,
+                remaining_stock: isExpense
+                  ? (prev.remaining_stock || 0) + qNum
+                  : Math.max(0, (prev.remaining_stock || 0) - qNum),
+              };
+            } else {
+              currentProds.unshift(effectiveProduct);
             }
+            localStorage.setItem(`vokasync_products_${userKey}`, JSON.stringify(currentProds));
+
             sessionStorage.removeItem(`vokasync_products_cache_${userKey}`);
             sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
             sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);
