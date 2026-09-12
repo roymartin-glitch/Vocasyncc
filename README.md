@@ -1,73 +1,83 @@
-# 🟢 VokaSync — AI Business Advisor & Visual Marketing untuk UMKM & Pedagang Pasar
+# VokaSync — AI Business Advisor & Studio Pemasaran Visual UMKM
 
 **Kompetisi**: EXASTI 2.0 — Web Application Competition 2026 (Universitas Negeri Jakarta)  
 **Subtema**: SDGs 9 — Industry, Innovation, and Infrastructure (Sustainable Innovation)  
-**Status**: ✅ Production Ready (100% Selesai & Teruji)
+**Status**: Production Ready (Teruji & Siap Digunakan)
 
 ---
 
-## 📖 Tentang VokaSync
+## Tentang VokaSync
 
-VokaSync adalah aplikasi web AI Business Advisor cerdas yang dirancang khusus untuk pedagang pasar tradisional dan pelaku UMKM mikro (kuliner rumahan, pengrajin kriya, pedagang komoditas basah, dan warung kelontong) yang produknya tidak berscan barcode dan belum memiliki pencatatan terstruktur.
+VokaSync adalah aplikasi web asisten bisnis cerdas berbasis AI yang dikembangkan khusus untuk pedagang pasar tradisional dan pelaku usaha mikro kecil (UMKM). Sebagian besar pedagang mikro belum menggunakan pencatatan terstruktur dan menjual komoditas tanpa barcode (seperti sayur, buah, bumbu dapur, dan sembako).
 
-Dengan filosofi **Closed-Loop Advisory**, VokaSync mengubah input suara alami pedagang menjadi pencatatan transaksi terstruktur, menganalisis margin keuntungan secara deterministik, memantau batch stok fisik (FIFO), serta memberikan peringatan proaktif sebelum masalah finansial menjadi kritis.
-
----
-
-## ✨ Fitur Utama
-
-- 🎙️ **Smart Voice Transaction**: Catat penjualan & belanja modal cukup dengan berbicara natural (didukung filter peredam obrolan & auto-registrasi komoditas baru).
-- 🔊 **Voice Audio Feedback (TTS)**: Asisten berbicara ramah mengonfirmasi transaksi tersimpan secara otomatis.
-- 📊 **AI Business Advisor Proaktif**: Menjelaskan akar masalah (*root-cause*) kondisi keuangan dalam bahasa Indonesia yang akrab dan mudah dipahami.
-- 📦 **Manajemen Inventaris FIFO & Peringatan Stok Fisik**: Peringatan dini saat stok komoditas menipis (kg/pcs).
-- 📲 **1-Klik Rekap WhatsApp**: Bagikan ringkasan performa harian dan laporan berkala langsung ke WhatsApp via URL scheme `wa.me`.
-- 📈 **Laporan Keuangan & Cetak Fisik**: Rekapitulasi finansial multi-periode dengan format siap cetak (`window.print`).
-- 🎨 **AI Virtual Studio**: Hapus background foto produk secara instan di browser (WASM lokal) + pasang frame studio + copywriting promosi otomatis dari Google Gemini.
+VokaSync menerapkan pendekatan **Closed-Loop Advisory**:
+1. **Input Suara Bahasa Sehari-hari**: Pedagang cukup berbicara santai untuk mencatat transaksi tanpa perlu repot mengetik.
+2. **Kalkulasi Deterministik**: Perhitungan margin, valuasi stok metode FIFO, dan deteksi stok menipis dihitung langsung secara presisi tanpa halusinasi AI.
+3. **Analisis Akar Masalah (Root-Cause Advisory)**: AI menganalisis performa bisnis dan memberikan saran operasional yang konkret dalam bahasa Indonesia yang ramah dan mudah dimengerti.
+4. **Studio Pemasaran Mandiri**: Mengubah foto barang biasa menjadi materi promosi profesional berlatar rapi dengan teks pemasaran otomatis untuk WhatsApp dan media sosial.
 
 ---
 
-## 🛠️ Tech Stack & Arsitektur (Komitmen Rp0 Biaya Langganan)
+## Fitur Utama
 
-- **Framework**: Next.js 16.3.4 (App Router) + TypeScript
-- **Styling**: Tailwind CSS v4 (Palet Dark Emerald Modern)
-- **Database & Auth**: Supabase PostgreSQL dengan Row-Level Security (RLS)
-- **Storage**: Supabase Storage Bucket (`product-images`)
-- **AI Engine**: Google Gemini Flash (Server-Side)
-- **Voice Engine**: Web Speech API (`SpeechRecognition` & `SpeechSynthesis`)
-- **Segmentasi Foto**: `@imgly/background-removal` (100% Client-Side WASM)
-- **Grafik**: Recharts BarChart
-
----
-
-## 📚 Dokumentasi Proyek
-
-Tiga pilar dokumentasi resmi proyek ini tersedia di root folder:
-1. **[PRD.md](PRD.md)** — Definisi visi produk, target persona, use case, dan pemetaan SDGs 9.
-2. **[TECHNICAL_SPEC.md](TECHNICAL_SPEC.md)** — Spesifikasi teknis arsitektur, skema 8 tabel database, endpoint API, dan alur sistem.
-3. **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** — Pelacakan pengerjaan bertahap dari Fase 1 hingga Fase 7 beserta kriteria pengujian.
+- **Pencatatan Berbasis Suara (Voice-to-Transaction)**: Integrasi Web Speech API dengan filter pembersih jeda/pengulangan kata, deteksi otomatis komoditas baru, serta konfirmasi suara ramah via Text-to-Speech.
+- **Konfirmasi Cerdas & Fuzzy Matching**: Mengenali kemiripan nama barang yang diucapkan dengan daftar barang yang sudah ada di toko untuk mencegah duplikasi data.
+- **Inventaris & Pelacakan Stok FIFO**: Pemantauan sisa stok fisik dan pengingat stok menipis secara otomatis setiap kali ada transaksi belanja atau penjualan.
+- **AI Business Advisor Proaktif**: Rekomendasi tindakan bisnis harian (evaluasi produk slow-moving, peringatan margin tipis, dan saran restok) ditenagai Google Gemini.
+- **Fitur Uji Coba Bisnis (Eksperimen Diskon)**: Simulasi dan pelacakan dampak diskon atau promosi terhadap laba bersih toko.
+- **Rekap Otomatis WhatsApp & Laporan Cetak**: Pembuatan pesan ringkasan kas siap kirim ke WhatsApp via tautan `wa.me`, serta laporan keuangan multi-periode yang siap cetak fisik (`window.print`).
+- **Studio Pemasaran Visual (AI Studio)**: Segmentasi penghapus latar belakang foto produk langsung di browser pengguna (WASM lokal) tanpa biaya server, dilengkapi pilihan template dan generator kalimat promosi.
 
 ---
 
-## 🚀 Menjalankan Aplikasi Secara Lokal
+## Arsitektur & Teknologi
 
-### 1. Prasyarat
-- Node.js versi 18 ke atas
-- Akun Supabase & Google AI Studio API Key (Free Tier)
+Aplikasi dirancang dengan komitmen biaya infrastruktur terjangkau (Rp0 biaya langganan berbayar):
 
-### 2. Instalasi & Setup Environment
+- **Framework**: Next.js (App Router) + TypeScript
+- **Styling**: Tailwind CSS
+- **Database & Otentikasi**: Supabase PostgreSQL dengan Row-Level Security (RLS)
+- **Penyimpanan Berkas**: Supabase Storage Bucket (`product-images`)
+- **Model Bahasa (AI)**: Google Gemini API (Server-Side Route Handlers)
+- **Pemrosesan Suara**: Web Speech API (`SpeechRecognition` & `SpeechSynthesis`) bawaan browser
+- **Segmentasi Gambar**: `@imgly/background-removal` (Eksekusi WebAssembly di sisi klien)
+- **Visualisasi Data**: Recharts
+
+---
+
+## Dokumentasi Teknis
+
+Dokumentasi lengkap perancangan sistem tersedia di repositori ini:
+- **[PRD.md](PRD.md)**: Product Requirement Document, target persona, alur interaksi pengguna, dan pemetaan SDGs 9.
+- **[TECHNICAL_SPEC.md](TECHNICAL_SPEC.md)**: Arsitektur teknis, skema relasional tabel database, spesifikasi API endpoint, dan mitigasi keamanan.
+- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)**: Rencana dan riwayat implementasi modul dari tahap fondasi hingga finalisasi.
+
+---
+
+## Panduan Menjalankan Aplikasi
+
+### 1. Prasyarat Sistem
+- Node.js versi 18 atau lebih baru
+- Akun Supabase (Tersedia tier gratis)
+- API Key Google AI Studio (Gemini)
+
+### 2. Pemasangan Dependensi
 ```bash
 # Clone repositori
 git clone https://github.com/roymartin-glitch/Vocasyncc.git
 cd Vocasyncc
 
-# Install dependensi
+# Pasang dependensi
 npm install
+```
 
-# Buat file konfigurasi env
+### 3. Konfigurasi Environment
+Salin berkas konfigurasi lingkungan:
+```bash
 cp .env.example .env.local
 ```
 
-Isi variabel pada `.env.local`:
+Lengkapi variabel berikut pada `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
@@ -75,51 +85,21 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
 GEMINI_API_KEY=AIzaSy...
 ```
 
-### 3. Setup Database
-Jalankan skema lengkap di SQL Editor Supabase:
+### 4. Setup Database
+Buka SQL Editor pada dashboard proyek Supabase Anda, lalu jalankan isi berkas:
 ```
 supabase/schema/full_schema.sql
 ```
-*(Opsional untuk keperluan demo penjurian)*: Jalankan `supabase/schema/seed_data.sql`.
+*(Opsional)* Jalankan `supabase/schema/seed_data.sql` jika ingin mengisi data awal untuk kebutuhan pengujian.
 
-### 4. Jalankan Server Development
+### 5. Menjalankan Server Lokal
 ```bash
 npm run dev
 ```
-Buka browser di `http://localhost:3000`.
+Aplikasi dapat diakses melalui peramban di `http://localhost:3000`.
 
-### 5. Setup Akun Demo (Opsional untuk Presentasi)
-
-Akun demo memungkinkan juri atau evaluator mencoba aplikasi dengan data realistis yang tersimpan di database Supabase real.
-
-**Kredensial Demo:**
-- **Email:** demo@vokasync.id
-- **Password:** demovokasync123
-- **UUID:** 34f9e50b-d4ba-41b1-807d-7807eb5e0d77
-
-**Cara Setup:**
-```bash
-# 1. Buat user demo di Supabase Auth Dashboard
-# Email: demo@vokasync.id, Password: demovokasync123
-# UUID sudah di-set: 34f9e50b-d4ba-41b1-807d-7807eb5e0d77
-
-# 2. Jalankan script setup di Supabase SQL Editor
-# Copy-paste isi file: supabase/schema/setup_demo_account.sql
-# Klik "Run"
-
-# 3. Test login dengan akun demo
-# Verifikasi: Dashboard menampilkan data Kios Berkah Sayur
-```
-
-**Reset Data Demo (Sebelum Presentasi):**
-```bash
-# Jalankan di Supabase SQL Editor
-# File: supabase/schema/reset_demo_account.sql
-# Kemudian re-run: setup_demo_account.sql
-```
-
-### 6. Build Produksi
+### 6. Uji Kompilasi Produksi
 ```bash
 npm run build
 ```
-Semua 22 routes terkompilasi sukses dengan 0 TypeScript error.
+Seluruh 24 rute halaman dan API berhasil terkompilasi dengan 0 TypeScript error.

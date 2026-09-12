@@ -5,11 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Mic,
-  MicOff,
   ArrowLeft,
   ArrowDownLeft,
   ArrowUpRight,
-  HelpCircle,
   Loader2,
   CheckCircle2,
   Minus,
@@ -88,15 +86,6 @@ export default function CatatPage() {
     isNewProduct?: boolean;
   } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-
-  // 1-Tap Similar Product Confirmation Modal
-  const [similarityPrompt, setSimilarityPrompt] = useState<{
-    isOpen: boolean;
-    candidateName: string;
-    existingProduct: { id: string; name: string };
-    parsedData: any;
-    rawVoiceText: string;
-  } | null>(null);
 
   // Voice Review & Confirmation Modal
   const [voiceConfirmation, setVoiceConfirmation] = useState<{
@@ -187,8 +176,7 @@ export default function CatatPage() {
   const executeSaveTransaction = async (
     finalProductName: string,
     d: any,
-    transcript: string,
-    forceNew: boolean = false
+    transcript: string
   ) => {
     setIsAutoSaving(true);
     try {
@@ -597,80 +585,7 @@ export default function CatatPage() {
         </div>
       )}
 
-      {/* 1-Tap Similar Product Confirmation Modal */}
-      {similarityPrompt?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
-            <div className="space-y-2 text-center">
-              <div className="inline-flex p-3 bg-emerald-100 text-emerald-800 rounded-2xl">
-                <HelpCircle className="w-8 h-8 stroke-[2.5]" />
-              </div>
-              <h3 className="text-xl font-black text-slate-900">
-                Apakah barang ini sama?
-              </h3>
-              <p className="text-sm text-slate-600 font-semibold leading-relaxed">
-                Anda menyebutkan &quot;{similarityPrompt.candidateName}&quot;. Apakah ini sama dengan:
-              </p>
-            </div>
 
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const { existingProduct, parsedData, rawVoiceText } = similarityPrompt;
-                  setSimilarityPrompt(null);
-                  executeSaveTransaction(existingProduct.name, parsedData, rawVoiceText, false);
-                }}
-                className="w-full p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-500 text-left transition-all cursor-pointer flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-base font-black text-emerald-950">
-                    {similarityPrompt.existingProduct.name}
-                  </div>
-                  <div className="text-xs text-emerald-700 font-bold">
-                    Ya, gunakan barang yang sudah ada
-                  </div>
-                </div>
-                <span className="text-xs font-black text-emerald-800 bg-emerald-200 px-3 py-1 rounded-xl">
-                  Sudah Ada
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const { candidateName, parsedData, rawVoiceText } = similarityPrompt;
-                  setSimilarityPrompt(null);
-                  executeSaveTransaction(candidateName, parsedData, rawVoiceText, true);
-                }}
-                className="w-full p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border-2 border-slate-300 text-left transition-all cursor-pointer flex items-center justify-between"
-              >
-                <div>
-                  <div className="text-base font-black text-slate-800">
-                    {similarityPrompt.candidateName}
-                  </div>
-                  <div className="text-xs text-slate-500 font-bold">
-                    Bukan, simpan sebagai barang baru
-                  </div>
-                </div>
-                <span className="text-xs font-black text-slate-600 bg-slate-200 px-3 py-1 rounded-xl">
-                  Barang Baru
-                </span>
-              </button>
-            </div>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => setSimilarityPrompt(null)}
-                className="text-xs text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Voice Review & Confirmation Modal */}
       {voiceConfirmation?.isOpen && (
@@ -734,13 +649,12 @@ export default function CatatPage() {
               <button
                 type="button"
                 onClick={() => {
+                  const { data, transcript } = voiceConfirmation;
                   const finalName = voiceConfirmation.isSimilar && voiceConfirmation.existingProduct
                     ? voiceConfirmation.existingProduct.name
                     : voiceConfirmation.data.product_name;
-                  const isNew = !(voiceConfirmation.isSimilar && voiceConfirmation.existingProduct);
-                  const { data, transcript } = voiceConfirmation;
                   setVoiceConfirmation(null);
-                  executeSaveTransaction(finalName, data, transcript, isNew);
+                  executeSaveTransaction(finalName, data, transcript);
                 }}
                 className="w-full py-3.5 px-4 rounded-2xl bg-[#00875A] hover:bg-[#059669] text-white font-black text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
