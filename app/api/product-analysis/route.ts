@@ -107,13 +107,15 @@ export async function GET(req: NextRequest) {
 
     // Format analysis items with stock remaining and low stock alert
     const results: any[] = Object.values(productStats).map((stat: any) => {
-      const cost = stat.latestCost || 25000;
+      // FIFO stock calculation
+      const productBatches = stockBatches.filter((b) => b.product_id === stat.id);
+      const activeBatchesWithCost = productBatches.filter((b) => b.status === 'active' && Number(b.cost_price) > 0);
+      const batchCost = activeBatchesWithCost.length > 0 ? Number(activeBatchesWithCost[activeBatchesWithCost.length - 1].cost_price) : 0;
+
+      const cost = batchCost || stat.latestCost || 25000;
       const selling = stat.latestSelling || cost * 1.25;
       const margin = calculateMargin(cost, selling);
       const category = determineActionCategory(margin, threshold);
-
-      // FIFO stock calculation
-      const productBatches = stockBatches.filter((b) => b.product_id === stat.id);
       let remainingStock = 0;
       let initialBatchQty = 0;
 

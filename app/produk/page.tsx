@@ -96,15 +96,21 @@ export default function ProdukPage() {
             list = list.map((serverProd: any) => {
               const localOverride = localMap.get(serverProd.id);
               if (localOverride) {
+                const cost = localOverride.cost_price ?? serverProd.cost_price;
+                const selling = localOverride.selling_price ?? serverProd.selling_price;
+                const margin = selling && cost && selling > 0
+                  ? Math.round(((selling - cost) / selling) * 100)
+                  : serverProd.margin_percentage;
+                const category = determineActionCategory(margin, data.threshold || 20);
+
                 return {
                   ...serverProd,
                   name: localOverride.name ?? serverProd.name,
                   unit: localOverride.unit ?? serverProd.unit,
-                  selling_price: localOverride.selling_price ?? serverProd.selling_price,
-                  cost_price: localOverride.cost_price ?? serverProd.cost_price,
-                  margin_percentage: localOverride.selling_price && serverProd.cost_price
-                    ? Math.round(((localOverride.selling_price - serverProd.cost_price) / localOverride.selling_price) * 100)
-                    : serverProd.margin_percentage,
+                  selling_price: selling,
+                  cost_price: cost,
+                  margin_percentage: margin,
+                  action_category: category,
                   remaining_stock: localOverride.remaining_stock ?? serverProd.remaining_stock,
                   is_stock_low: localOverride.remaining_stock !== undefined ? localOverride.remaining_stock <= 2 : serverProd.is_stock_low,
                   image_url: localOverride.image_url ?? serverProd.image_url,
@@ -164,7 +170,11 @@ export default function ProdukPage() {
 
     loadProducts(hasCache).then((loaded) => {
       if (loaded && loaded.length > 0) {
-        setSelectedProduct((prev) => prev || loaded[0]);
+        setSelectedProduct((prev) => {
+          if (!prev) return loaded[0];
+          const matched = loaded.find((item: any) => item.id === prev.id);
+          return matched || loaded[0];
+        });
       } else if (!hasCache) {
         setSelectedProduct(null);
       }
@@ -184,6 +194,13 @@ export default function ProdukPage() {
   // Fetch or generate dynamic Gemini AI note for selected product
   const fetchAiAdvisorNote = useCallback(async (product: ProductAnalysisItem, forceRefresh = false) => {
     if (!product) return;
+
+    // Calculate real-time margin & action category directly from current prices
+    const liveMargin = (product.cost_price && product.selling_price && product.selling_price > 0)
+      ? Math.round(((product.selling_price - product.cost_price) / product.selling_price) * 100)
+      : (product.margin_percentage || 0);
+    const liveCategory = determineActionCategory(liveMargin, threshold);
+
     const cacheKey = `${product.id}-${product.cost_price}-${product.selling_price}`;
 
     if (!forceRefresh && aiNotes[cacheKey]) {
@@ -199,8 +216,8 @@ export default function ProdukPage() {
           productName: product.name,
           costPrice: product.cost_price,
           sellingPrice: product.selling_price,
-          margin: product.margin_percentage,
-          actionCategory: product.action_category,
+          margin: liveMargin,
+          actionCategory: liveCategory,
           unit: product.unit,
         }),
       });
@@ -217,7 +234,7 @@ export default function ProdukPage() {
     } finally {
       setIsLoadingAiNote(false);
     }
-  }, [aiNotes]);
+  }, [aiNotes, threshold]);
 
   // Trigger AI note fetch whenever selected product changes
   useEffect(() => {
@@ -698,8 +715,12 @@ export default function ProdukPage() {
   const currentCacheKey = selectedProduct
     ? `${selectedProduct.id}-${selectedProduct.cost_price}-${selectedProduct.selling_price}`
     : '';
+  const selectedLiveMargin = selectedProduct && selectedProduct.cost_price && selectedProduct.selling_price && selectedProduct.selling_price > 0
+    ? Math.round(((selectedProduct.selling_price - selectedProduct.cost_price) / selectedProduct.selling_price) * 100)
+    : (selectedProduct?.margin_percentage || 0);
+  const selectedLiveCategory = determineActionCategory(selectedLiveMargin, threshold);
   const currentAiNote = selectedProduct
-    ? aiNotes[currentCacheKey] || getActionBadge(selectedProduct.action_category).desc
+    ? aiNotes[currentCacheKey] || getActionBadge(selectedLiveCategory).desc
     : '';
 
   return (
@@ -1541,18 +1562,18 @@ export default function ProdukPage() {
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="text-slate-500">Persentase Untung:</span>
                     <span
-                      className={`font-black px-2.5 py-0.5 rounded-md border ${selectedProduct.margin_percentage >= threshold
+                      className={`font-black px-2.5 py-0.5 rounded-md border ${selectedLiveMargin >= threshold
                         ? 'text-emerald-800 bg-emerald-100/70 border-emerald-200'
                         : 'text-rose-800 bg-rose-50 border-rose-200'
                         }`}
                     >
-                      {selectedProduct.margin_percentage}%
+                      {selectedLiveMargin}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="text-slate-500">Saran VokaSync:</span>
                     <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-md uppercase border border-slate-200/70">
-                      {getActionBadge(selectedProduct.action_category).label}
+                      {getActionBadge(selectedLiveCategory).label}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
