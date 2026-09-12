@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 6. Ambil master produk untuk mendapatkan data harga modal & jual terkini (sinkron real-time dengan halaman Barang)
-    let masterProductsQuery = supabase.from('products').select('id, name, default_unit');
+    let masterProductsQuery = supabase.from('products').select('id, name, default_unit, cost_price, selling_price');
     if (userId) {
       masterProductsQuery = masterProductsQuery.eq('user_id', userId);
     }
@@ -226,9 +226,17 @@ export async function GET(req: NextRequest) {
     // Hitung margin terkini berdasarkan harga jual paling mutakhir dan harga modal paling mutakhir
     Object.values(prodSalesMap).forEach((item) => {
       const pKey = item.id;
+      const masterProd = masterProducts?.find(p => p.id === pKey || p.name.toLowerCase() === item.name.toLowerCase());
+      
       const costObj = prodCostMap[pKey] || prodCostMap[item.name.toLowerCase()];
-      const currentCost = costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0);
-      const currentSelling = item.latestSellingPrice;
+      
+      const currentCost = (masterProd?.cost_price && masterProd.cost_price > 0) 
+        ? masterProd.cost_price 
+        : (costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0));
+        
+      const currentSelling = (masterProd?.selling_price && masterProd.selling_price > 0)
+        ? masterProd.selling_price
+        : item.latestSellingPrice;
 
       if (currentSelling > 0 && currentCost > 0) {
         // Gunakan margin harga terkini jika tersedia (sinkron dengan harga yang baru diubah user)
