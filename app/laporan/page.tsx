@@ -71,7 +71,7 @@ export default function LaporanPage() {
       }
 
       if (txRes.status === 'fulfilled' && txRes.value.success) {
-        let txList = [...(txRes.value.data || [])];
+        const txList = [...(txRes.value.data || [])];
         if (typeof window !== 'undefined') {
           try {
             const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');

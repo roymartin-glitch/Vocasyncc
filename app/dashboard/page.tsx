@@ -35,6 +35,9 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [userName, setUserName] = useState('Pedagang');
+  const [businessName, setBusinessName] = useState('Toko Anda');
+
   const fetchDashboardData = async () => {
     try {
       // Parallelize insights and transactions fetching with limit for instant display
@@ -109,6 +112,11 @@ export default function DashboardPage() {
         if (parsed.primaryInsight) setPrimaryInsight(parsed.primaryInsight);
         if (parsed.transactions) setTransactions(parsed.transactions);
       }
+
+      if (typeof window !== 'undefined') {
+        setUserName(localStorage.getItem('vokasync_owner_name') || 'Pedagang');
+        setBusinessName(localStorage.getItem('vokasync_business_name') || 'Toko Anda');
+      }
     } catch (_) {}
 
     // 2. Fetch fresh data in background
@@ -157,6 +165,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Greeting / User Info */}
+      <div className="flex items-center gap-3.5 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm">
+        <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-800 font-black text-lg border border-emerald-200 shadow-inner">
+          {userName.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            Halo, {userName}! 👋
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
+            {businessName}
+          </p>
+        </div>
+      </div>
+
       {/* Ringkasan Hari Ini Section */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

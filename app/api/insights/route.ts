@@ -44,7 +44,8 @@ async function handleInsights(req: NextRequest) {
           product_id,
           products (
             id,
-            name
+            name,
+            cost_price
           )
         )
       `)
@@ -101,24 +102,53 @@ async function handleInsights(req: NextRequest) {
     const todayStr = new Date().toISOString().split('T')[0];
     let todayIncome = 0;
     let todayExpense = 0;
+    let todayCogs = 0; // Cost of Goods Sold for today's sales
 
     allTx.forEach((tx) => {
       const txDate = (tx.transaction_date || '').split('T')[0];
       if (txDate === todayStr) {
-        const total = (tx.transaction_items || []).reduce(
-          (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
-          0
-        );
-        if (tx.type === 'income') todayIncome += total;
-        if (tx.type === 'expense') todayExpense += total;
+        if (tx.type === 'income') {
+          let txIncome = 0;
+          let txCogs = 0;
+          (tx.transaction_items || []).forEach((it: any) => {
+            const q = Number(it.quantity) || 0;
+            const p = Number(it.unit_price) || 0;
+            txIncome += (q * p);
+
+            // Determine cost price for COGS
+            let cost = it.products?.cost_price;
+            
+            // Override with local cache if available (for instant updates)
+            const localMatch = localProductsOverride.find((lp: any) => lp.id === it.product_id || lp.name?.toLowerCase() === it.products?.name?.toLowerCase());
+            if (localMatch?.cost_price && localMatch.cost_price > 0) {
+              cost = localMatch.cost_price;
+            }
+
+            // Fallback if no cost price exists (assume 20% margin to prevent negative or infinite math)
+            if (!cost || cost <= 0) {
+              cost = Math.round(p * 0.8);
+            }
+            
+            txCogs += (q * cost);
+          });
+          todayIncome += txIncome;
+          todayCogs += txCogs;
+        } else if (tx.type === 'expense') {
+          const total = (tx.transaction_items || []).reduce(
+            (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
+            0
+          );
+          todayExpense += total;
+        }
       }
     });
 
     // NOTE: When today has 0 transactions, metrics remain 0 - this is correct behavior.
     // The insight message will handle the "no data today" case gracefully.
 
-    const todayProfit = todayIncome - todayExpense;
-    const todayMargin = todayIncome > 0 ? Math.round((todayProfit / todayIncome) * 1000) / 10 : 0;
+    const todayProfit = todayIncome - todayExpense; // Net Cash Flow (Uang Masuk - Uang Keluar)
+    const todayGrossProfit = todayIncome - todayCogs; // Real Profit from sales
+    const todayMargin = todayIncome > 0 ? Math.round((todayGrossProfit / todayIncome) * 1000) / 10 : 0;
 
     // Deterministic severity
     const { severity, hasQuickAction } = determineSeverity(todayMargin, threshold);

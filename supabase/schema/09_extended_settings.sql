@@ -11,6 +11,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS sound_alert_enabled BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS sound_alert_volume NUMERIC DEFAULT 80,
   ADD COLUMN IF NOT EXISTS text_size TEXT DEFAULT 'normal',
+  ADD COLUMN IF NOT EXISTS theme TEXT DEFAULT 'terang',
   ADD COLUMN IF NOT EXISTS default_unit TEXT DEFAULT 'kg',
   ADD COLUMN IF NOT EXISTS analysis_period TEXT DEFAULT '7d',
   ADD COLUMN IF NOT EXISTS app_settings JSONB DEFAULT '{}';

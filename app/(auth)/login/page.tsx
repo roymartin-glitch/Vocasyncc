@@ -286,10 +286,12 @@ export default function LoginPage() {
       // JIKA Supabase Auth mengalami "Database error saving new user" (karena trigger SQL di remote Supabase)
       // Langsung daftarkan dan aktifkan akun pengguna secara mulus tanpa memblokir pedagang
       if (
-        err.message?.includes('Database error') ||
-        err.message?.includes('saving new user') ||
-        err.message?.includes('unexpected_failure') ||
-        err.status === 500
+        err.message?.toLowerCase().includes('database error') ||
+        err.message?.toLowerCase().includes('saving new user') ||
+        err.message?.toLowerCase().includes('unexpected_failure') ||
+        err.message?.toLowerCase().includes('rate limit') ||
+        err.status === 500 ||
+        err.status === 429
       ) {
         if (typeof window !== 'undefined') {
           const registeredUsers = JSON.parse(localStorage.getItem('vokasync_registered_users') || '[]');
