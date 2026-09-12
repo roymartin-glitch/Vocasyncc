@@ -269,16 +269,19 @@ async function handleInsights(req: NextRequest) {
       const costObj = prodCostMap[pKey] || prodCostMap[item.name.toLowerCase()];
       
       // Override from frontend if available, else master, else transaction history
+      const masterCost = (masterProd as any)?.cost_price;
+      const masterSelling = (masterProd as any)?.selling_price;
+
       const currentCost = (localOverride?.cost_price && localOverride.cost_price > 0)
         ? localOverride.cost_price
-        : ((masterProd?.cost_price && masterProd.cost_price > 0) 
-            ? masterProd.cost_price 
+        : (masterCost && masterCost > 0
+            ? masterCost 
             : (costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0)));
         
       const currentSelling = (localOverride?.selling_price && localOverride.selling_price > 0)
         ? localOverride.selling_price
-        : ((masterProd?.selling_price && masterProd.selling_price > 0)
-            ? masterProd.selling_price
+        : (masterSelling && masterSelling > 0
+            ? masterSelling
             : item.latestSellingPrice);
 
       if (currentSelling > 0 && currentCost > 0) {
