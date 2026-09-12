@@ -97,7 +97,7 @@ async function handleInsights(req: NextRequest) {
 
     // Use DB transactions and merge with any offline/local ones
     const dbTx = txRes.data || [];
-    const allTx = [...dbTx];
+    const allTx: any[] = [...dbTx];
     
     // Sinkronisasi transaksi lokal yang belum ter-push ke database (penting untuk mode demo/offline)
     const existingIds = new Set(allTx.map(t => t.id));
