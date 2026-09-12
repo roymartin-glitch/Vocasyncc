@@ -971,27 +971,70 @@ export default function CatatPage() {
           )}
         </div>
 
-        {/* Examples Section */}
-        <div className="pt-2 space-y-2.5">
-          <p className="text-xs uppercase font-extrabold text-slate-500 tracking-wider">
-            CONTOH YANG BISA ANDA UCAPKAN
-          </p>
+        {/* Expanded Voice Guide & Examples */}
+        <div className="pt-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase font-extrabold text-slate-500 tracking-wider">
+              CONTOH KALIMAT SUARA (KLIK LANGSUNG COBA)
+            </p>
+            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+              Paham Jual & Belanja Stok
+            </span>
+          </div>
 
-          <div className="space-y-2 max-w-xl mx-auto">
-            {[
-              'Jual bawang merah 5 kilo dapat 200 ribu',
-              'Beli kangkung 10 ikat bayar 100 ribu',
-              'Jual cabai rawit 3 kilo dapat 150 ribu',
-            ].map((phrase) => (
-              <button
-                key={phrase}
-                type="button"
-                onClick={() => processVoiceAndSave(phrase)}
-                className="w-full bg-white hover:bg-emerald-50/70 border-2 border-slate-200/90 hover:border-emerald-500 rounded-2xl py-3 px-5 text-sm sm:text-base font-bold text-slate-800 shadow-2xs transition-all text-center cursor-pointer active:scale-98"
-              >
-                &ldquo;{phrase}&rdquo;
-              </button>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto text-left">
+            {/* Penjualan Examples */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-extrabold text-[#00875A] uppercase tracking-wide flex items-center gap-1">
+                🟢 Contoh Penjualan (Uang Masuk)
+              </span>
+              {[
+                'Jual bawang merah 5 kilo dapat 200 ribu',
+                'Jual beras pandan 1 karung 150 ribu',
+                'Jual minyak goreng 2 pcs 32 ribu',
+                'Jual telur ayam 1 karpet 55 ribu',
+              ].map((phrase) => (
+                <button
+                  key={phrase}
+                  type="button"
+                  onClick={() => processVoiceAndSave(phrase)}
+                  className="w-full text-left bg-white hover:bg-emerald-50/70 border-2 border-slate-200/90 hover:border-emerald-500 rounded-2xl py-2.5 px-3.5 text-xs sm:text-sm font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-98 flex items-center justify-between group"
+                >
+                  <span className="line-clamp-1">&ldquo;{phrase}&rdquo;</span>
+                  <span className="text-[10px] text-emerald-600 group-hover:translate-x-0.5 transition-transform">Tes &rarr;</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Kulakan / Belanja Examples */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-extrabold text-rose-600 uppercase tracking-wide flex items-center gap-1">
+                🔴 Contoh Kulakan / Modal (Uang Keluar)
+              </span>
+              {[
+                'Beli kangkung 10 ikat bayar 100 ribu',
+                'Belanja cabai rawit 3 kilo habis 120 ribu',
+                'Beli plastik kresek 5 pak 45 ribu',
+                'Belanja ayam potong 10 ekor 350 ribu',
+              ].map((phrase) => (
+                <button
+                  key={phrase}
+                  type="button"
+                  onClick={() => processVoiceAndSave(phrase)}
+                  className="w-full text-left bg-white hover:bg-rose-50/70 border-2 border-slate-200/90 hover:border-rose-400 rounded-2xl py-2.5 px-3.5 text-xs sm:text-sm font-bold text-slate-800 shadow-2xs transition-all cursor-pointer active:scale-98 flex items-center justify-between group"
+                >
+                  <span className="line-clamp-1">&ldquo;{phrase}&rdquo;</span>
+                  <span className="text-[10px] text-rose-600 group-hover:translate-x-0.5 transition-transform">Tes &rarr;</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-950 font-medium text-center space-y-0.5">
+            <p className="font-extrabold text-emerald-800">💡 Tips Berbicara Cepat & Lancar:</p>
+            <p className="text-[11px] text-emerald-700">
+              Sebut kata kunci <strong>&quot;Jual&quot;</strong> atau <strong>&quot;Beli / Belanja&quot;</strong> + <strong>Nama Barang</strong> + <strong>Jumlah &amp; Satuan</strong> (kilo, ikat, karung, pcs, ekor) + <strong>Harga / Total</strong>.
+            </p>
           </div>
         </div>
       </div>

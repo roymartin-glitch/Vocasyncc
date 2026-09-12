@@ -11,12 +11,45 @@ interface AdvisorCardProps {
 
 export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ownerName, setOwnerName] = useState('Juragan');
   const isAlert = insight?.severity === 'red' || insight?.severity === 'yellow';
   const prodName = insight?.product_name || 'Produk';
 
-  const defaultAlertMessage = `Margin keuntungan ${prodName} sedang di bawah batas aman. Pertimbangkan menyesuaikan harga jual atau kurangi harga beli modal.`;
-  const defaultNormalMessage = 'Selamat datang di VokaSync! Catat penjualan atau belanja stok barang pertama Anda hari ini untuk melihat analisa keuntungan otomatis.';
-  const messageText = insight?.message || (isAlert ? defaultAlertMessage : defaultNormalMessage);
+  // Waktu sapaan dinamis (Pagi, Siang, Sore, Malam)
+  const [timeGreeting, setTimeGreeting] = useState('Halo');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hour = new Date().getHours();
+      if (hour >= 4 && hour < 11) {
+        setTimeGreeting('Selamat pagi');
+      } else if (hour >= 11 && hour < 15) {
+        setTimeGreeting('Selamat siang');
+      } else if (hour >= 15 && hour < 18) {
+        setTimeGreeting('Selamat sore');
+      } else {
+        setTimeGreeting('Selamat malam');
+      }
+
+      const savedProfile = localStorage.getItem('vokasync_user_profile');
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile);
+          if (parsed.business_name) {
+            setOwnerName(parsed.business_name);
+          } else if (parsed.name) {
+            setOwnerName(parsed.name);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, []);
+
+  const defaultAlertMessage = `${timeGreeting} ${ownerName}! Margin keuntungan ${prodName} sedang di bawah batas aman. Pertimbangkan menyesuaikan harga jual atau kurangi harga beli modal.`;
+  const defaultNormalMessage = `${timeGreeting} ${ownerName}! Selamat berjualan. Catat setiap transaksi masuk dan keluar hari ini untuk pantau keuntungan otomatis.`;
+  const messageText = insight?.message ? `${timeGreeting} ${ownerName}! ${insight.message}` : (isAlert ? defaultAlertMessage : defaultNormalMessage);
 
   // Helper untuk membaca saran secara natural dengan suara asisten ramah bahasa Indonesia
   const speakInsight = (text: string) => {

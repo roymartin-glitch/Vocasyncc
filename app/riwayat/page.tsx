@@ -17,6 +17,10 @@ import {
   Filter,
   Loader2,
   FileText,
+  Receipt,
+  Printer,
+  Share2,
+  Download,
 } from 'lucide-react';
 import { Transaction } from '@/types';
 
@@ -43,12 +47,64 @@ export default function RiwayatPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
 
+  // Receipt Modal State
+  const [selectedReceiptTx, setSelectedReceiptTx] = useState<Transaction | null>(null);
+  const [shopName, setShopName] = useState('Kios Berkah Sayur');
+
+  // Load shop profile on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedProfile = localStorage.getItem('vokasync_user_profile');
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile);
+          if (parsed.business_name) setShopName(parsed.business_name);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, []);
+
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const shareToWhatsApp = (tx: Transaction) => {
+    const item = tx.items?.[0];
+    const isIncome = tx.type === 'income';
+    const total = (tx.total_amount || 0).toLocaleString('id-ID');
+    const dateStr = new Date(tx.created_at || Date.now()).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const text = `*NOTA TRANSAKSI - ${shopName.toUpperCase()}*
+----------------------------------------
+*Status:* ${isIncome ? 'PENJUALAN (UANG MASUK)' : 'PENGELUARAN (UANG KELUAR)'}
+*Waktu:* ${dateStr}
+*Barang:* ${item?.product_name || 'Item Dagangan'}
+*Jumlah:* ${item?.quantity || 1} ${item?.unit || 'unit'}
+*Total:* Rp ${total}
+----------------------------------------
+_Terima kasih atas kerja sama dan kepercayaan Anda!_
+_Dicatat otomatis via VokaSync_`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handlePrintReceipt = () => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
   };
 
   // Set date ranges helper
@@ -580,7 +636,15 @@ export default function RiwayatPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReceiptTx(tx)}
+                        className="p-2.5 rounded-xl border-2 border-slate-200 hover:border-emerald-600 hover:text-[#00875A] text-slate-600 transition-all cursor-pointer bg-slate-50 hover:bg-emerald-50"
+                        title="Lihat & Cetak Struk"
+                      >
+                        <Receipt className="w-4 h-4 stroke-[2.5]" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => openEdit(tx)}
@@ -710,6 +774,108 @@ export default function RiwayatPage() {
                 className="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm shadow-sm"
               >
                 Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Digital Receipt Modal */}
+      {selectedReceiptTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-[#00875A] flex items-center justify-center">
+                  <Receipt className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Struk Transaksi</h3>
+                  <p className="text-[11px] font-bold text-slate-400">Siap Cetak atau Kirim WA</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptTx(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            </div>
+
+            {/* Printable Receipt Paper Style */}
+            <div
+              id="printable-receipt"
+              className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-4 font-mono text-xs text-slate-800 space-y-3"
+            >
+              <div className="text-center space-y-0.5 border-b border-dashed border-slate-300 pb-2">
+                <p className="font-black text-sm tracking-wider uppercase text-slate-900">{shopName}</p>
+                <p className="text-[11px] text-slate-500 font-sans font-semibold">Nota Transaksi Resmi</p>
+                <p className="text-[10px] text-slate-400">
+                  {new Date(selectedReceiptTx.created_at || Date.now()).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-start">
+                  <span className="font-bold">
+                    {selectedReceiptTx.items?.[0]?.product_name || 'Barang Dagang'}
+                  </span>
+                  <span>
+                    {selectedReceiptTx.items?.[0]?.quantity || 1} {selectedReceiptTx.items?.[0]?.unit || 'unit'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-500 text-[11px]">
+                  <span>Tipe:</span>
+                  <span className="font-semibold uppercase">
+                    {selectedReceiptTx.type === 'income' ? 'Penjualan' : 'Pengeluaran'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 pt-2 flex justify-between items-center font-bold text-sm text-slate-900">
+                <span>TOTAL:</span>
+                <span className="text-[#00875A] font-black">
+                  Rp{(selectedReceiptTx.total_amount || 0).toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              <div className="text-center pt-2 border-t border-dashed border-slate-300 text-[10px] text-slate-400 font-sans">
+                Terima kasih atas kunjungan Anda!
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => shareToWhatsApp(selectedReceiptTx)}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black text-sm shadow-sm transition-all cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 stroke-[2.5]" />
+                Kirim Struk ke WhatsApp
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrintReceipt}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
+              >
+                <Printer className="w-4 h-4 stroke-[2.5]" />
+                Cetak / Simpan PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptTx(null)}
+                className="w-full py-2.5 px-4 rounded-2xl border-2 border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors"
+              >
+                Tutup
               </button>
             </div>
           </div>
