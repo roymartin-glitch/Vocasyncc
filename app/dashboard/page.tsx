@@ -165,20 +165,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Greeting / User Info */}
-      <div className="flex items-center gap-3.5 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm">
-        <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-800 font-black text-lg border border-emerald-200 shadow-inner">
-          {userName.charAt(0).toUpperCase()}
-        </div>
-        <div>
-          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-            Halo, {userName}! 👋
-          </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
-            {businessName}
-          </p>
-        </div>
-      </div>
+
 
       {/* Ringkasan Hari Ini Section */}
       <section className="space-y-4">
