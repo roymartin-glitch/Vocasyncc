@@ -42,10 +42,31 @@ VokaSync dirancang spesifik untuk pelaku ekonomi mikro:
 
 ## 🚀 4. Keunggulan Utama VokaSync
 
-### 🎙️ 1. Input Suara Cerdas (Speech-to-Transaction)
-- Ditenagai Web Speech API dengan peredam jeda dan filter noise.
-- Cerdas membedakan transaksi **Uang Masuk (Penjualan)** dan **Uang Keluar (Belanja Modal)** secara otomatis dari konteks kalimat.
-- Dilengkapi konfirmasi suara lisan dan form koreksi cepat di tempat (*in-place edit*).
+### 🎙️ 1. Pencatatan Berbasis Suara Cerdas (Voice-to-Transaction Suite)
+Fitur unggulan utama VokaSync yang dirancang khusus untuk operasional riil di pasar yang bising dan dinamis:
+- **Pengenalan Bahasa Sehari-hari & Dialek Pasar (Natural Language Parsing):**
+  - Mengerti ucapan kasual pedagang seperti *"Jual bawang merah 5 kilo dapat 200 ribu"*, *"Beli kangkung 10 ikat bayar 50 ribu"*, atau *"Belanja ayam potong 10 ekor 350 ribu"*.
+  - Otomatis mengekstrak **Jenis Transaksi** (Penjualan/Belanja), **Nama Komoditas**, **Jumlah**, **Satuan**, dan **Total Nominal**.
+- **Normalisasi Angka & Satuan Indonesia Otomatis:**
+  - Mengenali ragam penyebutan nominal lokal: *seperempat (0.25)*, *setengah (0.5)*, *sepuluh ribu (10.000)*, *goceng (5.000)*, *ceban (10.000)*, *gocap (50.000)*, *setengah juta (500.000)*, *1 juta*, dll.
+  - Mendukung satuan komoditas pasar lengkap: *kg, gram, ikat, karung, pcs/buah, bungkus, karpet, ekor, liter, kaleng, pack, dus*.
+- **Pembeda Arah Arus Kas Otomatis (Uang Masuk vs Uang Keluar):**
+  - Mendeteksi kata kunci penjualan (*jual, laku, dapat, terima*) menjadi **Uang Masuk (+)**.
+  - Mendeteksi kata kunci modal belanja (*beli, belanja, modal, kulak, bayar*) menjadi **Uang Keluar (-)**.
+- **Arsitektur Dual-Engine Parsing (Hybrid Regex + Google Gemini AI):**
+  - Parsing dilakukan secara instan lewat mesin regex lokal berkecepatan tinggi (~10ms).
+  - Jika kalimat ucapan panjang atau kompleks, sistem otomatis mengalihkan ke model Google Gemini untuk mengekstrak entitas tanpa gagal.
+- **Peredam Jeda & Filter Kata Berulang (Noise & Hesitation Filter):**
+  - Mengeliminasi gumaman khas manusia seperti *"eh...", "anu...", "mmm...", "terus..."* serta kata yang diulang dua kali karena ragu.
+- **Fuzzy Matching Nama Produk & Registrasi Otomatis:**
+  - Mencocokkan nama komoditas dengan inventaris yang sudah ada di toko untuk mencegah duplikasi (misal: ucapan *"tomat"* otomatis terhubung ke produk *"Tomat Sayur"*).
+  - Jika komoditas baru pertama kali diucapkan, sistem otomatis mendaftarkannya ke katalog barang dagangan secara instan.
+- **Form Edit Langsung di Tempat (*In-Place Edit Modal*):**
+  - Sebelum data disimpan permanen, pedagang dapat melihat modal konfirmasi visual yang rapi. Jika ada salah ucap, pedagang bisa langsung mengedit teks/angka di form tanpa perlu mengulang bicara dari awal.
+- **Konfirmasi Suara Lisan Asisten Ramah (Audio Text-to-Speech):**
+  - Asisten membalas langsung secara lisan dalam bahasa Indonesia: *"Baik, tercatat penjualan bawang merah 5 kilo senilai dua ratus ribu rupiah"*. Pedagang tahu catatannya masuk tanpa harus memandang layar HP.
+- **Contoh Kalimat Sekali Klik (*Voice Cheatsheet*):**
+  - Tersedia kartu panduan contoh kalimat suara yang bisa diklik langsung untuk menguji sistem secara instan.
 
 ### 📊 2. Visualisasi Tren Finansial Kapsul Modern
 - Grafik 7 hari terakhir bergaya **Capsule Pill Bar** dengan arsir diagonal halus.
