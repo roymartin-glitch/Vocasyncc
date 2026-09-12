@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Wallet,
@@ -16,6 +16,7 @@ import { TrendChart } from '@/components/dashboard/TrendChart';
 import { AdvisorCard } from '@/components/dashboard/AdvisorCard';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { StudioModal } from '@/components/studio/StudioModal';
+import { calculateFinancialSummary } from '@/lib/calculations/financial';
 import { AIInsight, DashboardMetrics, Transaction, TrendDayData } from '@/types';
 
 export default function DashboardPage() {
@@ -40,7 +41,7 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Parallelize insights and transactions fetching with limit for instant display
+      // Parallelize insights and transactions fetching for instant display
       const [insightsResult, txResult] = await Promise.allSettled([
         fetch('/api/insights', {
           method: 'POST',
@@ -50,7 +51,7 @@ export default function DashboardPage() {
             localTxs: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`vokasync_local_txs_${localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')}`) || '[]') : []
           })
         }).then((r) => r.json()),
-        fetch('/api/transactions?limit=6').then((r) => r.json()),
+        fetch('/api/transactions').then((r) => r.json()),
       ]);
 
       let newMetrics: DashboardMetrics | null = null;
@@ -58,11 +59,46 @@ export default function DashboardPage() {
       let newInsight: AIInsight | null = null;
       let newTx: Transaction[] = [];
 
+      if (txResult.status === 'fulfilled' && txResult.value.success) {
+        const items = [...(txResult.value.data || [])];
+        if (typeof window !== 'undefined') {
+          try {
+            const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+            const localTxs = JSON.parse(localStorage.getItem(`vokasync_local_txs_${userKey}`) || '[]');
+            const existingIds = new Set(items.map((t: any) => t.id));
+            for (const l of localTxs) {
+              if (l && l.id && !existingIds.has(l.id)) {
+                if (l.user_id && l.user_id === userKey) {
+                  items.unshift(l);
+                  existingIds.add(l.id);
+                }
+              }
+            }
+          } catch (_) {}
+        }
+        setTransactions(items);
+        newTx = items;
+      }
+
+      // Compute client-side financial summary for today's synchronization guarantee
+      const todayDateStr = new Date().toISOString().split('T')[0];
+      const clientCalc = calculateFinancialSummary(newTx, todayDateStr);
+
       if (insightsResult.status === 'fulfilled' && insightsResult.value.success) {
         const data = insightsResult.value;
         if (data.metrics) {
-          setMetrics(data.metrics);
-          newMetrics = data.metrics;
+          const syncedMetrics: DashboardMetrics = {
+            today_income: data.metrics.today_income || clientCalc.income,
+            today_income_change: data.metrics.today_income_change ?? 0,
+            today_expense: data.metrics.today_income > 0 ? (data.metrics.today_expense ?? clientCalc.expense) : clientCalc.expense,
+            today_expense_change: data.metrics.today_expense_change ?? 0,
+            today_profit: data.metrics.today_profit || clientCalc.profit,
+            today_profit_change: data.metrics.today_profit_change ?? 0,
+            today_margin: data.metrics.today_margin || clientCalc.margin,
+            today_margin_change: data.metrics.today_margin_change ?? 0,
+          };
+          setMetrics(syncedMetrics);
+          newMetrics = syncedMetrics;
         }
         if (data.trendData) {
           setTrendData(data.trendData);
@@ -72,12 +108,18 @@ export default function DashboardPage() {
           setPrimaryInsight(data.primaryInsight);
           newInsight = data.primaryInsight;
         }
-      }
-
-      if (txResult.status === 'fulfilled' && txResult.value.success) {
-        const items = txResult.value.data || [];
-        setTransactions(items);
-        newTx = items;
+      } else {
+        newMetrics = {
+          today_income: clientCalc.income,
+          today_income_change: 0,
+          today_expense: clientCalc.expense,
+          today_expense_change: 0,
+          today_profit: clientCalc.profit,
+          today_profit_change: 0,
+          today_margin: clientCalc.margin,
+          today_margin_change: 0,
+        };
+        setMetrics(newMetrics);
       }
 
       // Persist to session cache for 0ms instant display next time
@@ -145,6 +187,16 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const todayDateStr = typeof window !== 'undefined' ? new Date().toISOString().split('T')[0] : '';
+  const calculatedToday = useMemo(() => {
+    return calculateFinancialSummary(transactions, todayDateStr);
+  }, [transactions, todayDateStr]);
+
+  const displayIncome = metrics.today_income || calculatedToday.income || 0;
+  const displayExpense = metrics.today_income > 0 ? (metrics.today_expense ?? calculatedToday.expense) : calculatedToday.expense;
+  const displayProfit = metrics.today_profit || calculatedToday.profit || 0;
+  const displayMargin = metrics.today_margin || calculatedToday.margin || 0;
+
   const handleShareWhatsAppRekap = () => {
     const todayStr = new Date().toLocaleDateString('id-ID', {
       weekday: 'long',
@@ -152,10 +204,10 @@ export default function DashboardPage() {
       month: 'long',
       year: 'numeric',
     });
-    const income = (metrics.today_income ?? 0).toLocaleString('id-ID');
-    const expense = (metrics.today_expense ?? 0).toLocaleString('id-ID');
-    const profit = (metrics.today_profit ?? 0).toLocaleString('id-ID');
-    const margin = (metrics.today_margin ?? 0).toLocaleString('id-ID');
+    const income = displayIncome.toLocaleString('id-ID');
+    const expense = displayExpense.toLocaleString('id-ID');
+    const profit = displayProfit.toLocaleString('id-ID');
+    const margin = displayMargin.toLocaleString('id-ID');
 
     const message = `📊 *Rekap Keuangan Kios*\n📅 ${todayStr}\n\n• *Uang Masuk:* Rp${income}\n• *Uang Keluar:* Rp${expense}\n• *Untung Bersih:* Rp${profit} (${margin}%)\n\n_Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._`;
 
@@ -210,7 +262,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Uang Masuk"
             description="Total penjualan hari ini"
-            value={`Rp${(metrics.today_income ?? 0).toLocaleString('id-ID')}`}
+            value={`Rp${displayIncome.toLocaleString('id-ID')}`}
             changePercent={metrics.today_income_change ?? 0}
             variant="emerald"
             icon={<Wallet className="w-6 h-6 stroke-[2.5]" />}
@@ -220,7 +272,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Uang Keluar"
             description="Total belanja & biaya"
-            value={`Rp${(metrics.today_expense ?? 0).toLocaleString('id-ID')}`}
+            value={`Rp${displayExpense.toLocaleString('id-ID')}`}
             changePercent={metrics.today_expense_change ?? 0}
             variant="white"
             isExpense={true}
@@ -231,7 +283,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Untung Bersih"
             description="Sisa uang untuk Anda"
-            value={`Rp${(metrics.today_profit ?? 0).toLocaleString('id-ID')}`}
+            value={`Rp${displayProfit.toLocaleString('id-ID')}`}
             changePercent={metrics.today_profit_change ?? 0}
             variant="lime"
             icon={<PiggyBank className="w-6 h-6 stroke-[2.5]" />}
@@ -241,7 +293,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Persen Untung"
             description="Untung dari setiap penjualan"
-            value={`${(metrics.today_margin ?? 0).toLocaleString('id-ID')}%`}
+            value={`${displayMargin.toLocaleString('id-ID')}%`}
             changePercent={metrics.today_margin_change ?? 0}
             variant="white"
             icon={<Percent className="w-6 h-6 text-emerald-800 stroke-[2.5]" />}

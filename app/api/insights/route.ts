@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { determineSeverity, build7DayTrend, isStockLow } from '@/lib/calculations/financial';
+import { determineSeverity, build7DayTrend, isStockLow, calculateFinancialSummary } from '@/lib/calculations/financial';
 import { callGemini } from '@/lib/ai/gemini';
 import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
@@ -44,12 +44,12 @@ async function handleInsights(req: NextRequest) {
         raw_voice_text,
         transaction_items (
           quantity,
+          unit,
           unit_price,
           product_id,
           products (
             id,
-            name,
-            cost_price
+            name
           )
         )
       `)
@@ -111,69 +111,31 @@ async function handleInsights(req: NextRequest) {
     const batches = batchesRes.data || [];
     const insights = insightsRes.data || [];
 
-    // 3. Compute Today's Financials
-    const todayStr = new Date().toISOString().split('T')[0];
-    let todayIncome = 0;
-    let todayExpense = 0;
-    let todayCogs = 0; // Cost of Goods Sold for today's sales
+    // 3. Compute Today's Financials (Sinkron 100% dengan Laporan & Beranda)
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    allTx.forEach((tx) => {
-      const txDate = (tx.transaction_date || '').split('T')[0];
-      if (txDate === todayStr) {
-        if (tx.type === 'income') {
-          let txIncome = 0;
-          let txCogs = 0;
-          const itemsList = tx.transaction_items || tx.items || [];
-          itemsList.forEach((it: any) => {
-            const q = Number(it.quantity) || 0;
-            const p = Number(it.unit_price) || 0;
-            txIncome += (q * p);
+    const todaySummary = calculateFinancialSummary(allTx, todayStr);
+    const yesterdaySummary = calculateFinancialSummary(allTx, yesterdayStr);
 
-            // Determine cost price for COGS
-            let cost = it.products?.cost_price || it.cost_price;
-            
-            // Override with local cache if available (for instant updates)
-            const pName = it.products?.name || it.product_name || 'Lainnya';
-            const localMatch = localProductsOverride.find((lp: any) => lp?.id === it.product_id || (lp?.name && pName && lp.name.toLowerCase() === pName.toLowerCase()));
-            if (localMatch?.cost_price && localMatch.cost_price > 0) {
-              cost = localMatch.cost_price;
-            }
+    const todayIncome = todaySummary.income;
+    const todayExpense = todaySummary.expense;
+    const todayGrossProfit = todaySummary.profit;
+    const todayMargin = todaySummary.margin;
 
-            // Fallback if no cost price exists (assume 20% margin to prevent negative or infinite math)
-            if (!cost || cost <= 0) {
-              cost = Math.round(p * 0.8);
-            }
-            
-            txCogs += (q * cost);
-          });
-          // Fallback if no items array but has total_amount
-          if (itemsList.length === 0 && tx.total_amount) {
-            txIncome += tx.total_amount;
-            txCogs += Math.round(tx.total_amount * 0.8);
-          }
-          todayIncome += txIncome;
-          todayCogs += txCogs;
-        } else if (tx.type === 'expense') {
-          const itemsList = tx.transaction_items || tx.items || [];
-          if (itemsList.length > 0) {
-            const total = itemsList.reduce(
-              (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
-              0
-            );
-            todayExpense += total;
-          } else if (tx.total_amount) {
-            todayExpense += tx.total_amount;
-          }
-        }
-      }
-    });
+    const calcPercentChange = (curr: number, prev: number) => {
+      if (prev <= 0) return 0;
+      return Math.round(((curr - prev) / prev) * 100);
+    };
 
-    // NOTE: When today has 0 transactions, metrics remain 0 - this is correct behavior.
-    // The insight message will handle the "no data today" case gracefully.
-
-    const todayProfit = todayIncome - todayExpense; // Net Cash Flow (Uang Masuk - Uang Keluar)
-    const todayGrossProfit = todayIncome - todayCogs; // Real Profit from sales
-    const todayMargin = todayIncome > 0 ? Math.round((todayGrossProfit / todayIncome) * 1000) / 10 : 0;
+    const todayIncomeChange = calcPercentChange(todayIncome, yesterdaySummary.income);
+    const todayExpenseChange = calcPercentChange(todayExpense, yesterdaySummary.expense);
+    const todayProfitChange = calcPercentChange(todayGrossProfit, yesterdaySummary.profit);
+    const todayMarginChange = yesterdaySummary.margin > 0
+      ? Math.round(((todayMargin - yesterdaySummary.margin) / yesterdaySummary.margin) * 100)
+      : 0;
 
     // Deterministic severity
     const { severity, hasQuickAction } = determineSeverity(todayMargin, threshold);
@@ -222,7 +184,7 @@ async function handleInsights(req: NextRequest) {
     }
 
     // 6. Ambil master produk untuk mendapatkan data harga modal & jual terkini (sinkron real-time dengan halaman Barang)
-    let masterProductsQuery = supabase.from('products').select('id, name, default_unit, cost_price, selling_price');
+    let masterProductsQuery = supabase.from('products').select('id, name, default_unit');
     if (userId) {
       masterProductsQuery = masterProductsQuery.eq('user_id', userId);
     }
@@ -397,13 +359,13 @@ async function handleInsights(req: NextRequest) {
         profile,
         metrics: {
           today_income: todayIncome,
-          today_income_change: 0,
+          today_income_change: todayIncomeChange,
           today_expense: todayExpense,
-          today_expense_change: 0,
-          today_profit: todayProfit,
-          today_profit_change: 0,
+          today_expense_change: todayExpenseChange,
+          today_profit: todayGrossProfit,
+          today_profit_change: todayProfitChange,
           today_margin: todayMargin,
-          today_margin_change: 0,
+          today_margin_change: todayMarginChange,
         },
         trendData: trendData.length > 0 ? trendData : [],
         primaryInsight,

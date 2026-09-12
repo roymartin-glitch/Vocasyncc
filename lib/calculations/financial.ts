@@ -30,6 +30,104 @@ export function determineSeverity(
   return { severity: 'green', hasQuickAction: false };
 }
 
+export interface FinancialSummaryTotals {
+  income: number;
+  expense: number;
+  profit: number;
+  margin: number;
+  txCount: number;
+}
+
+/**
+ * Menghitung ringkasan keuangan (Omzet, Belanja, Untung Bersih, Margin)
+ * yang 100% konsisten antara Beranda, Laporan, dan API Insights.
+ */
+export function calculateFinancialSummary(
+  transactions: any[],
+  dateFilter?: string
+): FinancialSummaryTotals {
+  // 1. Kumpulkan harga modal kulakan dari semua transaksi belanja/expense
+  const costMap = new Map<string, { totalExpense: number; expenseQty: number; latestUnitCost: number }>();
+  transactions.forEach((tx) => {
+    if (tx.type === 'expense') {
+      const items = tx.transaction_items || tx.items || [];
+      items.forEach((item: any) => {
+        const pName = item.product_name || item.products?.name || 'Lainnya';
+        const key = (item.product_id || pName).toLowerCase();
+        const nameKey = pName.toLowerCase();
+        const q = Number(item.quantity) || 1;
+        const p = Number(item.unit_price) || (tx.total_amount ? tx.total_amount / q : 0);
+        const current = costMap.get(key) || costMap.get(nameKey) || { totalExpense: 0, expenseQty: 0, latestUnitCost: p };
+        current.totalExpense += p * q;
+        current.expenseQty += q;
+        current.latestUnitCost = p;
+        costMap.set(key, current);
+        costMap.set(nameKey, current);
+      });
+    }
+  });
+
+  // 2. Filter transaksi sesuai tanggal (jika dateFilter diberikan)
+  const filtered = dateFilter
+    ? transactions.filter((tx) => (tx.transaction_date || '').split('T')[0] === dateFilter)
+    : transactions;
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  let totalProfit = 0;
+
+  filtered.forEach((tx) => {
+    const items = tx.transaction_items || tx.items || [];
+    const txTotal = Number(tx.total_amount) || 0;
+
+    if (tx.type === 'income') {
+      if (items.length > 0) {
+        items.forEach((item: any) => {
+          const pName = item.product_name || item.products?.name || 'Lainnya';
+          const key = (item.product_id || pName).toLowerCase();
+          const nameKey = pName.toLowerCase();
+          const q = Number(item.quantity) || 1;
+          const sellPrice = Number(item.unit_price) || (txTotal ? txTotal / q : 0);
+          const inc = q * sellPrice || txTotal || 0;
+          totalIncome += inc;
+
+          const costObj = costMap.get(key) || costMap.get(nameKey);
+          let unitCost = costObj?.latestUnitCost || (costObj && costObj.expenseQty > 0 ? costObj.totalExpense / costObj.expenseQty : 0);
+          if (!unitCost || unitCost >= sellPrice) {
+            unitCost = Math.round(sellPrice * 0.8);
+          }
+          totalProfit += Math.max(0, inc - (q * unitCost));
+        });
+      } else {
+        totalIncome += txTotal;
+        totalProfit += Math.round(txTotal * 0.2);
+      }
+    } else if (tx.type === 'expense') {
+      if (items.length > 0) {
+        items.forEach((item: any) => {
+          totalExpense += (Number(item.quantity) || 1) * (Number(item.unit_price) || 0);
+        });
+      } else {
+        totalExpense += txTotal;
+      }
+    }
+  });
+
+  if (totalProfit === 0 && totalIncome > 0) {
+    totalProfit = Math.round(totalIncome * 0.2);
+  }
+
+  const margin = totalIncome > 0 ? Number(((totalProfit / totalIncome) * 100).toFixed(1)) : 0;
+
+  return {
+    income: totalIncome,
+    expense: totalExpense,
+    profit: totalProfit,
+    margin,
+    txCount: filtered.length,
+  };
+}
+
 export function build7DayTrend(transactionsWithItems: any[]): TrendDayData[] {
   const days: TrendDayData[] = [];
   const now = new Date();
@@ -52,12 +150,13 @@ export function build7DayTrend(transactionsWithItems: any[]): TrendDayData[] {
 
   // Aggregate transactions by date
   transactionsWithItems.forEach((tx) => {
-    const txDate = tx.transaction_date.split('T')[0];
+    const txDate = (tx.transaction_date || '').split('T')[0];
     const targetDay = days.find((d) => d.date === txDate);
     if (targetDay) {
-      let totalAmount = 0;
-      if (tx.transaction_items && tx.transaction_items.length > 0) {
-        totalAmount = tx.transaction_items.reduce(
+      let totalAmount = Number(tx.total_amount) || 0;
+      const itemsList = tx.transaction_items || tx.items;
+      if (itemsList && itemsList.length > 0) {
+        totalAmount = itemsList.reduce(
           (acc: number, item: any) => acc + (Number(item.quantity) * Number(item.unit_price) || 0),
           0
         );

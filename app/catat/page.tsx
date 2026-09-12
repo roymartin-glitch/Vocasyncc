@@ -526,6 +526,10 @@ export default function CatatPage() {
             sessionStorage.removeItem('vokasync_dash_cache');
             sessionStorage.removeItem('vokasync_laporan_cache');
             sessionStorage.removeItem('vokasync_products_cache');
+
+            // Dispatch instant synchronization event to Beranda, Laporan, and Riwayat
+            window.dispatchEvent(new CustomEvent('vokasync-transaction-saved', { detail: result.data }));
+            window.dispatchEvent(new CustomEvent('vokasync-settings-changed', { detail: { timestamp: Date.now() } }));
           } catch (_) {}
         }
 
