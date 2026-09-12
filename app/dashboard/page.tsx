@@ -39,7 +39,13 @@ export default function DashboardPage() {
     try {
       // Parallelize insights and transactions fetching with limit for instant display
       const [insightsResult, txResult] = await Promise.allSettled([
-        fetch('/api/insights').then((r) => r.json()),
+        fetch('/api/insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            localProducts: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`vokasync_products_${localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')}`) || '[]') : []
+          })
+        }).then((r) => r.json()),
         fetch('/api/transactions?limit=6').then((r) => r.json()),
       ]);
 

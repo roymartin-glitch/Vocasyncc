@@ -6,8 +6,26 @@ import { getDailyAdvisorPrompt } from '@/lib/ai/prompts';
 import { getActiveUserProfile } from '@/lib/supabase/auth-helper';
 
 
+export async function POST(req: NextRequest) {
+  return handleInsights(req);
+}
+
 export async function GET(req: NextRequest) {
+  return handleInsights(req);
+}
+
+async function handleInsights(req: NextRequest) {
   try {
+    let localProductsOverride: any[] = [];
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        if (body.localProducts) {
+          localProductsOverride = body.localProducts;
+        }
+      } catch (e) {}
+    }
+
     const { user, profile } = await getActiveUserProfile();
     const supabase = createAdminClient();
     const userId = profile?.id;
@@ -227,16 +245,22 @@ export async function GET(req: NextRequest) {
     Object.values(prodSalesMap).forEach((item) => {
       const pKey = item.id;
       const masterProd = masterProducts?.find(p => p.id === pKey || p.name.toLowerCase() === item.name.toLowerCase());
+      const localOverride = localProductsOverride.find(p => p.id === pKey || p.name?.toLowerCase() === item.name.toLowerCase());
       
       const costObj = prodCostMap[pKey] || prodCostMap[item.name.toLowerCase()];
       
-      const currentCost = (masterProd?.cost_price && masterProd.cost_price > 0) 
-        ? masterProd.cost_price 
-        : (costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0));
+      // Override from frontend if available, else master, else transaction history
+      const currentCost = (localOverride?.cost_price && localOverride.cost_price > 0)
+        ? localOverride.cost_price
+        : ((masterProd?.cost_price && masterProd.cost_price > 0) 
+            ? masterProd.cost_price 
+            : (costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0)));
         
-      const currentSelling = (masterProd?.selling_price && masterProd.selling_price > 0)
-        ? masterProd.selling_price
-        : item.latestSellingPrice;
+      const currentSelling = (localOverride?.selling_price && localOverride.selling_price > 0)
+        ? localOverride.selling_price
+        : ((masterProd?.selling_price && masterProd.selling_price > 0)
+            ? masterProd.selling_price
+            : item.latestSellingPrice);
 
       if (currentSelling > 0 && currentCost > 0) {
         // Gunakan margin harga terkini jika tersedia (sinkron dengan harga yang baru diubah user)
