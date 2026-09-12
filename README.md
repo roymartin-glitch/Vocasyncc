@@ -42,7 +42,7 @@ VokaSync dirancang spesifik untuk pelaku ekonomi mikro:
 
 ## 🚀 4. Keunggulan Utama VokaSync
 
-### 🎙️ 1. Pencatatan Berbasis Suara Cerdas (Voice-to-Transaction Suite)
+### 🎙️ 4.1. Pencatatan Berbasis Suara Cerdas (Voice-to-Transaction Suite)
 Fitur unggulan utama VokaSync yang dirancang khusus untuk operasional riil di pasar yang bising dan dinamis:
 - **Pengenalan Bahasa Sehari-hari & Dialek Pasar (Natural Language Parsing):**
   - Mengerti ucapan kasual pedagang seperti *"Jual bawang merah 5 kilo dapat 200 ribu"*, *"Beli kangkung 10 ikat bayar 50 ribu"*, atau *"Belanja ayam potong 10 ekor 350 ribu"*.
@@ -68,25 +68,25 @@ Fitur unggulan utama VokaSync yang dirancang khusus untuk operasional riil di pa
 - **Contoh Kalimat Sekali Klik (*Voice Cheatsheet*):**
   - Tersedia kartu panduan contoh kalimat suara yang bisa diklik langsung untuk menguji sistem secara instan.
 
-### 📊 2. Visualisasi Tren Finansial Kapsul Modern
+### 📊 4.2. Visualisasi Tren Finansial Kapsul Modern
 - Grafik 7 hari terakhir bergaya **Capsule Pill Bar** dengan arsir diagonal halus.
 - Palet warna finansial kontras tinggi: **Uang Masuk (Hijau Zamrud `#00875A`)** berdampingan dengan **Uang Keluar (Sunset Amber `#EA580C`)**.
 - Cepat dibaca dan dipahami sekilas bahkan di bawah terik matahari pasar.
 
-### 🧠 3. Closed-Loop AI Advisory (Gemini AI Engine)
+### 🧠 4.3. Closed-Loop AI Advisory (Gemini AI Engine)
 - Menghitung margin deterministik tanpa risiko halusinasi angka.
 - Memberikan peringatan dini jika harga beli komoditas melonjak tetapi harga jual belum disesuaikan.
 - Rekomendasi tindakan nyata yang disesuaikan dengan data riil toko Anda (tersedia fitur uji coba/eksperimen strategi harga).
 
-### 🧾 4. Struk Digital Resmi (WhatsApp & PDF Thermal)
+### 🧾 4.4. Struk Digital Resmi (WhatsApp & PDF Thermal)
 - Setiap transaksi dapat langsung dicetak struk fisiknya (format kertas kasir) atau dikirim dalam 1 klik ke WhatsApp pelanggan dalam format pesan rapi beridentitas toko.
 
-### ⚡ 5. Performa Super Ringan (0ms Load Time & Hemat Baterai)
+### ⚡ 4.5. Performa Super Ringan (0ms Load Time & Hemat Baterai)
 - Menggunakan arsitektur *Session Storage Caching*: Dashboard dan riwayat terbuka seketika tanpa layar tunggu (*loading spinner*).
 - Kueri database Supabase dijalankan secara paralel (`Promise.all`) dengan latensi rendah (<200ms).
 - Desain antarmuka mobile-first responsif yang pas di layar HP Android tanpa terpotong navigasi.
 
-### 🎨 6. Studio Pemasaran Visual Tanpa Kuota Server
+### 🎨 4.6. Studio Pemasaran Visual Tanpa Kuota Server
 - Fitur penghapusan background foto produk dijalankan langsung di memori HP pengguna menggunakan WebAssembly lokal (`@imgly/background-removal`).
 - Nol biaya server tambahan, privat, dan menghasilkan poster promosi jualan yang menarik.
 
@@ -106,47 +106,56 @@ Fitur unggulan utama VokaSync yang dirancang khusus untuk operasional riil di pa
 
 ## 💻 6. Panduan Menjalankan Aplikasi Secara Lokal
 
-### Prasyarat
+### 6.1. Prasyarat Sistem
 - Node.js versi 18.x atau lebih baru
 - Akun Supabase (Tersedia tier gratis)
 - Google Gemini API Key
 
-### Langkah Pemasangan
-1. **Clone repositori:**
-   ```bash
-   git clone https://github.com/roymartin-glitch/Vocasyncc.git
-   cd Vocasyncc
-   ```
+### 6.2. Pemasangan Dependensi
+```bash
+# Clone repositori
+git clone https://github.com/roymartin-glitch/Vocasyncc.git
+cd Vocasyncc
 
-2. **Pasang dependensi:**
-   ```bash
-   npm install
-   ```
+# Pasang dependensi
+npm install
+```
 
-3. **Konfigurasi Environment (`.env.local`):**
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
-   GEMINI_API_KEY=AIzaSy...
-   ```
+### 6.3. Konfigurasi Environment (`.env.local`)
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
+GEMINI_API_KEY=AIzaSy...
+```
 
-4. **Inisialisasi Database:**
-   Jalankan script SQL yang tersedia di `supabase/schema/full_schema.sql` pada SQL Editor Supabase Anda.
+### 6.4. Inisialisasi Database
+Jalankan script SQL yang tersedia di `supabase/schema/full_schema.sql` pada SQL Editor Supabase Anda.
 
-5. **Jalankan Server Development:**
-   ```bash
-   npm run dev
-   ```
-   Buka peramban di `http://localhost:3000`.
+### 6.5. Menjalankan Server Development
+```bash
+npm run dev
+```
+Buka peramban di `http://localhost:3000`.
 
-6. **Verifikasi Build Produksi:**
-   ```bash
-   npm run build
-   ```
-   *Lolos 100% dengan 0 TypeScript error pada seluruh rute aplikasi.*
+### 6.6. Verifikasi Build Produksi
+```bash
+npm run build
+```
+*Lolos 100% dengan 0 TypeScript error pada seluruh rute aplikasi.*
+
+---
+
+## 👥 Tim Pengembang (TIM EXASTI 2)
+
+Dikembangkan bersama oleh **Tim EXASTI 2** (Universitas Tanri Abeng):
+1. **Silvi Audina**
+2. **Roy Martin Gulo**
+3. **Rico Arya Rivanhani**
+4. **Muhammad Adi Pramana**
 
 ---
 
 ## 📄 Lisensi
 Dikembangkan untuk mendukung kemandirian dan digitalisasi berkelanjutan pelaku UMKM Indonesia. Hak cipta dilindungi undang-undang.
+
