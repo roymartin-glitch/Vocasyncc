@@ -56,7 +56,7 @@ Membungkus seluruh antarmuka aplikasi di `app/layout.tsx`:
 ## 3. Struktur Folder Proyek Aktual
 
 ```
-SIMULASI-ANTIGRAVITY/
+Vokasync/
 ├── app/
 │   ├── (auth)/
 │   │   └── login/                          # Halaman login & pendaftaran akun Supabase
@@ -489,9 +489,34 @@ Periode: [Hari Ini / 7 Hari Terakhir / Bulan Ini / Semua Waktu]
 _Dicatat otomatis oleh VokaSync — Asisten Keuangan Pedagang Pasar & UMKM._
 ```
 
+### 9.3 Format Struk Transaksi Digital (Riwayat)
+```
+🧾 *STRUK PEMBELIAN - [NAMA TOKO]*
+Tanggal: [DD/MM/YYYY, HH:mm]
+Tipe: [Penjualan / Belanja Modal]
+Metode: [Suara / Manual]
+--------------------------------
+• [Nama Barang] ([Qty] [Satuan] @ Rp[Harga])
+--------------------------------
+*TOTAL: Rp[Nominal]*
+
+_Terima kasih atas transaksi Anda._
+_Diterbitkan oleh VokaSync._
+```
+
 ---
 
-## 10. Konfigurasi Environment & Keamanan Data
+## 10. Desain Komponen Visualisasi Data Fintech
+
+Komponen visualisasi tren (`components/dashboard/TrendChart.tsx`) mengimplementasikan standar Modern Fintech UI:
+- **Palet Warna**: Hijau Zamrud Solid (`#00875A`) untuk Uang Masuk dan Sunset Amber (`#EA580C`) untuk Uang Keluar.
+- **Bentuk Kapsul (*Capsule Pill*)**: Seluruh batang dirender menggunakan elemen SVG `<rect rx="6" ry="6">` berarsir diagonal berpola SVG `<pattern>` untuk membedakan kategori secara ramah buta warna (*accessible design*).
+- **Anti-Overlapping**: Label angka ditiadakan dari batang dan dipindahkan ke `CustomTooltip` interaktif untuk mencegah tabrakan tipografi pada layar kecil.
+- **Sapaan Waktu Adaptif**: Komponen `AdvisorCard.tsx` menghitung jam lokal pengguna (`new Date().getHours()`) untuk menampilkan sapaan alami: Pagi (<11.00), Siang (11.00–15.00), Sore (15.00–18.30), dan Malam (>18.30).
+
+---
+
+## 11. Konfigurasi Environment & Keamanan Data
 
 ### Environment Variables (`.env.local`)
 ```env

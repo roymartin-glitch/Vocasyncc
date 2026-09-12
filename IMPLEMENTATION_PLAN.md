@@ -19,6 +19,7 @@ Kompetisi: EXASTI 2.0 — Web Application Competition 2026 (Universitas Negeri J
 | **FASE 5** | Penyempurnaan Smart Voice, Auto-Registrasi Produk, & TTS Audio | ✅ Selesai 100% |
 | **FASE 6** | Laporan Finansial, 1-Klik Rekap WhatsApp, FIFO Stock, & Cloud Storage | ✅ Selesai 100% |
 | **FASE 7** | Optimasi Performa Non-Blocking, SWR Caching, & Kesiapan Demo Juri | ✅ Selesai 100% |
+| **FASE 8** | Cetak Struk Digital PDF/WA, Visualisasi Fintech Kapsul Arsir, & AI Sapaan | ✅ Selesai 100% |
 
 ---
 
@@ -136,6 +137,25 @@ Kompetisi: EXASTI 2.0 — Web Application Competition 2026 (Universitas Negeri J
   - Pengaturan kenyamanan mata (Ukuran teks: Normal, Besar, Sangat Besar) dan tema aplikasi.
 - [x] **Verifikasi Build Production**:
   - `npm run build` sukses 100% dengan 17+ routes terverifikasi dan 0 error TypeScript.
+
+---
+
+## ✅ FASE 8: CETAK STRUK DIGITAL, VISUALISASI FINTECH & PANDUAN SUARA
+
+- [x] **Modal Struk Transaksi Digital & Cetak PDF/WA** (`app/riwayat/page.tsx`):
+  - Tombol aksi struk pada setiap item riwayat transaksi.
+  - Tampilan struk kertas profesional dengan garis batas putus-putus (*dashed line*).
+  - Tombol *"Cetak / Simpan PDF"* dengan print layout bersih.
+  - Tombol *"Kirim Struk ke WhatsApp"* via `wa.me` langsung ke kontak pembeli.
+- [x] **Redesain Grafik Tren Modern Fintech (Kapsul Arsir)** (`components/dashboard/TrendChart.tsx`):
+  - Palet warna konsisten: Uang Masuk Hijau Zamrud (`#00875A`) dan Uang Keluar Oranye Segar (`#EA580C`).
+  - Desain bentuk kapsul (*capsule pill*) dengan motif garis arsir diagonal rapi.
+  - Penataan label angka anti-tumpuk dan tooltip ringkasan nilai riil.
+- [x] **Sapaan Waktu Dinamis AI & Tips Ucapan Suara**:
+  - `components/dashboard/AdvisorCard.tsx`: Sapaan dinamis waktu operasional (*Selamat Pagi/Siang/Sore/Malam*) berbasis jam lokal pengguna.
+  - `app/catat/page.tsx`: Modal panduan contoh frasa suara sehari-hari (*"Contoh: Cabai rawit 2 kilo 70 ribu rupiah"*).
+- [x] **Standarisasi Rekomendasi Bisnis & Performa Halaman Eksperimen** (`app/eksperimen/page.tsx`):
+  - Rekomendasi tindakan bisnis berbasis data riil produk toko.
 
 ---
 

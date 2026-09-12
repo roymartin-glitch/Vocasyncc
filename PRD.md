@@ -82,12 +82,17 @@ Mendukung fokus **Inovasi Berkelanjutan & Optimalisasi Industri Kreatif/UMKM** d
    - Analisis Performa Barang Terlaris.
    - Tombol Cetak Fisik / PDF (`window.print()`).
    - Tombol Rekap WhatsApp instan dengan template format rapi.
-10. **1-Klik Rekap WhatsApp**: Mengirim rangkuman performa kios harian atau laporan berkala ke WhatsApp via URL scheme `wa.me`.
-11. **AI Virtual Studio & Instant Marketing**:
+10. **1-Klik Rekap WhatsApp & Struk Transaksi Digital**:
+    - Rekap performa harian kios ke WhatsApp via URL scheme `wa.me`.
+    - **Lihat & Cetak Struk Transaksi (`/riwayat`)**: Modal struk belanja digital per transaksi dengan opsi cetak fisik/simpan PDF dan opsi kirim struk instan ke WhatsApp pelanggan.
+11. **Visualisasi Data Modern Fintech & Sapaan Dinamis**:
+    - Grafik tren Uang Masuk (`#00875A`) & Uang Keluar (`#EA580C`) dengan desain *capsule pill* arsir diagonal rapi anti-tumpuk.
+    - Sapaan kontekstual waktu dinamis (Pagi, Siang, Sore, Malam) pada kartu AI Advisor sesuai jam operasional pedagang.
+12. **AI Virtual Studio & Instant Marketing**:
     - Hapus latar belakang foto produk 100% lokal di browser (`@imgly/background-removal` WASM).
     - Pasang frame studio (Minimalis, Pasar Tradisional, Kriya & Fashion).
     - Generator copywriting promosi WhatsApp real-time oleh Gemini Flash (gaya pasar, fomo, elegan).
-12. **Pengaturan Fleksibel & Aksesibilitas Pedagang**:
+13. **Pengaturan Fleksibel & Aksesibilitas Pedagang**:
     - Ambang batas peringatan margin (%).
     - Peringatan stok fisik minimum (kg/pcs).
     - Opsi Suara Asisten: 2 tombol jelas (Suara Aktif / Suara Mati) + tombol uji suara.
@@ -189,6 +194,8 @@ VokaSync memiliki **7 halaman inti** yang saling terintegrasi secara modular:
 | UC-18 | Menghasilkan 3 variasi copywriting WhatsApp otomatis | Sistem | `/api/generate-copy` + Gemini Flash |
 | UC-19 | Registrasi pengguna baru dengan profil toko dinamis bersih | Pedagang Baru | `auth.users` + trigger DB `handle_new_user()` |
 | UC-20 | Cache sesi cepat dan pemuatan data tanpa jeda (anti-lemot) | Sistem | SWR / sessionStorage caching di seluruh halaman |
+| UC-21 | Cetak struk belanja PDF & kirim struk digital ke WhatsApp | Pedagang | `app/riwayat` (Modal Struk + `window.print` + `wa.me`) |
+| UC-22 | Sapaan waktu dinamis AI & panduan lengkap ucapan suara | Pedagang | `AdvisorCard.tsx` + `app/catat` modal tips suara |
 
 ---
 
