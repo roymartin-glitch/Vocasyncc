@@ -551,17 +551,17 @@ export function StudioModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[88vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
         {/* Header */}
-        <div className="p-5 px-6 border-b border-slate-100 flex items-center justify-between bg-white z-10">
+        <div className="p-4 sm:p-5 px-5 sm:px-6 border-b border-slate-100 flex items-center justify-between bg-white z-10 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl flex-shrink-0">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900">AI Virtual Studio & WhatsApp Marketing</h3>
-              <p className="text-xs text-slate-500">Background removal otomatis & copywriting AI pemasaran</p>
+              <h3 className="font-bold text-sm sm:text-base text-slate-900">AI Virtual Studio & WhatsApp Marketing</h3>
+              <p className="text-[11px] text-slate-500">Background removal otomatis & copywriting AI pemasaran</p>
             </div>
           </div>
           <button
@@ -880,41 +880,43 @@ export function StudioModal({
         <canvas ref={canvasRef} className="hidden" />
 
         {/* Modal Footer */}
-        <div className="p-5 px-6 border-t border-slate-100 bg-white flex items-center justify-between rounded-b-3xl">
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] text-sm font-bold text-slate-600 hover:text-slate-900 px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
+        <div className="p-3.5 sm:p-5 px-4 sm:px-6 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 rounded-b-3xl flex-shrink-0">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs sm:text-sm font-bold text-slate-500 hover:text-slate-800 px-3 py-2 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
             {/* Real Download Button */}
             <button
               type="button"
               disabled={isDownloading}
               onClick={handleDownloadImage}
-              className={`min-h-[44px] flex items-center gap-2 border text-sm font-bold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 border text-xs sm:text-sm font-bold px-3 sm:px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
                 downloadSuccess
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs'
               }`}
             >
               {isDownloading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-                  <span>Merender Brosur...</span>
+                  <span>Merender...</span>
                 </>
               ) : downloadSuccess ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Brosur Terunduh!</span>
+                  <span>Tersimpan!</span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4 text-slate-600" />
-                  <span>Simpan Foto Brosur</span>
+                  <span>Simpan Brosur</span>
                 </>
               )}
             </button>
@@ -924,17 +926,17 @@ export function StudioModal({
               type="button"
               disabled={isUploadingToCloud}
               onClick={handleSendWA}
-              className="min-h-[44px] flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold px-4 sm:px-6 py-2.5 rounded-xl shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer disabled:opacity-60"
             >
               {isUploadingToCloud ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Menyiapkan Cloud...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Cloud WA...</span>
                 </>
               ) : (
                 <>
-                  <MessageCircle className="w-5 h-5" />
-                  <span>Kirim via WhatsApp</span>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Kirim WhatsApp</span>
                 </>
               )}
             </button>

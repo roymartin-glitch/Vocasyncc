@@ -122,7 +122,7 @@ export function AppShell({ children }: AppShellProps) {
           />
         )}
 
-        <main className={`flex-1 px-4 md:px-8 pb-28 md:pb-12 max-w-7xl w-full ${!isHomePage ? 'pt-6 md:pt-8' : ''}`}>
+        <main className={`flex-1 px-4 md:px-8 pb-20 md:pb-12 max-w-7xl w-full ${!isHomePage ? 'pt-6 md:pt-8' : ''}`}>
           {children}
         </main>
       </div>

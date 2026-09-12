@@ -950,17 +950,17 @@ export default function ProdukPage() {
 
       {/* ===== MODAL EDIT PRODUK (E-COMMERCE STYLE) ===== */}
       {isEditModalOpen && editProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-white flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0">
                   <Pencil className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg">Edit Komoditas</h3>
-                  <p className="text-xs text-slate-500">Kelola harga jual, satuan, dan stok komoditas</p>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg">Edit Komoditas</h3>
+                  <p className="text-[11px] text-slate-500">Kelola harga jual, satuan, dan stok komoditas</p>
                 </div>
               </div>
               <button
@@ -972,22 +972,22 @@ export default function ProdukPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-
+            {/* Modal Scrollable Body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {editError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
                   {editError}
                 </div>
               )}
 
-              <form onSubmit={handleEditProduct} className="space-y-4">
+              <form id="edit-commodity-form" onSubmit={handleEditProduct} className="space-y-4">
                 {/* Foto Produk */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Foto Produk / Komoditas
                   </label>
-                  <div className="flex items-center gap-4 p-3 bg-slate-50 border border-slate-200/90 rounded-2xl">
-                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/90 rounded-2xl">
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                       {editImageUrl ? (
                         <img
                           src={editImageUrl}
@@ -995,15 +995,15 @@ export default function ProdukPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Package className="w-7 h-7 text-slate-300" />
+                        <Package className="w-6 h-6 text-slate-300" />
                       )}
                       {isUploadingPhoto && (
                         <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
-                          <Loader2 className="w-5 h-5 text-white animate-spin" />
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
                         </div>
                       )}
                     </div>
-                    <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 shadow-xs transition-colors cursor-pointer active:scale-95">
                           <Camera className="w-3.5 h-3.5 text-emerald-700" />
@@ -1027,7 +1027,7 @@ export default function ProdukPage() {
                         )}
                       </div>
                       <p className="text-[10px] text-slate-400 leading-tight">
-                        Format JPG, PNG, atau WEBP (Maks. 5 MB)
+                        Format JPG, PNG, WEBP (Maks. 5 MB)
                       </p>
                     </div>
                   </div>
@@ -1042,19 +1042,19 @@ export default function ProdukPage() {
                     required
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-emerald-600 font-medium text-slate-900"
+                    className="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-emerald-600 font-semibold text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Satuan Penjualan</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['kg', 'ikat', 'butir', 'liter', 'bungkus', 'karung', 'pcs', 'renteng'].map((u) => (
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Satuan Penjualan</label>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
+                    {['kg', 'pcs', 'ikat', 'butir', 'liter', 'bungkus', 'karung', 'renteng', 'gram', 'pack'].map((u) => (
                       <button
                         key={u}
                         type="button"
                         onClick={() => setEditUnit(u)}
-                        className={`text-xs py-1.5 px-2 rounded-xl font-bold border transition-all cursor-pointer ${editUnit === u
+                        className={`text-xs py-1.5 px-1.5 rounded-xl font-bold border transition-all cursor-pointer text-center ${editUnit === u
                           ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
@@ -1104,7 +1104,7 @@ export default function ProdukPage() {
 
                 {/* Live Margin Calculation Preview in Edit Modal */}
                 {editSellingNum > 0 && editCostNum > 0 && (
-                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 text-xs">
+                  <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1 text-xs">
                     <div className="flex justify-between text-slate-600">
                       <span>Harga Beli Modal Terakhir:</span>
                       <span className="font-bold text-slate-700">
@@ -1130,28 +1130,30 @@ export default function ProdukPage() {
                     </div>
                   </div>
                 )}
-
-                <div className="flex items-center justify-end gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isEditSubmitting}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {isEditSubmitting ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
-                    ) : (
-                      <><Check className="w-4 h-4" /><span>Simpan Perubahan</span></>
-                    )}
-                  </button>
-                </div>
               </form>
+            </div>
+
+            {/* Modal Sticky Footer - Always Visible on Android & Mobile */}
+            <div className="p-3.5 px-5 border-t border-slate-200 bg-white flex items-center justify-end gap-2.5 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="edit-commodity-form"
+                disabled={isEditSubmitting}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+              >
+                {isEditSubmitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /><span>Menyimpan...</span></>
+                ) : (
+                  <><Check className="w-4 h-4" /><span>Simpan Perubahan</span></>
+                )}
+              </button>
             </div>
           </div>
         </div>
