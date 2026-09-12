@@ -159,6 +159,25 @@ export default function RiwayatPage() {
       } catch (_) {}
     }
     fetchTransactions(hasCache);
+
+    const handleSync = () => {
+      if (typeof window !== 'undefined') {
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        sessionStorage.removeItem(`vokasync_tx_cache_${userKey}`);
+        sessionStorage.removeItem('vokasync_tx_cache');
+      }
+      fetchTransactions(false);
+    };
+
+    window.addEventListener('vokasync-transaction-saved', handleSync);
+    window.addEventListener('vokasync-settings-changed', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('vokasync-transaction-saved', handleSync);
+      window.removeEventListener('vokasync-settings-changed', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [filterType, searchQuery, startDate, endDate]);
 
   // Client-side date filter fallback for offline/instant feel

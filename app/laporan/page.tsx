@@ -125,6 +125,26 @@ export default function LaporanPage() {
     }
     // Revalidate in background
     fetchRealTimeData(hasCache);
+
+    // Listen to real-time events from Catat / Transaksi / Settings
+    const handleSync = () => {
+      if (typeof window !== 'undefined') {
+        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
+        sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);
+        sessionStorage.removeItem('vokasync_laporan_cache');
+      }
+      fetchRealTimeData(false);
+    };
+
+    window.addEventListener('vokasync-settings-changed', handleSync);
+    window.addEventListener('vokasync-transaction-saved', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('vokasync-settings-changed', handleSync);
+      window.removeEventListener('vokasync-transaction-saved', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   // Filter transactions based on selected period
@@ -417,42 +437,42 @@ export default function LaporanPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <div className="grid grid-cols-2 sm:flex flex-wrap items-center gap-2 self-stretch sm:self-auto w-full sm:w-auto">
             <Link
               href="/riwayat"
-              className="flex items-center gap-2 bg-white border-2 border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/60 text-emerald-900 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-2xs active:scale-95"
+              className="flex items-center justify-center gap-1.5 bg-white border border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/60 text-emerald-900 px-3 py-2 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-95 text-center"
               title="Buka Catatan Riwayat Lengkap"
             >
-              <History className="w-4 h-4 text-[#00875A] stroke-[2.5]" />
-              <span>Lihat Riwayat</span>
+              <History className="w-3.5 h-3.5 text-[#00875A] stroke-[2.5] flex-shrink-0" />
+              <span className="truncate">Riwayat</span>
             </Link>
 
             <button
               type="button"
               onClick={() => fetchRealTimeData(false)}
-              className="flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
-              title="Perbarui Data"
+              className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-3 py-2 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-2xs text-center"
+              title="Perbarui Data Real Time"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Segarkan</span>
+              <RefreshCw className={`w-3.5 h-3.5 flex-shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="truncate">Segarkan</span>
             </button>
 
             <button
               type="button"
               onClick={handleShareWhatsAppLaporan}
-              className="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-sm active:scale-95 border-2 border-[#1EBE5B]"
+              className="flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 px-3 py-2 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 border border-[#1EBE5B] text-center"
             >
-              <Share2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-              <span>Rekap WhatsApp</span>
+              <Share2 className="w-3.5 h-3.5 text-slate-950 stroke-[2.5] flex-shrink-0" />
+              <span className="truncate">Rekap WA</span>
             </button>
 
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-2 bg-[#00875A] hover:bg-[#059669] text-white px-5 py-2.5 rounded-2xl text-sm font-black transition-all cursor-pointer shadow-sm active:scale-95"
+              className="flex items-center justify-center gap-1.5 bg-[#00875A] hover:bg-[#059669] text-white px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 text-center"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" />
-              <span>Cetak Laporan</span>
+              <Printer className="w-3.5 h-3.5 stroke-[2.5] flex-shrink-0" />
+              <span className="truncate">Cetak</span>
             </button>
           </div>
         </div>
@@ -491,8 +511,8 @@ export default function LaporanPage() {
         <MetricCard
           title="Total Uang Masuk"
           description={period === 'today' ? 'Total penjualan hari ini' : 'Total penjualan periode ini'}
-          value={`Rp${reportTotals.income.toLocaleString('id-ID')}`}
-          changePercent={period === 'today' ? (metrics.today_income_change ?? 12.8) : 8.5}
+          value={period === 'today' && metrics.today_income ? `Rp${(metrics.today_income ?? 0).toLocaleString('id-ID')}` : `Rp${reportTotals.income.toLocaleString('id-ID')}`}
+          changePercent={metrics.today_income_change ?? 0}
           variant="emerald"
           icon={<Wallet className="w-6 h-6 stroke-[2.5]" />}
         />
@@ -500,8 +520,8 @@ export default function LaporanPage() {
         <MetricCard
           title="Total Uang Keluar"
           description={period === 'today' ? 'Total belanja & biaya' : 'Total belanja periode ini'}
-          value={`Rp${reportTotals.expense.toLocaleString('id-ID')}`}
-          changePercent={period === 'today' ? (metrics.today_expense_change ?? -3.5) : -2.1}
+          value={period === 'today' && metrics.today_expense !== undefined && metrics.today_income > 0 ? `Rp${(metrics.today_expense ?? 0).toLocaleString('id-ID')}` : `Rp${reportTotals.expense.toLocaleString('id-ID')}`}
+          changePercent={metrics.today_expense_change ?? 0}
           variant="white"
           isExpense={true}
           icon={<Receipt className="w-6 h-6 text-emerald-800 stroke-[2.5]" />}
@@ -510,8 +530,8 @@ export default function LaporanPage() {
         <MetricCard
           title="Untung Bersih (Sisa Uang)"
           description="Uang bersih untuk tabungan & keluarga"
-          value={`Rp${reportTotals.profit.toLocaleString('id-ID')}`}
-          changePercent={period === 'today' ? (metrics.today_profit_change ?? 18.2) : 15.0}
+          value={period === 'today' && metrics.today_profit ? `Rp${(metrics.today_profit ?? 0).toLocaleString('id-ID')}` : `Rp${reportTotals.profit.toLocaleString('id-ID')}`}
+          changePercent={metrics.today_profit_change ?? 0}
           variant="lime"
           icon={<PiggyBank className="w-6 h-6 stroke-[2.5]" />}
         />
@@ -519,8 +539,8 @@ export default function LaporanPage() {
         <MetricCard
           title="Persen Keuntungan"
           description="Rata-rata untung dari setiap rupiah"
-          value={`${reportTotals.margin.toLocaleString('id-ID')}%`}
-          changePercent={period === 'today' ? (metrics.today_margin_change ?? 2.4) : 1.8}
+          value={period === 'today' && metrics.today_margin ? `${(metrics.today_margin ?? 0).toLocaleString('id-ID')}%` : `${reportTotals.margin.toLocaleString('id-ID')}%`}
+          changePercent={metrics.today_margin_change ?? 0}
           variant="white"
           icon={<Percent className="w-6 h-6 text-emerald-800 stroke-[2.5]" />}
         />

@@ -139,7 +139,13 @@ export function MetricCard({
               : 'bg-rose-50 text-rose-700 border-rose-200'
           }`}
         >
-          {isPositive ? <ArrowUp className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowDown className="w-3.5 h-3.5 stroke-[3]" />}
+          {isExpense ? (
+            <ArrowDown className="w-3.5 h-3.5 stroke-[3]" />
+          ) : isPositive ? (
+            <ArrowUp className="w-3.5 h-3.5 stroke-[3]" />
+          ) : (
+            <ArrowDown className="w-3.5 h-3.5 stroke-[3]" />
+          )}
           <span>{isPositive ? `+${changePercent.toLocaleString('id-ID')}%` : `${changePercent.toLocaleString('id-ID')}%`}</span>
         </span>
         <span className="text-xs font-bold text-slate-500">dari kemarin</span>
