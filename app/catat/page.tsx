@@ -1006,10 +1006,10 @@ export default function CatatPage() {
               ))}
             </div>
 
-            {/* Kulakan / Belanja Examples */}
+            {/* Belanja Stok / Pengeluaran Modal Examples */}
             <div className="space-y-2">
               <span className="text-[11px] font-extrabold text-rose-600 uppercase tracking-wide flex items-center gap-1">
-                🔴 Contoh Kulakan / Modal (Uang Keluar)
+                🔴 Contoh Belanja Stok / Biaya Modal (Uang Keluar)
               </span>
               {[
                 'Beli kangkung 10 ikat bayar 100 ribu',
@@ -1087,8 +1087,8 @@ export default function CatatPage() {
           </div>
           <p className="text-xs font-semibold text-slate-500">
             {type === 'income'
-              ? 'Pilih ini kalau Anda menjual dagangan dan menerima uang.'
-              : 'Pilih ini kalau Anda belanja stok barang dagangan atau membayar biaya modal.'}
+              ? 'Pilih ini untuk mencatat transaksi penjualan barang dan penerimaan uang.'
+              : 'Pilih ini untuk mencatat belanja persediaan stok atau pengeluaran biaya modal operasional.'}
           </p>
         </div>
 

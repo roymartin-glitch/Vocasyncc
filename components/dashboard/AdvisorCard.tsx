@@ -47,9 +47,16 @@ export function AdvisorCard({ insight, onOpenStudio }: AdvisorCardProps) {
     }
   }, []);
 
-  const defaultAlertMessage = `${timeGreeting} ${ownerName}! Margin keuntungan ${prodName} sedang di bawah batas aman. Pertimbangkan menyesuaikan harga jual atau kurangi harga beli modal.`;
-  const defaultNormalMessage = `${timeGreeting} ${ownerName}! Selamat berjualan. Catat setiap transaksi masuk dan keluar hari ini untuk pantau keuntungan otomatis.`;
-  const messageText = insight?.message ? `${timeGreeting} ${ownerName}! ${insight.message}` : (isAlert ? defaultAlertMessage : defaultNormalMessage);
+  const defaultAlertMessage = `${timeGreeting} ${ownerName}! Margin keuntungan produk ${prodName} terindikasi di bawah batas aman. Pertimbangkan untuk menyesuaikan harga jual atau meninjau kembali harga modal.`;
+  const defaultNormalMessage = `${timeGreeting} ${ownerName}! Selamat beraktivitas. Catat setiap transaksi masuk dan keluar hari ini untuk memantau performa laba bersih secara real-time.`;
+
+  // Hindari duplikasi sapaan jika insight.message dari backend sudah memiliki sapaan
+  const rawMsg = insight?.message || '';
+  const messageText = rawMsg
+    ? (rawMsg.toLowerCase().startsWith('selamat') || rawMsg.toLowerCase().startsWith('halo')
+        ? rawMsg
+        : `${timeGreeting} ${ownerName}! ${rawMsg}`)
+    : (isAlert ? defaultAlertMessage : defaultNormalMessage);
 
   // Helper untuk membaca saran secara natural dengan suara asisten ramah bahasa Indonesia
   const speakInsight = (text: string) => {

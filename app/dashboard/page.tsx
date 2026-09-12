@@ -120,10 +120,12 @@ export default function DashboardPage() {
 
     window.addEventListener('vokasync-settings-changed', handleSettingsChanged);
     window.addEventListener('vokasync-transaction-saved', handleSettingsChanged);
+    window.addEventListener('vokasync-products-changed', handleSettingsChanged);
     window.addEventListener('storage', handleSettingsChanged);
     return () => {
       window.removeEventListener('vokasync-settings-changed', handleSettingsChanged);
       window.removeEventListener('vokasync-transaction-saved', handleSettingsChanged);
+      window.removeEventListener('vokasync-products-changed', handleSettingsChanged);
       window.removeEventListener('storage', handleSettingsChanged);
     };
   }, []);

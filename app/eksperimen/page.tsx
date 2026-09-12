@@ -29,20 +29,53 @@ export default function EksperimenPage() {
 
   const fetchUserProducts = async () => {
     try {
-      if (typeof window !== 'undefined') {
-        const userKey = localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest');
-        const localSaved = JSON.parse(localStorage.getItem(`vokasync_products_${userKey}`) || '[]');
-        if (Array.isArray(localSaved) && localSaved.length > 0) {
-          setUserProducts(localSaved);
-        }
-      }
+      const userKey =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('vokasync_user_id') ||
+            (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')
+          : 'guest';
 
       const res = await fetch('/api/product-analysis');
       const data = await res.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setUserProducts(data.data);
+
+      let list = data.success && Array.isArray(data.data) ? [...data.data] : [];
+
+      if (typeof window !== 'undefined') {
+        try {
+          const localSaved = JSON.parse(
+            localStorage.getItem(`vokasync_products_${userKey}`) || '[]'
+          );
+          if (Array.isArray(localSaved) && localSaved.length > 0) {
+            const localMap = new Map<string, any>(localSaved.map((lp: any) => [lp.id, lp]));
+            list = list.map((sp: any) => {
+              const localOverride = localMap.get(sp.id);
+              if (localOverride) {
+                const spSelling = Number(localOverride.selling_price ?? sp.selling_price) || 0;
+                const spCost = Number(localOverride.cost_price ?? sp.cost_price) || 0;
+                const spMargin =
+                  spSelling > 0
+                    ? Math.round(((spSelling - spCost) / spSelling) * 1000) / 10
+                    : sp.margin_percentage;
+                return {
+                  ...sp,
+                  name: localOverride.name ?? sp.name,
+                  unit: localOverride.unit ?? sp.unit,
+                  selling_price: spSelling,
+                  cost_price: spCost,
+                  margin_percentage: spMargin,
+                  remaining_stock: localOverride.remaining_stock ?? sp.remaining_stock,
+                };
+              }
+              return sp;
+            });
+          }
+        } catch (_) {}
+      }
+
+      if (list.length > 0) {
+        setUserProducts(list);
         if (!newProductName) {
-          setNewProductName(data.data[0].name);
+          setNewProductName(list[0].name);
         }
       }
     } catch (_) {}
@@ -85,6 +118,23 @@ export default function EksperimenPage() {
       } catch (_) {}
     }
     fetchExperiments(hasCache);
+
+    const handleDataChanged = () => {
+      fetchUserProducts();
+      fetchExperiments(true);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('vokasync-products-changed', handleDataChanged);
+      window.addEventListener('vokasync-transaction-saved', handleDataChanged);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('vokasync-products-changed', handleDataChanged);
+        window.removeEventListener('vokasync-transaction-saved', handleDataChanged);
+      }
+    };
   }, []);
 
   const filteredExperiments = experiments.filter((exp) => {
@@ -343,21 +393,40 @@ export default function EksperimenPage() {
           </div>
           <div>
             <h3 className="font-bold text-base text-slate-900">Rekomendasi Tindakan Baru dari AI</h3>
-            <p className="text-xs text-slate-500">Ide tindakan bisnis teruji yang disesuaikan dengan data dagangan Anda</p>
+            <p className="text-xs text-slate-500">Ide tindakan bisnis teruji yang disesuaikan secara real-time dengan data produk dan transaksi usaha Anda</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
           {userProducts && userProducts.length > 0 ? (
             userProducts.slice(0, 2).map((prod, idx) => {
-              const recTitle = idx === 0
-                ? `Optimalkan Margin ${prod.name} (Naikkan Rp1.000/${prod.unit})`
-                : `Paket Hemat Pembeli: ${prod.name} + Komoditas Pelengkap`;
-              const currentMargin = prod.margin_percentage || 20;
-              const targetMarginVal = currentMargin < 20 ? 25 : Math.round(currentMargin + 8);
-              const recDesc = idx === 0
-                ? `Komoditas ${prod.name} saat ini memiliki margin ${currentMargin}%. Naikkan harga jual Rp1.000 per ${prod.unit} untuk mencapai margin ${targetMarginVal}% tanpa menurunkan volume harian.`
-                : `Gabungkan ${prod.name} dalam bundling hemat rumah tangga untuk meningkatkan perputaran barang dan mengangkat laba toko ke target ${targetMarginVal}%.`;
+              const currentMargin = Number(prod.margin_percentage) || 0;
+              const cost = Number(prod.cost_price) || 0;
+              const selling = Number(prod.selling_price) || 0;
+
+              let recTitle = '';
+              let targetMarginVal = 25;
+              let recDesc = '';
+
+              if (currentMargin <= 0) {
+                // Kasus rugi / harga jual di bawah harga beli
+                const recommendedSelling = cost > 0 ? Math.round(cost * 1.25) : 30000;
+                targetMarginVal = 20;
+                recTitle = `Pulihkan Margin ${prod.name} (Sesuaikan ke Rp${recommendedSelling.toLocaleString('id-ID')}/${prod.unit})`;
+                recDesc = `Harga jual ${prod.name} saat ini (Rp${selling.toLocaleString('id-ID')}) berada di bawah atau sama dengan harga beli modal (Rp${cost.toLocaleString('id-ID')}), menghasilkan margin ${currentMargin}%. Sesuaikan harga jual menjadi Rp${recommendedSelling.toLocaleString('id-ID')}/${prod.unit} agar usaha kembali surplus laba minimal 20%.`;
+              } else if (currentMargin < 20) {
+                // Kasus margin tipis di bawah batas aman 20%
+                const stepUp = prod.unit === 'kg' ? 1000 : 500;
+                const newPrice = selling + stepUp;
+                targetMarginVal = cost > 0 ? Math.round(((newPrice - cost) / newPrice) * 100) : 25;
+                recTitle = `Optimalkan Margin ${prod.name} (Naikkan Rp${stepUp.toLocaleString('id-ID')}/${prod.unit})`;
+                recDesc = `Margin ${prod.name} saat ini ${currentMargin}% (di bawah batas aman 20%). Naikkan harga jual Rp${stepUp.toLocaleString('id-ID')} per ${prod.unit} menjadi Rp${newPrice.toLocaleString('id-ID')} untuk mengangkat margin ke ${targetMarginVal}% tanpa menurunkan volume transaksi.`;
+              } else {
+                // Kasus margin sehat: Rekomendasi bundling / promosi volume
+                targetMarginVal = Math.min(50, Math.round(currentMargin + 5));
+                recTitle = `Paket Hemat Penjualan: ${prod.name} + Komoditas Pelengkap`;
+                recDesc = `Margin ${prod.name} saat ini sehat di ${currentMargin}%. Terapkan paket bundling hemat untuk pembeli agar perputaran stok lebih cepat dan total akumulasi keuntungan harian meningkat ke target ${targetMarginVal}%.`;
+              }
 
               return (
                 <div key={prod.id || idx} className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-600 transition-all bg-slate-50/50 space-y-3">

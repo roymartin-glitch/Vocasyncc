@@ -341,7 +341,7 @@ export default function LaporanPage() {
               <tr>
                 <td>Total Uang Keluar (Belanja Modal & Operasional)</td>
                 <td style={{ textAlign: 'right', fontWeight: 'bold' }}>Rp{reportTotals.expense.toLocaleString('id-ID')}</td>
-                <td>Total kulakan & belanja stok</td>
+                <td>Total belanja stok & modal operasional</td>
               </tr>
               <tr style={{ backgroundColor: '#e2e8f0', fontWeight: 'bold' }}>
                 <td>Untung Bersih (Sisa Uang)</td>
