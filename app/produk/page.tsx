@@ -25,6 +25,7 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import { ProductAnalysisItem, ProductActionCategory } from '@/types';
+import { determineActionCategory } from '@/lib/calculations/financial';
 import { StudioModal } from '@/components/studio/StudioModal';
 
 export default function ProdukPage() {
@@ -609,6 +610,7 @@ export default function ProdukPage() {
       const newMargin = editProduct.cost_price && selling > 0
         ? Math.round(((selling - editProduct.cost_price) / selling) * 100)
         : editProduct.margin_percentage;
+      const newCategory = determineActionCategory(newMargin, threshold);
 
       setProducts((prev) => {
         const next = prev.map((p) =>
@@ -619,6 +621,7 @@ export default function ProdukPage() {
               unit: editUnit,
               selling_price: selling,
               margin_percentage: newMargin,
+              action_category: newCategory,
               remaining_stock: stockQty,
               is_stock_low: stockQty <= 2,
               image_url: editImageUrl,
@@ -1322,7 +1325,11 @@ export default function ProdukPage() {
             </div>
           ) : (
             filteredProducts.map((p) => {
-              const badge = getActionBadge(p.action_category);
+              const liveMargin = (p.cost_price && p.selling_price && p.selling_price > 0)
+                ? Math.round(((p.selling_price - p.cost_price) / p.selling_price) * 100)
+                : (p.margin_percentage || 0);
+              const dynamicCategory = determineActionCategory(liveMargin, threshold);
+              const badge = getActionBadge(dynamicCategory);
               const BadgeIcon = badge.icon;
               const isSelected = selectedProduct?.id === p.id;
 
@@ -1395,21 +1402,21 @@ export default function ProdukPage() {
                       <div className="space-y-1 my-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500">Persentase Untung:</span>
-                          <span className="font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                            {p.margin_percentage || 0}%
+                          <span className={`font-black px-2 py-0.5 rounded-md border ${liveMargin >= threshold ? 'text-emerald-800 bg-emerald-50 border-emerald-200/60' : 'text-rose-800 bg-rose-50 border-rose-200'}`}>
+                            {liveMargin}%
                           </span>
                         </div>
                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${(p.margin_percentage || 0) >= 30
+                            className={`h-full rounded-full transition-all duration-500 ${liveMargin >= 30
                               ? 'bg-emerald-600'
-                              : (p.margin_percentage || 0) >= 20
+                              : liveMargin >= 20
                                 ? 'bg-blue-600'
-                                : (p.margin_percentage || 0) >= 10
+                                : liveMargin >= 10
                                   ? 'bg-amber-500'
                                   : 'bg-rose-500'
                               }`}
-                            style={{ width: `${Math.min(Math.max((p.margin_percentage || 0) * 2, 8), 100)}%` }}
+                            style={{ width: `${Math.min(Math.max(liveMargin * 2, 8), 100)}%` }}
                           />
                         </div>
                       </div>
