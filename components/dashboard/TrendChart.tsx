@@ -32,19 +32,6 @@ export function TrendChart({ data }: TrendChartProps) {
     return val.toString();
   };
 
-  // Find the day with highest income for the peak lift badge
-  const peakIncomeIndex = useMemo(() => {
-    if (!data || data.length === 0) return -1;
-    let maxIdx = 0;
-    let maxVal = -Infinity;
-    data.forEach((d, idx) => {
-      if ((d.income || 0) > maxVal) {
-        maxVal = d.income || 0;
-        maxIdx = idx;
-      }
-    });
-    return maxVal > 0 ? maxIdx : -1;
-  }, [data]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -67,19 +54,18 @@ export function TrendChart({ data }: TrendChartProps) {
     return null;
   };
 
-  // Renderer for capsule pill bar for Income (Green)
+  // Renderer for capsule pill bar for Income (Green) - Consistent uniform #00875A across all bars
   const renderIncomePill = (props: any) => {
-    const { x, y, width, height, index } = props;
+    const { x, y, width, height } = props;
     if (!height || height <= 0) return null;
 
     const visualHeight = Math.max(height, 14);
     const visualY = y - (visualHeight - height);
     const radius = Math.min(width / 2, visualHeight / 2);
-    const isPeak = index === peakIncomeIndex;
 
     return (
       <g>
-        {/* Base Green Pill */}
+        {/* Base Green Pill - Consistent solid #00875A */}
         <rect
           x={x}
           y={visualY}
@@ -87,7 +73,7 @@ export function TrendChart({ data }: TrendChartProps) {
           height={visualHeight}
           rx={radius}
           ry={radius}
-          fill={isPeak ? '#00875A' : '#7EC99E'}
+          fill="#00875A"
         />
         {/* Diagonal striped texture overlay */}
         <rect
@@ -97,13 +83,8 @@ export function TrendChart({ data }: TrendChartProps) {
           height={visualHeight}
           rx={radius}
           ry={radius}
-          fill={isPeak ? 'url(#stripes-green-dark)' : 'url(#stripes-green-light)'}
+          fill="url(#stripes-green)"
         />
-
-        {/* Clean peak indicator dot on the highest sales day */}
-        {isPeak && (
-          <circle cx={x + width / 2} cy={visualY - 7} r={4} fill="#00875A" />
-        )}
       </g>
     );
   };
@@ -172,11 +153,11 @@ export function TrendChart({ data }: TrendChartProps) {
             margin={{ top: 18, right: 10, left: -20, bottom: 0 }}
             barGap={4}
           >
-            {/* SVG Defs for Diagonal Stripes Texture matching reference image */}
+            {/* SVG Defs for Diagonal Stripes Texture */}
             <defs>
-              {/* Green Light Stripes */}
+              {/* Green Stripes for Income (Uniform across all bars) */}
               <pattern
-                id="stripes-green-light"
+                id="stripes-green"
                 width={8}
                 height={8}
                 patternTransform="rotate(45 0 0)"
@@ -187,32 +168,13 @@ export function TrendChart({ data }: TrendChartProps) {
                   y1="0"
                   x2="0"
                   y2="8"
-                  stroke="#4E9E71"
-                  strokeWidth="2"
-                  strokeOpacity="0.3"
-                />
-              </pattern>
-
-              {/* Green Dark Stripes for Peak */}
-              <pattern
-                id="stripes-green-dark"
-                width={8}
-                height={8}
-                patternTransform="rotate(45 0 0)"
-                patternUnits="userSpaceOnUse"
-              >
-                <line
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="8"
-                  stroke="#004D33"
+                  stroke="#005A3C"
                   strokeWidth="2.2"
                   strokeOpacity="0.4"
                 />
               </pattern>
 
-              {/* Orange Stripes for Expense */}
+              {/* Orange Stripes for Expense (Uniform across all bars) */}
               <pattern
                 id="stripes-orange"
                 width={8}
