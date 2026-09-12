@@ -29,23 +29,14 @@ import { TextSizeSetting, AnalysisPeriodSetting, AppThemeSetting } from '@/types
 export default function SettingsPage() {
   // Accordion active section state: 'profile' | 'alerts' | 'voice' | 'display' | 'analysis' | 'password'
   const [openSection, setOpenSection] = useState<string | null>('profile');
+  const [isMounted, setIsMounted] = useState(false);
 
   const toggleSection = (section: string) => {
     setOpenSection(prev => prev === section ? null : section);
   };
-  // 1. Profil Toko
-  const [businessName, setBusinessName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vokasync_business_name') || '';
-    }
-    return '';
-  });
-  const [ownerName, setOwnerName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vokasync_owner_name') || '';
-    }
-    return '';
-  });
+  // 1. Profil Toko (Deterministic initial server state to avoid hydration mismatch)
+  const [businessName, setBusinessName] = useState<string>('');
+  const [ownerName, setOwnerName] = useState<string>('');
   const [businessType, setBusinessType] = useState('Sayur & Buah');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,12 +47,7 @@ export default function SettingsPage() {
   const [supplierCostThreshold, setSupplierCostThreshold] = useState('5');
 
   // 3. Suara (2 Pilihan: Aktif vs Mati)
-  const [soundAlertEnabled, setSoundAlertEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vokasync_sound_alert') === 'true';
-    }
-    return false;
-  });
+  const [soundAlertEnabled, setSoundAlertEnabled] = useState<boolean>(false);
   const [soundAlertVolume, setSoundAlertVolume] = useState(80);
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false);
 
@@ -85,8 +71,18 @@ export default function SettingsPage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // Load existing settings
+  // Load existing settings on mount
   useEffect(() => {
+    setIsMounted(true);
+
+    const cachedBusiness = localStorage.getItem('vokasync_business_name');
+    if (cachedBusiness) setBusinessName(cachedBusiness);
+
+    const cachedOwner = localStorage.getItem('vokasync_owner_name');
+    if (cachedOwner) setOwnerName(cachedOwner);
+
+    const cachedSound = localStorage.getItem('vokasync_sound_alert');
+    if (cachedSound !== null) setSoundAlertEnabled(cachedSound === 'true');
     // 1. Instant check local storage for instant sync
     const cachedTheme = localStorage.getItem('vokasync_theme') as AppThemeSetting;
     if (cachedTheme) setTheme(cachedTheme);
@@ -330,13 +326,13 @@ export default function SettingsPage() {
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
                   Pengaturan Profil Toko
                 </h2>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p suppressHydrationWarning className="text-[11px] text-slate-500 truncate">
                   {businessName || 'Nama Toko'} • {ownerName || 'Nama Pemilik'} ({businessType})
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="hidden sm:inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <span suppressHydrationWarning className="hidden sm:inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                 {openSection === 'profile' ? 'Buka' : 'Klik Edit'}
               </span>
               <div className={`p-1 rounded-xl text-slate-400 transition-transform duration-200 ${openSection === 'profile' ? 'rotate-180 text-slate-700' : ''}`}>
@@ -583,13 +579,13 @@ export default function SettingsPage() {
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
                   Pengaturan Suara Asisten
                 </h2>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p suppressHydrationWarning className="text-[11px] text-slate-500 truncate">
                   Status: {soundAlertEnabled ? 'Suara Aktif (Bisa Berbicara)' : 'Mode Hening (Mati)'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className={`hidden sm:inline-block text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+              <span suppressHydrationWarning className={`hidden sm:inline-block text-[11px] font-bold px-2.5 py-1 rounded-full border ${
                 soundAlertEnabled ? 'text-teal-700 bg-teal-50 border-teal-200' : 'text-slate-600 bg-slate-100 border-slate-200'
               }`}>
                 {soundAlertEnabled ? 'Aktif' : 'Mati'}
@@ -744,13 +740,13 @@ export default function SettingsPage() {
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
                   Pengaturan Tampilan & Satuan
                 </h2>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p suppressHydrationWarning className="text-[11px] text-slate-500 truncate">
                   Tema: {theme} • Font: {textSize} • Satuan Default: {defaultUnit || 'kg'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="hidden sm:inline-block text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
+              <span suppressHydrationWarning className="hidden sm:inline-block text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
                 {defaultUnit ? `Satuan: ${defaultUnit}` : 'Edit'}
               </span>
               <div className={`p-1 rounded-xl text-slate-400 transition-transform duration-200 ${openSection === 'display' ? 'rotate-180 text-slate-700' : ''}`}>
