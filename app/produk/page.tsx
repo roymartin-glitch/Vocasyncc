@@ -23,6 +23,7 @@ import {
   Camera,
   Upload,
   ImageIcon,
+  Scale,
 } from 'lucide-react';
 import { ProductAnalysisItem, ProductActionCategory } from '@/types';
 import { determineActionCategory } from '@/lib/calculations/financial';
@@ -1452,6 +1453,11 @@ export default function ProdukPage() {
                       <div>
                         <span className="text-slate-400">Jual: </span>
                         <span className="font-bold text-slate-900">Rp{(p.selling_price || 0).toLocaleString('id-ID')}</span>
+                        {p.unit.toLowerCase() === 'kg' && p.selling_price && p.selling_price > 0 && (
+                          <span className="block text-[10px] text-emerald-700 font-bold tracking-tight">
+                            (Rp{Math.round(p.selling_price / 10).toLocaleString('id-ID')}/ons)
+                          </span>
+                        )}
                       </div>
                       <div className="font-semibold text-slate-700">
                         Stok: <span className={`${p.is_stock_low ? 'text-amber-700 font-bold' : ''}`}>{p.remaining_stock ?? 10} {p.unit}</span>
@@ -1589,6 +1595,57 @@ export default function ProdukPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Kalkulator Eceran Pasar Tradisional (Konversi Ons & Pecahan) */}
+                {selectedProduct.unit.toLowerCase() === 'kg' && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-amber-950 font-bold text-xs">
+                        <Scale className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Kalkulator Eceran Lapangan (Per Ons)</span>
+                      </div>
+                      <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-1.5 py-0.2 rounded-md">
+                        1 kg = 10 ons
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="bg-white/90 p-2 rounded-xl border border-amber-200/60 shadow-2xs">
+                        <span className="block text-[10px] text-slate-400 font-semibold">1 Ons (100g)</span>
+                        <span className="font-extrabold text-slate-900 block mt-0.5">
+                          Rp{Math.round((selectedProduct.selling_price || 0) / 10).toLocaleString('id-ID')}
+                        </span>
+                        <span className="block text-[9px] text-emerald-700 font-bold mt-0.5">
+                          +Rp{Math.round(((selectedProduct.selling_price || 0) - (selectedProduct.cost_price || 0)) / 10).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 p-2 rounded-xl border border-amber-200/60 shadow-2xs">
+                        <span className="block text-[10px] text-slate-400 font-semibold">2 Ons (200g)</span>
+                        <span className="font-extrabold text-slate-900 block mt-0.5">
+                          Rp{Math.round(((selectedProduct.selling_price || 0) / 10) * 2).toLocaleString('id-ID')}
+                        </span>
+                        <span className="block text-[9px] text-emerald-700 font-bold mt-0.5">
+                          +Rp{Math.round((((selectedProduct.selling_price || 0) - (selectedProduct.cost_price || 0)) / 10) * 2).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+
+                      <div className="bg-white/90 p-2 rounded-xl border border-amber-200/60 shadow-2xs">
+                        <span className="block text-[10px] text-slate-400 font-semibold">1/4 Kg (250g)</span>
+                        <span className="font-extrabold text-slate-900 block mt-0.5">
+                          Rp{Math.round((selectedProduct.selling_price || 0) * 0.25).toLocaleString('id-ID')}
+                        </span>
+                        <span className="block text-[9px] text-emerald-700 font-bold mt-0.5">
+                          +Rp{Math.round(((selectedProduct.selling_price || 0) - (selectedProduct.cost_price || 0)) * 0.25).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-amber-900/90 leading-tight">
+                      Pedagang tidak perlu pusing menghitung manual saat pembeli membeli bumbu/sayur dalam takaran ons.
+                    </p>
+                  </div>
+                )}
 
                 {/* Dynamic AI Advisor Diagnostic Box */}
                 <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-2 relative transition-all">

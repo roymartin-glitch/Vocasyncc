@@ -76,26 +76,67 @@ function fallbackParseIndonesianSpeech(text: string) {
   const isExpense = /\b(beli|kulak|kulakan|bayar|belanja|stok|modal|ambil)\b/i.test(lower);
   const type = isExpense ? 'expense' : 'income';
 
-  // 2. Extract unit
+  // 2. Extract unit & check for market retail units (ons, gram)
   const units = ['kg', 'kilo', 'kilogram', 'ikat', 'butir', 'liter', 'bungkus', 'karung', 'pcs', 'renteng', 'ons', 'papan', 'dus'];
-  let unit = 'kg';
+  let rawUnit = 'kg';
   for (const u of units) {
     if (new RegExp(`\\b${u}\\b`, 'i').test(lower)) {
-      if (u === 'kilo' || u === 'kilogram') unit = 'kg';
-      else unit = u;
+      if (u === 'kilo' || u === 'kilogram') rawUnit = 'kg';
+      else rawUnit = u;
       break;
     }
   }
 
-  // 3. Extract quantity (prioritize number directly before unit)
-  let quantity = 1;
-  const qtyWithUnitMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogram|ikat|butir|liter|bungkus|karung|pcs|renteng|ons|papan|dus)\b/);
-  const qtyMatch = lower.match(/(\d+(?:[.,]\d+)?)/);
+  // 3. Extract quantity with Indonesian market fraction handling (seperempat, setengah, ons)
+  let rawQuantity = 1;
+  let hasExplicitFraction = false;
 
-  if (qtyWithUnitMatch && qtyWithUnitMatch[1]) {
-    quantity = parseFloat(qtyWithUnitMatch[1].replace(',', '.'));
-  } else if (qtyMatch && qtyMatch[1]) {
-    quantity = parseFloat(qtyMatch[1].replace(',', '.'));
+  if (/\b(seperempat|1\/4)\s*(kilo|kg)?\b/i.test(lower)) {
+    rawQuantity = 0.25;
+    hasExplicitFraction = true;
+    rawUnit = 'kg';
+  } else if (/\b(setengah|1\/2)\s*(kilo|kg)?\b/i.test(lower)) {
+    rawQuantity = 0.5;
+    hasExplicitFraction = true;
+    rawUnit = 'kg';
+  } else if (/\b(tiga perempat|3\/4)\s*(kilo|kg)?\b/i.test(lower)) {
+    rawQuantity = 0.75;
+    hasExplicitFraction = true;
+    rawUnit = 'kg';
+  } else {
+    // Number word parsing for traditional speech (satu, dua, tiga, lima)
+    const wordNums: Record<string, number> = {
+      setengah: 0.5,
+      satu: 1,
+      dua: 2,
+      tiga: 3,
+      empat: 4,
+      lima: 5,
+      enam: 6,
+      tujuh: 7,
+      delapan: 8,
+      sembilan: 9,
+      sepuluh: 10,
+    };
+    const wordQtyWithUnitMatch = lower.match(/\b(setengah|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\s*(?:kg|kilo|kilogram|ikat|butir|liter|bungkus|karung|pcs|renteng|ons|papan|dus)\b/i);
+    const qtyWithUnitMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilogram|ikat|butir|liter|bungkus|karung|pcs|renteng|ons|papan|dus)\b/i);
+    const qtyMatch = lower.match(/(\d+(?:[.,]\d+)?)/);
+
+    if (wordQtyWithUnitMatch && wordNums[wordQtyWithUnitMatch[1].toLowerCase()]) {
+      rawQuantity = wordNums[wordQtyWithUnitMatch[1].toLowerCase()];
+    } else if (qtyWithUnitMatch && qtyWithUnitMatch[1]) {
+      rawQuantity = parseFloat(qtyWithUnitMatch[1].replace(',', '.'));
+    } else if (qtyMatch && qtyMatch[1]) {
+      rawQuantity = parseFloat(qtyMatch[1].replace(',', '.'));
+    }
+  }
+
+  // Standarisasi ons ke kg untuk komoditas timbang (1 ons = 0.1 kg)
+  let finalUnit = rawUnit;
+  let finalQuantity = rawQuantity;
+  if (rawUnit === 'ons') {
+    finalUnit = 'kg';
+    finalQuantity = Math.round(rawQuantity * 0.1 * 1000) / 1000;
   }
 
   // 4. Extract total price (explicitly match currency patterns to avoid quantity confusion)
@@ -104,6 +145,46 @@ function fallbackParseIndonesianSpeech(text: string) {
   const wordPriceMatch = lower.match(/(?:harga|seharga|bayar|dapat|sebesar|total)\s*(\d+(?:[.,]\d+)*)\s*(ribu|rb|k|juta|jt)?/i);
   const multMatch = lower.match(/(\d+(?:[.,]\d+)*)\s*(ribu|rb|k|juta|jt)\b/i);
   const dotCurrencyMatch = lower.match(/\b(\d{1,3}(?:\.\d{3})+)\b/);
+
+  // Indonesian word currency matcher (misal: "sepuluh ribu", "lima puluh ribu", "lima belas ribu")
+  const indonesianNumberWords: Record<string, number> = {
+    'seribu': 1000,
+    'dua ribu': 2000,
+    'tiga ribu': 3000,
+    'empat ribu': 4000,
+    'lima ribu': 5000,
+    'enam ribu': 6000,
+    'tujuh ribu': 7000,
+    'delapan ribu': 8000,
+    'sembilan ribu': 9000,
+    'sepuluh ribu': 10000,
+    'sebelas ribu': 11000,
+    'dua belas ribu': 12000,
+    'tiga belas ribu': 13000,
+    'empat belas ribu': 14000,
+    'lima belas ribu': 15000,
+    'dua puluh ribu': 20000,
+    'dua puluh lima ribu': 25000,
+    'tiga puluh ribu': 30000,
+    'tiga puluh lima ribu': 35000,
+    'empat puluh ribu': 40000,
+    'lima puluh ribu': 50000,
+    'enam puluh ribu': 60000,
+    'tujuh puluh ribu': 70000,
+    'delapan puluh ribu': 80000,
+    'sembilan puluh ribu': 90000,
+    'seratus ribu': 100000,
+    'goceng': 5000,
+    'ceban': 10000,
+    'goban': 50000,
+  };
+  let wordCurrencyMatched = 0;
+  for (const [phrase, val] of Object.entries(indonesianNumberWords)) {
+    if (lower.includes(phrase)) {
+      wordCurrencyMatched = val;
+      break;
+    }
+  }
 
   const matched = rpMatch || wordPriceMatch || multMatch || dotCurrencyMatch;
   if (matched) {
@@ -116,17 +197,21 @@ function fallbackParseIndonesianSpeech(text: string) {
       num = num * 1000;
     }
     totalPrice = Math.round(num);
+  } else if (wordCurrencyMatched > 0) {
+    totalPrice = wordCurrencyMatched;
   }
 
   // 5. Clean product name
   const productName = cleanProductName(text);
-  const unitPrice = quantity > 0 && totalPrice > 0 ? Math.round(totalPrice / quantity) : totalPrice;
+  const unitPrice = finalQuantity > 0 && totalPrice > 0 ? Math.round(totalPrice / finalQuantity) : totalPrice;
 
   return {
     type,
     product_name: productName,
-    quantity,
-    unit,
+    quantity: finalQuantity,
+    unit: finalUnit,
+    raw_quantity: rawQuantity,
+    raw_unit: rawUnit,
     unit_price: unitPrice,
     total_price: totalPrice,
   };

@@ -166,23 +166,38 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
     let newTxRecord: any = null;
     try {
+      let effectiveUnit = unit || 'kg';
+      let effectiveQty = parseFloat(quantity) || 1;
+
       const { data: existingProduct } = await supabase
         .from('products')
-        .select('id, name')
+        .select('id, name, default_unit')
         .eq('user_id', effectiveUserId)
         .ilike('name', finalCleanName)
         .limit(1);
 
       if (existingProduct && existingProduct.length > 0) {
         productId = existingProduct[0].id;
+        const prodUnit = (existingProduct[0].default_unit || 'kg').toLowerCase();
+
+        // Harmonize unit: if product is stored in 'kg' and transaction input is 'ons'
+        if (prodUnit === 'kg' && effectiveUnit.toLowerCase() === 'ons') {
+          effectiveQty = Math.round(effectiveQty * 0.1 * 1000) / 1000;
+          effectiveUnit = 'kg';
+        }
       } else {
         isNewProduct = true;
+        // If it's a new product and unit is ons, set default_unit as kg and normalize qty
+        if (effectiveUnit.toLowerCase() === 'ons') {
+          effectiveQty = Math.round(effectiveQty * 0.1 * 1000) / 1000;
+          effectiveUnit = 'kg';
+        }
         const { data: newProd, error: prodErr } = await supabase
           .from('products')
           .insert({
             user_id: effectiveUserId,
             name: finalCleanName,
-            default_unit: unit || 'kg',
+            default_unit: effectiveUnit,
           })
           .select()
           .single();
@@ -208,13 +223,15 @@ export async function POST(req: NextRequest) {
 
       if (txErr) throw txErr;
 
+      const effectiveUnitPrice = total / (effectiveQty || 1);
+
       // 4. Create transaction item
       const { error: itemErr } = await supabase.from('transaction_items').insert({
         transaction_id: newTx.id,
         product_id: productId,
-        quantity: qty,
-        unit,
-        unit_price: Math.round(unitPrice),
+        quantity: effectiveQty,
+        unit: effectiveUnit,
+        unit_price: Math.round(effectiveUnitPrice),
       });
 
       if (itemErr) throw itemErr;
@@ -233,9 +250,9 @@ export async function POST(req: NextRequest) {
             transaction_id: newTx.id,
             product_id: productId,
             product_name: finalCleanName,
-            quantity: qty,
-            unit,
-            unit_price: Math.round(unitPrice),
+            quantity: effectiveQty,
+            unit: effectiveUnit,
+            unit_price: Math.round(effectiveUnitPrice),
             subtotal: total,
           },
         ],
@@ -249,10 +266,10 @@ export async function POST(req: NextRequest) {
             user_id: effectiveUserId,
             product_id: productId,
             transaction_id: newTx.id,
-            initial_quantity: qty,
-            remaining_quantity: qty,
-            cost_price: Math.round(unitPrice),
-            unit,
+            initial_quantity: effectiveQty,
+            remaining_quantity: effectiveQty,
+            cost_price: Math.round(effectiveUnitPrice),
+            unit: effectiveUnit,
             status: 'active',
           });
         } else if (type === 'income') {
@@ -264,7 +281,7 @@ export async function POST(req: NextRequest) {
             .order('created_at', { ascending: true });
 
           if (activeBatches && activeBatches.length > 0) {
-            const fifoResult = getFIFOCostPrice(productId, qty, activeBatches);
+            const fifoResult = getFIFOCostPrice(productId, effectiveQty, activeBatches);
             for (const d of fifoResult.batchDeductions) {
               await supabase
                 .from('stock_batches')
