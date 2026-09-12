@@ -20,8 +20,8 @@ async function handleInsights(req: NextRequest) {
     if (req.method === 'POST') {
       try {
         const body = await req.json();
-        if (body.localProducts) {
-          localProductsOverride = body.localProducts;
+        if (Array.isArray(body.localProducts)) {
+          localProductsOverride = body.localProducts.filter(Boolean);
         }
       } catch (e) {}
     }
@@ -119,7 +119,7 @@ async function handleInsights(req: NextRequest) {
             let cost = it.products?.cost_price;
             
             // Override with local cache if available (for instant updates)
-            const localMatch = localProductsOverride.find((lp: any) => lp.id === it.product_id || lp.name?.toLowerCase() === it.products?.name?.toLowerCase());
+            const localMatch = localProductsOverride.find((lp: any) => lp?.id === it.product_id || (lp?.name && it.products?.name && lp.name.toLowerCase() === it.products.name.toLowerCase()));
             if (localMatch?.cost_price && localMatch.cost_price > 0) {
               cost = localMatch.cost_price;
             }
@@ -274,8 +274,8 @@ async function handleInsights(req: NextRequest) {
     // Hitung margin terkini berdasarkan harga jual paling mutakhir dan harga modal paling mutakhir
     Object.values(prodSalesMap).forEach((item) => {
       const pKey = item.id;
-      const masterProd = masterProducts?.find(p => p.id === pKey || p.name.toLowerCase() === item.name.toLowerCase());
-      const localOverride = localProductsOverride.find(p => p.id === pKey || p.name?.toLowerCase() === item.name.toLowerCase());
+      const masterProd = masterProducts?.find(p => p?.id === pKey || (p?.name && item?.name && p.name.toLowerCase() === item.name.toLowerCase()));
+      const localOverride = localProductsOverride.find(p => p?.id === pKey || (p?.name && item?.name && p.name.toLowerCase() === item.name.toLowerCase()));
       
       const costObj = prodCostMap[pKey] || prodCostMap[item.name.toLowerCase()];
       
