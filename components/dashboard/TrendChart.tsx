@@ -43,7 +43,7 @@ export function TrendChart({ data }: TrendChartProps) {
             <span>Uang Masuk:</span>
             <span>Rp{(payload[0]?.value || 0).toLocaleString('id-ID')}</span>
           </div>
-          <div className="flex items-center justify-between gap-4 text-slate-600">
+          <div className="flex items-center justify-between gap-4 text-[#EA580C]">
             <span>Uang Keluar:</span>
             <span>Rp{(payload[1]?.value || 0).toLocaleString('id-ID')}</span>
           </div>
@@ -70,7 +70,7 @@ export function TrendChart({ data }: TrendChartProps) {
           <span>Uang Masuk</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-3.5 h-3.5 rounded-full bg-[#99D5B3]" />
+          <span className="w-3.5 h-3.5 rounded-full bg-[#EA580C]" />
           <span>Uang Keluar</span>
         </div>
       </div>
@@ -103,7 +103,7 @@ export function TrendChart({ data }: TrendChartProps) {
             <Bar
               dataKey="expense"
               name="Uang Keluar"
-              fill="#99D5B3"
+              fill="#EA580C"
               radius={[6, 6, 0, 0]}
               maxBarSize={28}
             />
