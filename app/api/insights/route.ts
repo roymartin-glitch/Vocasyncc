@@ -148,38 +148,51 @@ export async function GET(req: NextRequest) {
       console.warn('Stock alert check fallback:', sErr);
     }
 
-    // 6. Compute real product-level performance strictly from live transactions
-    // Calculate cost map from expense transactions
-    const prodCostMap: Record<string, { totalCost: number; totalQty: number; latestCost: number }> = {};
-    const prodSalesMap: Record<string, { id: string; name: string; totalRevenue: number; totalQty: number; profit: number; margin: number }> = {};
+    // 6. Ambil master produk untuk mendapatkan data harga modal & jual terkini (sinkron real-time dengan halaman Barang)
+    let masterProductsQuery = supabase.from('products').select('id, name, default_unit');
+    if (userId) {
+      masterProductsQuery = masterProductsQuery.eq('user_id', userId);
+    }
+    const { data: masterProducts } = await masterProductsQuery;
+
+    // Build cost map from expense transactions
+    const prodCostMap: Record<string, { totalCost: number; totalQty: number; latestCost: number; latestCostDate: string }> = {};
+    const prodSalesMap: Record<string, { id: string; name: string; totalRevenue: number; totalQty: number; profit: number; margin: number; latestSellingPrice: number; latestSellingDate: string }> = {};
 
     allTx.forEach((tx) => {
+      const txDate = tx.transaction_date || '';
       if (tx.type === 'expense') {
         (tx.transaction_items || []).forEach((it: any) => {
+          const pId = it.product_id || it.products?.id;
           const pName = it.products?.name || it.product_name || 'Lainnya';
-          const pKey = pName.toLowerCase();
+          const pKey = pId || pName.toLowerCase();
           const q = Number(it.quantity) || 1;
           const p = Number(it.unit_price) || 0;
           if (!prodCostMap[pKey]) {
-            prodCostMap[pKey] = { totalCost: 0, totalQty: 0, latestCost: p };
+            prodCostMap[pKey] = { totalCost: 0, totalQty: 0, latestCost: p, latestCostDate: txDate };
           }
           prodCostMap[pKey].totalCost += p * q;
           prodCostMap[pKey].totalQty += q;
-          if (p > 0) prodCostMap[pKey].latestCost = p;
+          if (p > 0 && (!prodCostMap[pKey].latestCostDate || txDate >= prodCostMap[pKey].latestCostDate)) {
+            prodCostMap[pKey].latestCost = p;
+            prodCostMap[pKey].latestCostDate = txDate;
+          }
         });
       }
     });
 
     allTx.forEach((tx) => {
+      const txDate = tx.transaction_date || '';
       if (tx.type === 'income') {
         (tx.transaction_items || []).forEach((it: any) => {
+          const pId = it.product_id || it.products?.id;
           const pName = it.products?.name || it.product_name || 'Lainnya';
-          const pKey = pName.toLowerCase();
+          const pKey = pId || pName.toLowerCase();
           const q = Number(it.quantity) || 1;
           const sellPrice = Number(it.unit_price) || 0;
           const revenue = q * sellPrice;
 
-          const costObj = prodCostMap[pKey];
+          const costObj = prodCostMap[pKey] || prodCostMap[pName.toLowerCase()];
           let unitCost = costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0);
           if (!unitCost || unitCost >= sellPrice) {
             unitCost = Math.round(sellPrice * 0.8);
@@ -188,26 +201,47 @@ export async function GET(req: NextRequest) {
 
           if (!prodSalesMap[pKey]) {
             prodSalesMap[pKey] = {
-              id: it.product_id || it.products?.id || pKey,
+              id: pId || pKey,
               name: pName,
               totalRevenue: 0,
               totalQty: 0,
               profit: 0,
               margin: 0,
+              latestSellingPrice: sellPrice,
+              latestSellingDate: txDate,
             };
           }
           prodSalesMap[pKey].totalRevenue += revenue;
           prodSalesMap[pKey].totalQty += q;
           prodSalesMap[pKey].profit += profit;
-          prodSalesMap[pKey].margin = prodSalesMap[pKey].totalRevenue > 0
-            ? Math.round((prodSalesMap[pKey].profit / prodSalesMap[pKey].totalRevenue) * 100)
-            : 20;
+
+          if (sellPrice > 0 && (!prodSalesMap[pKey].latestSellingDate || txDate >= prodSalesMap[pKey].latestSellingDate)) {
+            prodSalesMap[pKey].latestSellingPrice = sellPrice;
+            prodSalesMap[pKey].latestSellingDate = txDate;
+          }
         });
       }
     });
 
+    // Hitung margin terkini berdasarkan harga jual paling mutakhir dan harga modal paling mutakhir
+    Object.values(prodSalesMap).forEach((item) => {
+      const pKey = item.id;
+      const costObj = prodCostMap[pKey] || prodCostMap[item.name.toLowerCase()];
+      const currentCost = costObj?.latestCost || (costObj && costObj.totalQty > 0 ? costObj.totalCost / costObj.totalQty : 0);
+      const currentSelling = item.latestSellingPrice;
+
+      if (currentSelling > 0 && currentCost > 0) {
+        // Gunakan margin harga terkini jika tersedia (sinkron dengan harga yang baru diubah user)
+        item.margin = Math.round(((currentSelling - currentCost) / currentSelling) * 100);
+      } else if (item.totalRevenue > 0) {
+        item.margin = Math.round((item.profit / item.totalRevenue) * 100);
+      } else {
+        item.margin = 25;
+      }
+    });
+
     const analyzedProducts = Object.values(prodSalesMap);
-    // Find products actually below threshold with real sales
+    // Cari produk yang margin saat ininya benar-benar di bawah batas aman
     const belowThresholdProducts = analyzedProducts
       .filter((p) => p.totalRevenue > 0 && p.margin < threshold)
       .sort((a, b) => a.margin - b.margin);
