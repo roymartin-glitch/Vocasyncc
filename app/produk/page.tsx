@@ -633,6 +633,17 @@ export default function ProdukPage() {
               `vokasync_products_cache_${userKey}`,
               JSON.stringify({ data: next, threshold })
             );
+
+            // Bersihkan seluruh cache dashboard & laporan agar beranda langsung update 0ms
+            sessionStorage.removeItem(`vokasync_dash_cache_${userKey}`);
+            sessionStorage.removeItem('vokasync_dash_cache');
+            sessionStorage.removeItem(`vokasync_laporan_cache_${userKey}`);
+            sessionStorage.removeItem('vokasync_laporan_cache');
+
+            // Picu pembaruan real-time ke seluruh halaman aktif (Beranda, Laporan, dll)
+            window.dispatchEvent(new CustomEvent('vokasync-settings-changed', {
+              detail: { timestamp: Date.now() }
+            }));
           } catch (_) { }
         }
         return next;

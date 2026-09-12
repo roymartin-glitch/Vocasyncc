@@ -17,6 +17,8 @@ import {
   Clock,
   Check,
   Package,
+  Edit3,
+  X,
 } from 'lucide-react';
 import { TransactionType } from '@/types';
 import { findSimilarProduct } from '@/lib/calculations/financial';
@@ -94,6 +96,7 @@ export default function CatatPage() {
     transcript: string;
     isSimilar?: boolean;
     existingProduct?: any;
+    isEditing?: boolean;
   } | null>(null);
 
   // Products list for fuzzy matching
@@ -590,90 +593,279 @@ export default function CatatPage() {
       {/* Voice Review & Confirmation Modal */}
       {voiceConfirmation?.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-5">
-            <div className="space-y-1.5 text-center">
-              <div className="inline-flex p-3 bg-emerald-100 text-emerald-800 rounded-2xl">
-                <Sparkles className="w-7 h-7 stroke-[2.5]" />
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                  {voiceConfirmation.isEditing ? (
+                    <Edit3 className="w-5 h-5 stroke-[2.5]" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 stroke-[2.5]" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">
+                    {voiceConfirmation.isEditing ? 'Ubah Rincian Catatan' : 'Konfirmasi Hasil Suara'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    {voiceConfirmation.isEditing ? 'Ketik langsung perbaikan di bawah' : 'Periksa kembali sebelum disimpan'}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-black text-slate-900">
-                Konfirmasi Hasil Suara
-              </h3>
-              <p className="text-xs text-slate-500 font-semibold italic">
+              <button
+                type="button"
+                onClick={() => setVoiceConfirmation(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Transcript yang didengar */}
+            {!voiceConfirmation.isEditing && (
+              <p className="text-xs text-slate-500 font-semibold italic text-center bg-slate-50 py-1.5 px-3 rounded-xl border border-slate-200/70">
                 &quot;{voiceConfirmation.transcript}&quot;
               </p>
-            </div>
+            )}
 
-            {/* Detected Card */}
-            <div className="bg-slate-50 border-2 border-slate-200/80 rounded-2xl p-4 space-y-3 text-left">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-2 border-b border-slate-200">
-                <span>Jenis Transaksi</span>
-                <span className={`px-2.5 py-1 rounded-lg font-black text-xs ${
-                  voiceConfirmation.data.type === 'expense'
-                    ? 'bg-rose-100 text-rose-800'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}>
-                  {voiceConfirmation.data.type === 'expense' ? 'Belanja Modal Stok (Uang Keluar)' : 'Penjualan (Uang Masuk)'}
-                </span>
+            {/* Tampilan Mode EDIT LANGSUNG vs Mode RINGKASAN */}
+            {voiceConfirmation.isEditing ? (
+              /* FORMULIR EDIT LANGSUNG DI MODAL */
+              <div className="space-y-3.5 text-left pt-1">
+                {/* Jenis Transaksi */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Jenis Transaksi</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVoiceConfirmation({
+                          ...voiceConfirmation,
+                          data: { ...voiceConfirmation.data, type: 'income' },
+                        })
+                      }
+                      className={`py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
+                        voiceConfirmation.data.type === 'income'
+                          ? 'bg-[#00875A] text-white border-[#00744D] shadow-2xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ArrowDownLeft className="w-4 h-4 stroke-[3]" />
+                      <span>Uang Masuk</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVoiceConfirmation({
+                          ...voiceConfirmation,
+                          data: { ...voiceConfirmation.data, type: 'expense' },
+                        })
+                      }
+                      className={`py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
+                        voiceConfirmation.data.type === 'expense'
+                          ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <ArrowUpRight className="w-4 h-4 stroke-[3]" />
+                      <span>Uang Keluar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Nama Barang */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Nama Barang</label>
+                  <input
+                    type="text"
+                    value={voiceConfirmation.data.product_name || ''}
+                    onChange={(e) =>
+                      setVoiceConfirmation({
+                        ...voiceConfirmation,
+                        data: { ...voiceConfirmation.data, product_name: e.target.value },
+                      })
+                    }
+                    placeholder="Contoh: Bawang Merah"
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                {/* Jumlah & Satuan */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-700">Berapa Banyak?</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="any"
+                      value={voiceConfirmation.data.quantity || 1}
+                      onChange={(e) =>
+                        setVoiceConfirmation({
+                          ...voiceConfirmation,
+                          data: {
+                            ...voiceConfirmation.data,
+                            quantity: Math.max(1, parseFloat(e.target.value) || 1),
+                          },
+                        })
+                      }
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black text-slate-700">Satuan</label>
+                    <select
+                      value={voiceConfirmation.data.unit || 'kg'}
+                      onChange={(e) =>
+                        setVoiceConfirmation({
+                          ...voiceConfirmation,
+                          data: { ...voiceConfirmation.data, unit: e.target.value },
+                        })
+                      }
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden cursor-pointer"
+                    >
+                      <option value="kg">kg</option>
+                      <option value="Ikat">Ikat</option>
+                      <option value="Butir">Butir</option>
+                      <option value="Liter">Liter</option>
+                      <option value="Gram">Gram</option>
+                      <option value="Pack">Pack</option>
+                      <option value="Bungkus">Bungkus</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Total Nominal Uang */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-700">Total Nominal Uang (Rp)</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-700 pointer-events-none">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      value={
+                        voiceConfirmation.data.total_price
+                          ? Number(voiceConfirmation.data.total_price).toLocaleString('id-ID')
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const numeric = e.target.value.replace(/\D/g, '');
+                        setVoiceConfirmation({
+                          ...voiceConfirmation,
+                          data: {
+                            ...voiceConfirmation.data,
+                            total_price: numeric ? parseInt(numeric, 10) : 0,
+                          },
+                        });
+                      }}
+                      placeholder="0"
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-base font-black text-slate-900 focus:border-[#00875A] focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
               </div>
+            ) : (
+              /* DETECTED CARD RINGKASAN */
+              <div className="bg-slate-50 border-2 border-slate-200/80 rounded-2xl p-4 space-y-3 text-left">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-2 border-b border-slate-200">
+                  <span>Jenis Transaksi</span>
+                  <span
+                    className={`px-2.5 py-1 rounded-lg font-black text-xs ${
+                      voiceConfirmation.data.type === 'expense'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {voiceConfirmation.data.type === 'expense'
+                      ? 'Belanja Modal Stok (Uang Keluar)'
+                      : 'Penjualan (Uang Masuk)'}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>Barang Dagangan</span>
-                <span className="text-sm font-black text-slate-900">
-                  {voiceConfirmation.data.product_name}
-                </span>
-              </div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                  <span>Barang Dagangan</span>
+                  <span className="text-sm font-black text-slate-900">
+                    {voiceConfirmation.data.product_name}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>Jumlah</span>
-                <span className="text-sm font-black text-slate-800">
-                  {voiceConfirmation.data.quantity} {voiceConfirmation.data.unit || 'kg'}
-                </span>
-              </div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                  <span>Jumlah</span>
+                  <span className="text-sm font-black text-slate-800">
+                    {voiceConfirmation.data.quantity} {voiceConfirmation.data.unit || 'kg'}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-2 border-t border-slate-200">
-                <span>Total Nominal</span>
-                <span className="text-base font-black text-emerald-800">
-                  Rp{(voiceConfirmation.data.total_price || 0).toLocaleString('id-ID')}
-                </span>
-              </div>
-            </div>
-
-            {voiceConfirmation.isSimilar && voiceConfirmation.existingProduct && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-900 flex items-center gap-2">
-                <Package className="w-4 h-4 text-blue-700 shrink-0" />
-                <span>Cocok dengan barang di kios: <strong>{voiceConfirmation.existingProduct.name}</strong></span>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-2 border-t border-slate-200">
+                  <span>Total Nominal</span>
+                  <span className="text-base font-black text-emerald-800">
+                    Rp{(voiceConfirmation.data.total_price || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
               </div>
             )}
 
-            <div className="flex flex-col gap-2.5 pt-1">
+            {!voiceConfirmation.isEditing && voiceConfirmation.isSimilar && voiceConfirmation.existingProduct && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold text-blue-900 flex items-center gap-2">
+                <Package className="w-4 h-4 text-blue-700 shrink-0" />
+                <span>
+                  Cocok dengan barang di kios: <strong>{voiceConfirmation.existingProduct.name}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Tombol Aksi */}
+            <div className="flex flex-col gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => {
                   const { data, transcript } = voiceConfirmation;
-                  const finalName = voiceConfirmation.isSimilar && voiceConfirmation.existingProduct
-                    ? voiceConfirmation.existingProduct.name
-                    : voiceConfirmation.data.product_name;
+                  const finalName =
+                    !voiceConfirmation.isEditing && voiceConfirmation.isSimilar && voiceConfirmation.existingProduct
+                      ? voiceConfirmation.existingProduct.name
+                      : data.product_name;
                   setVoiceConfirmation(null);
                   executeSaveTransaction(finalName, data, transcript);
                 }}
                 className="w-full py-3.5 px-4 rounded-2xl bg-[#00875A] hover:bg-[#059669] text-white font-black text-sm shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Check className="w-5 h-5 stroke-[2.5]" />
-                <span>Simpan ke Catatan</span>
+                <span>{voiceConfirmation.isEditing ? 'Simpan Perubahan' : 'Simpan ke Catatan'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setVoiceConfirmation(null);
-                  // Focus manual form so merchant can edit freely
-                  const el = document.getElementById('manual-product-name');
-                  if (el) el.focus();
-                }}
-                className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition-all cursor-pointer"
-              >
-                ✏️ Perbaiki / Edit Terlebih Dahulu
-              </button>
+              {!voiceConfirmation.isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Masuk ke mode edit langsung di dalam modal
+                    setVoiceConfirmation({
+                      ...voiceConfirmation,
+                      isEditing: true,
+                    });
+                  }}
+                  className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>Perbaiki / Edit Tulisan Ini</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Batalkan mode edit, kembali ke ringkasan suara
+                    setVoiceConfirmation({
+                      ...voiceConfirmation,
+                      isEditing: false,
+                    });
+                  }}
+                  className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                >
+                  Batal Edit (Kembali ke Ringkasan)
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -859,6 +1051,7 @@ export default function CatatPage() {
             Nama barang
           </label>
           <input
+            id="manual-product-name"
             type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
