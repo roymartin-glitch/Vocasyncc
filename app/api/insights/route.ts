@@ -17,11 +17,15 @@ export async function GET(req: NextRequest) {
 async function handleInsights(req: NextRequest) {
   try {
     let localProductsOverride: any[] = [];
+    let localTxsOverride: any[] = [];
     if (req.method === 'POST') {
       try {
         const body = await req.json();
         if (Array.isArray(body.localProducts)) {
           localProductsOverride = body.localProducts.filter(Boolean);
+        }
+        if (Array.isArray(body.localTxs)) {
+          localTxsOverride = body.localTxs.filter(Boolean);
         }
       } catch (e) {}
     }
@@ -91,9 +95,18 @@ async function handleInsights(req: NextRequest) {
     };
     const threshold = Number(activeProfile.margin_alert_threshold) || 20;
 
-    // Use only DB transactions - no mock fallback to avoid stale/wrong data
+    // Use DB transactions and merge with any offline/local ones
     const dbTx = txRes.data || [];
-    const allTx = dbTx;
+    const allTx = [...dbTx];
+    
+    // Sinkronisasi transaksi lokal yang belum ter-push ke database (penting untuk mode demo/offline)
+    const existingIds = new Set(allTx.map(t => t.id));
+    for (const l of localTxsOverride) {
+      if (l && l.id && !existingIds.has(l.id)) {
+        allTx.unshift(l);
+        existingIds.add(l.id);
+      }
+    }
 
     const batches = batchesRes.data || [];
     const insights = insightsRes.data || [];
@@ -110,16 +123,18 @@ async function handleInsights(req: NextRequest) {
         if (tx.type === 'income') {
           let txIncome = 0;
           let txCogs = 0;
-          (tx.transaction_items || []).forEach((it: any) => {
+          const itemsList = tx.transaction_items || tx.items || [];
+          itemsList.forEach((it: any) => {
             const q = Number(it.quantity) || 0;
             const p = Number(it.unit_price) || 0;
             txIncome += (q * p);
 
             // Determine cost price for COGS
-            let cost = it.products?.cost_price;
+            let cost = it.products?.cost_price || it.cost_price;
             
             // Override with local cache if available (for instant updates)
-            const localMatch = localProductsOverride.find((lp: any) => lp?.id === it.product_id || (lp?.name && it.products?.name && lp.name.toLowerCase() === it.products.name.toLowerCase()));
+            const pName = it.products?.name || it.product_name || 'Lainnya';
+            const localMatch = localProductsOverride.find((lp: any) => lp?.id === it.product_id || (lp?.name && pName && lp.name.toLowerCase() === pName.toLowerCase()));
             if (localMatch?.cost_price && localMatch.cost_price > 0) {
               cost = localMatch.cost_price;
             }
@@ -131,14 +146,24 @@ async function handleInsights(req: NextRequest) {
             
             txCogs += (q * cost);
           });
+          // Fallback if no items array but has total_amount
+          if (itemsList.length === 0 && tx.total_amount) {
+            txIncome += tx.total_amount;
+            txCogs += Math.round(tx.total_amount * 0.8);
+          }
           todayIncome += txIncome;
           todayCogs += txCogs;
         } else if (tx.type === 'expense') {
-          const total = (tx.transaction_items || []).reduce(
-            (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
-            0
-          );
-          todayExpense += total;
+          const itemsList = tx.transaction_items || tx.items || [];
+          if (itemsList.length > 0) {
+            const total = itemsList.reduce(
+              (acc: number, it: any) => acc + Number(it.quantity) * Number(it.unit_price),
+              0
+            );
+            todayExpense += total;
+          } else if (tx.total_amount) {
+            todayExpense += tx.total_amount;
+          }
         }
       }
     });
@@ -210,12 +235,13 @@ async function handleInsights(req: NextRequest) {
     allTx.forEach((tx) => {
       const txDate = tx.transaction_date || '';
       if (tx.type === 'expense') {
-        (tx.transaction_items || []).forEach((it: any) => {
+        const itemsList = tx.transaction_items || tx.items || [];
+        itemsList.forEach((it: any) => {
           const pId = it.product_id || it.products?.id;
           const pName = it.products?.name || it.product_name || 'Lainnya';
           const pKey = pId || pName.toLowerCase();
           const q = Number(it.quantity) || 1;
-          const p = Number(it.unit_price) || 0;
+          const p = Number(it.unit_price) || (tx.total_amount ? tx.total_amount / q : 0);
           if (!prodCostMap[pKey]) {
             prodCostMap[pKey] = { totalCost: 0, totalQty: 0, latestCost: p, latestCostDate: txDate };
           }
@@ -232,12 +258,13 @@ async function handleInsights(req: NextRequest) {
     allTx.forEach((tx) => {
       const txDate = tx.transaction_date || '';
       if (tx.type === 'income') {
-        (tx.transaction_items || []).forEach((it: any) => {
+        const itemsList = tx.transaction_items || tx.items || [];
+        itemsList.forEach((it: any) => {
           const pId = it.product_id || it.products?.id;
           const pName = it.products?.name || it.product_name || 'Lainnya';
           const pKey = pId || pName.toLowerCase();
           const q = Number(it.quantity) || 1;
-          const sellPrice = Number(it.unit_price) || 0;
+          const sellPrice = Number(it.unit_price) || (tx.total_amount ? tx.total_amount / q : 0);
           const revenue = q * sellPrice;
 
           const costObj = prodCostMap[pKey] || prodCostMap[pName.toLowerCase()];

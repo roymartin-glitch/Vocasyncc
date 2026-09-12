@@ -46,7 +46,8 @@ export default function DashboardPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            localProducts: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`vokasync_products_${localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')}`) || '[]') : []
+            localProducts: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`vokasync_products_${localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')}`) || '[]') : [],
+            localTxs: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`vokasync_local_txs_${localStorage.getItem('vokasync_user_id') || (localStorage.getItem('vokasync_is_demo') === 'true' ? 'demo' : 'guest')}`) || '[]') : []
           })
         }).then((r) => r.json()),
         fetch('/api/transactions?limit=6').then((r) => r.json()),
